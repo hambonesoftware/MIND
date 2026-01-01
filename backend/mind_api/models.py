@@ -29,7 +29,7 @@ v0.4.7+ Triplet-friendly grids:
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -117,8 +117,50 @@ class NodeInput(BaseModel):
     """Represents a node sent to the compiler."""
 
     id: str = Field(..., description="unique identifier for the node on the client")
-    text: str = Field(..., description="latched text of the node script")
+    kind: Literal["theory", "render"] = Field(
+        "theory",
+        description="node type (theory or render)",
+    )
+    text: Optional[str] = Field(
+        None,
+        description="latched text of the node script (theory nodes only)",
+    )
+    childId: Optional[str] = Field(
+        None,
+        description="child node id (render nodes only)",
+    )
+    render: Optional["RenderSpec"] = Field(
+        None,
+        description="render spec for post-processing (render nodes only)",
+    )
     enabled: bool = Field(True, description="whether the node is active")
+
+
+class StrumSpec(BaseModel):
+    """Represents a strum render spec for chord post-processing."""
+
+    grid: Optional[str] = Field(None, description="grid division such as 1/8 or 1/16")
+    directionPattern: Optional[str] = Field(
+        None,
+        description="pattern describing strum direction steps",
+    )
+    spreadMs: Optional[int] = Field(None, description="spread in milliseconds")
+
+
+class PercSpec(BaseModel):
+    """Represents a percussion render spec for mask-driven drums."""
+
+    grid: Optional[str] = Field(None, description="grid division such as 1/8 or 1/16")
+    kickMask: Optional[str] = Field(None, description="kick mask pattern")
+    snareMask: Optional[str] = Field(None, description="snare mask pattern")
+    hatMask: Optional[str] = Field(None, description="hat mask pattern")
+
+
+class RenderSpec(BaseModel):
+    """Represents render parameters for post-processing."""
+
+    strum: Optional[StrumSpec] = None
+    perc: Optional[PercSpec] = None
 
 
 class CompileRequest(BaseModel):

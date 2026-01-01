@@ -32,11 +32,12 @@ Sustain behavior:
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional, Set
 
 from ..models import CompileRequest, CompileResponse, Event, Diagnostic
 from .parser import parse_text
 from .notes import parse_notes_spec, parse_sequence_spec
+from .post.chain import apply_render_chain
 
 
 # Mapping from lane identifiers to default MIDI note numbers
@@ -176,6 +177,193 @@ def _compute_base_hit_index(
     return base
 
 
+def _compile_theory_node(
+    node_id: str,
+    text: str,
+    bar_idx: int,
+    diagnostics: List[Diagnostic],
+) -> List[Event]:
+    ast, parse_diags = parse_text(text)
+    if parse_diags:
+        # Forward parser diagnostics; mark them but continue with other nodes
+        for diag in parse_diags:
+            diagnostics.append(
+                Diagnostic(
+                    level=diag.level,
+                    message=f"Node {node_id}: {diag.message}",
+                    line=diag.line,
+                    col=diag.col,
+                )
+            )
+        return []
+
+    assert ast is not None  # satisfied when no diagnostics
+
+    # Determine whether this node should fire on the current bar
+    # Bars are 1-indexed in the script but 0-indexed in the API
+    bar_range = ast.bars or "1-16"
+    start_bar, end_bar = [int(x.strip()) for x in bar_range.split("-")]
+    current_bar_number = bar_idx + 1
+    if not (start_bar <= current_bar_number <= end_bar):
+        return []
+
+    # Determine grid resolution (now supports 1/12 and 1/24)
+    grid = (ast.grid or "1/4").strip()
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len_beats = 4.0 / steps_per_bar  # bar spans 4 beats
+
+    # Normalize pattern (strip spaces and pipes)
+    raw_pat = ast.pattern or ""
+    pat_norm = _normalize_pattern(raw_pat)
+    if len(pat_norm) == 0:
+        return []
+
+    # Determine how many bars the pattern represents
+    pat_bar_count = _compute_pattern_bar_count(pat_norm, steps_per_bar)
+
+    # bar_offset is 0-based within the node's active range
+    bar_offset = current_bar_number - start_bar
+    if bar_offset < 0:
+        bar_offset = 0
+
+    # Slice the current bar's segment (or repeat/truncate for 1-bar patterns)
+    bar_pat = _slice_bar_segment(pat_norm, steps_per_bar, bar_offset, pat_bar_count)
+    if len(bar_pat) == 0:
+        return []
+
+    # Prepare sequence if provided. Validate here and add diagnostic on error
+    seq_values: List[int] = []
+    use_sequence = False
+    if getattr(ast, "sequence", None):
+        try:
+            seq_values = parse_sequence_spec(ast.sequence or "")
+            use_sequence = True if seq_values else False
+        except Exception as exc:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Node {node_id}: invalid sequence '{ast.sequence}': {exc}",
+                    line=1,
+                    col=1,
+                )
+            )
+            return []
+
+    # Compute base hit index for this bar (variable per-bar hit counts supported)
+    base_hit_idx = 0
+    if use_sequence:
+        if pat_bar_count <= 1:
+            hits_per_bar = sum(1 for ch in bar_pat if _is_hit_char(ch))
+            base_hit_idx = hits_per_bar * bar_offset
+        else:
+            hits_per_seg = _hits_by_segment(pat_norm, steps_per_bar, pat_bar_count)
+            base_hit_idx = _compute_base_hit_index(bar_offset, pat_bar_count, hits_per_seg)
+
+    # Collect events for this node
+    node_events: List[Event] = []
+    local_hit_counter = 0  # counts hits (digits) within current bar
+
+    for idx, char in enumerate(bar_pat):
+        if char == ".":
+            continue
+
+        # Sustain markers do not create events.
+        if char == "-":
+            continue
+
+        # Only digits 0-9 are valid note-on/hit tokens
+        if not _is_hit_char(char):
+            continue
+
+        velocity = _intensity_to_velocity(char)
+        if velocity <= 0:
+            continue
+
+        tbeat = (idx / steps_per_bar) * 4.0  # bar spans 4 beats
+
+        # Determine pitches for this event
+        pitches: List[int] = []
+        if use_sequence:
+            seq_len = len(seq_values)
+            if seq_len > 0:
+                pitch_index = base_hit_idx + local_hit_counter
+                chosen = seq_values[pitch_index % seq_len]
+                pitches = [chosen]
+            else:
+                local_hit_counter += 1
+                continue
+            local_hit_counter += 1
+        elif getattr(ast, "notes", None):
+            try:
+                pitches = parse_notes_spec(ast.notes or "")
+            except Exception as exc:
+                diagnostics.append(
+                    Diagnostic(
+                        level="error",
+                        message=f"Node {node_id}: invalid notes '{ast.notes}': {exc}",
+                        line=1,
+                        col=1,
+                    )
+                )
+                continue
+        else:
+            default_note = LANE_TO_MIDI_NOTE.get(ast.lane, 60)
+            pitches = [default_note]
+
+        if not pitches:
+            continue
+
+        # Determine duration
+        if ast.lane == "note":
+            sustain_steps = _count_sustain_steps(bar_pat, idx)
+            raw_duration = step_len_beats * (1 + sustain_steps)
+
+            # Small release so it doesn't click right at the grid edge
+            duration_beats = raw_duration * 0.95
+            if duration_beats < 0.05:
+                duration_beats = 0.05
+        else:
+            duration_beats = 0.1
+
+        node_events.append(
+            Event(
+                tBeat=tbeat,
+                lane=ast.lane,
+                note=pitches[0] if pitches else None,
+                pitches=pitches,
+                velocity=velocity,
+                durationBeats=duration_beats,
+                preset=ast.preset,
+            )
+        )
+
+    # Apply polyphony policy to node events before adding to global list
+    poly_mode = (ast.poly or "poly").lower()
+
+    if node_events and poly_mode in {"mono", "choke"}:
+        apply_mono = False
+        if poly_mode == "mono":
+            apply_mono = True
+        elif poly_mode == "choke" and ast.lane == "hat":
+            apply_mono = True
+
+        if apply_mono:
+            # Ensure stable ordering by time (should already be, but be explicit)
+            node_events.sort(key=lambda e: e.tBeat)
+            for i, ev in enumerate(node_events):
+                if i + 1 < len(node_events):
+                    next_t = node_events[i + 1].tBeat
+                else:
+                    next_t = 4.0  # end of bar
+
+                available = (next_t - ev.tBeat) * 0.95
+                min_dur = 0.05
+                new_dur = min(ev.durationBeats, max(min_dur, available))
+                ev.durationBeats = new_dur
+
+    return node_events
+
+
 def compile_request(req: CompileRequest) -> CompileResponse:
     """Compile all nodes for the given bar index.
 
@@ -187,189 +375,73 @@ def compile_request(req: CompileRequest) -> CompileResponse:
     loop_bars = 16
     bar_idx = req.barIndex
 
-    for node in req.nodes:
-        if not node.enabled:
-            continue
+    nodes_by_id = {node.id: node for node in req.nodes}
+    referenced_children = {
+        node.childId
+        for node in req.nodes
+        if node.kind == "render" and node.childId
+    }
+    roots = [
+        node
+        for node in req.nodes
+        if node.id not in referenced_children and node.enabled
+    ]
 
-        ast, parse_diags = parse_text(node.text)
-        if parse_diags:
-            # Forward parser diagnostics; mark them but continue with other nodes
-            for diag in parse_diags:
-                diagnostics.append(
-                    Diagnostic(
-                        level=diag.level,
-                        message=f"Node {node.id}: {diag.message}",
-                        line=diag.line,
-                        col=diag.col,
-                    )
+    def compile_node(node_id: str, stack: Optional[Set[str]] = None) -> List[Event]:
+        if stack is None:
+            stack = set()
+        if node_id in stack:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Node {node_id}: cycle detected in render graph",
+                    line=1,
+                    col=1,
                 )
-            continue
-
-        assert ast is not None  # satisfied when no diagnostics
-
-        # Determine whether this node should fire on the current bar
-        # Bars are 1-indexed in the script but 0-indexed in the API
-        bar_range = ast.bars or "1-16"
-        start_bar, end_bar = [int(x.strip()) for x in bar_range.split("-")]
-        current_bar_number = bar_idx + 1
-        if not (start_bar <= current_bar_number <= end_bar):
-            continue
-
-        # Determine grid resolution (now supports 1/12 and 1/24)
-        grid = (ast.grid or "1/4").strip()
-        steps_per_bar = _steps_per_bar_for_grid(grid)
-        step_len_beats = 4.0 / steps_per_bar  # bar spans 4 beats
-
-        # Normalize pattern (strip spaces and pipes)
-        raw_pat = ast.pattern or ""
-        pat_norm = _normalize_pattern(raw_pat)
-        if len(pat_norm) == 0:
-            continue
-
-        # Determine how many bars the pattern represents
-        pat_bar_count = _compute_pattern_bar_count(pat_norm, steps_per_bar)
-
-        # bar_offset is 0-based within the node's active range
-        bar_offset = current_bar_number - start_bar
-        if bar_offset < 0:
-            bar_offset = 0
-
-        # Slice the current bar's segment (or repeat/truncate for 1-bar patterns)
-        bar_pat = _slice_bar_segment(pat_norm, steps_per_bar, bar_offset, pat_bar_count)
-        if len(bar_pat) == 0:
-            continue
-
-        # Prepare sequence if provided. Validate here and add diagnostic on error
-        seq_values: List[int] = []
-        use_sequence = False
-        if getattr(ast, "sequence", None):
-            try:
-                seq_values = parse_sequence_spec(ast.sequence or "")
-                use_sequence = True if seq_values else False
-            except Exception as exc:
+            )
+            return []
+        node = nodes_by_id.get(node_id)
+        if node is None:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Node {node_id}: missing referenced child",
+                    line=1,
+                    col=1,
+                )
+            )
+            return []
+        if not node.enabled:
+            return []
+        if node.kind == "render":
+            if not node.childId:
                 diagnostics.append(
                     Diagnostic(
                         level="error",
-                        message=f"Node {node.id}: invalid sequence '{ast.sequence}': {exc}",
+                        message=f"Node {node.id}: render node missing childId",
                         line=1,
                         col=1,
                     )
                 )
-                continue
-
-        # Compute base hit index for this bar (variable per-bar hit counts supported)
-        base_hit_idx = 0
-        if use_sequence:
-            if pat_bar_count <= 1:
-                hits_per_bar = sum(1 for ch in bar_pat if _is_hit_char(ch))
-                base_hit_idx = hits_per_bar * bar_offset
-            else:
-                hits_per_seg = _hits_by_segment(pat_norm, steps_per_bar, pat_bar_count)
-                base_hit_idx = _compute_base_hit_index(bar_offset, pat_bar_count, hits_per_seg)
-
-        # Collect events for this node
-        node_events: List[Event] = []
-        local_hit_counter = 0  # counts hits (digits) within current bar
-
-        for idx, char in enumerate(bar_pat):
-            if char == ".":
-                continue
-
-            # Sustain markers do not create events.
-            if char == "-":
-                continue
-
-            # Only digits 0-9 are valid note-on/hit tokens
-            if not _is_hit_char(char):
-                continue
-
-            velocity = _intensity_to_velocity(char)
-            if velocity <= 0:
-                continue
-
-            tbeat = (idx / steps_per_bar) * 4.0  # bar spans 4 beats
-
-            # Determine pitches for this event
-            pitches: List[int] = []
-            if use_sequence:
-                seq_len = len(seq_values)
-                if seq_len > 0:
-                    pitch_index = base_hit_idx + local_hit_counter
-                    chosen = seq_values[pitch_index % seq_len]
-                    pitches = [chosen]
-                else:
-                    local_hit_counter += 1
-                    continue
-                local_hit_counter += 1
-            elif getattr(ast, "notes", None):
-                try:
-                    pitches = parse_notes_spec(ast.notes or "")
-                except Exception as exc:
-                    diagnostics.append(
-                        Diagnostic(
-                            level="error",
-                            message=f"Node {node.id}: invalid notes '{ast.notes}': {exc}",
-                            line=1,
-                            col=1,
-                        )
-                    )
-                    continue
-            else:
-                default_note = LANE_TO_MIDI_NOTE.get(ast.lane, 60)
-                pitches = [default_note]
-
-            if not pitches:
-                continue
-
-            # Determine duration
-            if ast.lane == "note":
-                sustain_steps = _count_sustain_steps(bar_pat, idx)
-                raw_duration = step_len_beats * (1 + sustain_steps)
-
-                # Small release so it doesn't click right at the grid edge
-                duration_beats = raw_duration * 0.95
-                if duration_beats < 0.05:
-                    duration_beats = 0.05
-            else:
-                duration_beats = 0.1
-
-            node_events.append(
-                Event(
-                    tBeat=tbeat,
-                    lane=ast.lane,
-                    note=pitches[0] if pitches else None,
-                    pitches=pitches,
-                    velocity=velocity,
-                    durationBeats=duration_beats,
-                    preset=ast.preset,
+                return []
+            stack.add(node_id)
+            child_events = compile_node(node.childId, stack)
+            stack.remove(node_id)
+            return apply_render_chain(child_events, node.render, req.bpm)
+        if not node.text:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Node {node.id}: theory node missing text",
+                    line=1,
+                    col=1,
                 )
             )
+            return []
+        return _compile_theory_node(node.id, node.text, bar_idx, diagnostics)
 
-        # Apply polyphony policy to node events before adding to global list
-        poly_mode = (ast.poly or "poly").lower()
-
-        if node_events and poly_mode in {"mono", "choke"}:
-            apply_mono = False
-            if poly_mode == "mono":
-                apply_mono = True
-            elif poly_mode == "choke" and ast.lane == "hat":
-                apply_mono = True
-
-            if apply_mono:
-                # Ensure stable ordering by time (should already be, but be explicit)
-                node_events.sort(key=lambda e: e.tBeat)
-                for i, ev in enumerate(node_events):
-                    if i + 1 < len(node_events):
-                        next_t = node_events[i + 1].tBeat
-                    else:
-                        next_t = 4.0  # end of bar
-
-                    available = (next_t - ev.tBeat) * 0.95
-                    min_dur = 0.05
-                    new_dur = min(ev.durationBeats, max(min_dur, available))
-                    ev.durationBeats = new_dur
-
-        events.extend(node_events)
+    for root in roots:
+        events.extend(compile_node(root.id))
 
     events.sort(key=lambda e: e.tBeat)
     ok = len([d for d in diagnostics if d.level == "error"]) == 0
