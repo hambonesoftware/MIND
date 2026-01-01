@@ -1,0 +1,5 @@
+Expected bar 1 (grid=1/12) pitch sequence for Moonlight arpeggio (RH texture):
+- 12 onsets (one per step)
+- repeating tone order: 5th, root, 3rd of C# minor (2nd inversion feel)
+- target MIDI (preferred register): G#3=56, C#4=61, E4=64
+Sequence (12 steps): 56,61,64,56,61,64,56,61,64,56,61,64

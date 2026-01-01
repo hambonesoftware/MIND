@@ -1,0 +1,1 @@
+equation(lane="note",grid="1/12",bars="1-16",preset="gm:0:0",key="C# minor",harmony="1-2:C#m/G#;3-4:G#7;5-14:A;15-16:C#m/G#",motions="arpeggiate(pattern=low-mid-high,mode=tones,voicing=moonlight,order=5-1-3,start=0)")
