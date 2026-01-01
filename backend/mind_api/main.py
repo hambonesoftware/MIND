@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .routes import api_router
@@ -81,6 +81,11 @@ def create_app() -> FastAPI:
     # Serve the frontend; html=True ensures index.html is returned for
     # unknown paths so that client side routing works.
     if FRONTEND_DIR.exists():
+        index_path = FRONTEND_DIR / "index.html"
+        if index_path.exists():
+            @app.get("/")
+            def serve_root() -> FileResponse:
+                return FileResponse(index_path)
         app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
 
     return app
