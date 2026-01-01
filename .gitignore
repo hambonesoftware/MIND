@@ -11,6 +11,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!assets/vendor/spessasynth_core/dist/
+!assets/vendor/spessasynth_core/dist/**
 downloads/
 eggs/
 .eggs/

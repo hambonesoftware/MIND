@@ -4,3 +4,4 @@
 // can set this value accordingly.
 
 export const API_BASE = "";
+export const USE_NODE_GRAPH = false;
