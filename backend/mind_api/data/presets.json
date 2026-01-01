@@ -1,0 +1,18 @@
+{
+  "presets": [
+    
+    { "id": "gm:0:0", "name": "Acoustic Grand Piano" },
+    { "id": "gm:0:24", "name": "Acoustic Guitar (Nylon)" },
+    { "id": "gm:0:32", "name": "Acoustic Bass" },
+    { "id": "gm:0:40", "name": "Violin" },
+    { "id": "gm:0:48", "name": "String Ensemble" },
+    { "id": "gm:0:52", "name": "Choir Aahs" },
+    { "id": "gm:0:56", "name": "Trumpet" },
+    { "id": "gm:0:80", "name": "Lead Synth" },
+    
+    { "id": "gm_kick", "name": "Kick Drum" },
+    { "id": "gm_snare", "name": "Snare Drum" },
+    { "id": "gm_hat", "name": "Hi‑Hat" },
+    { "id": "gm_piano", "name": "Grand Piano" }
+  ]
+}

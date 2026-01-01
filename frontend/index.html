@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MIND Studio</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>MIND Studio v0.3</h1>
+      <nav class="nav-links">
+        <a href="/docs">Docs</a>
+        <a href="/docs/whitepapers/licensing_and_credits.md">Credits</a>
+      </nav>
+    </header>
+
+    <div id="transport" class="transport-bar"></div>
+    <div id="nodeStack" class="node-stack"></div>
+
+    <!-- Import map must come BEFORE any module scripts that import SpessaSynth -->
+    <script type="importmap">
+      {
+        "imports": {
+          "spessasynth_core": "/assets/vendor/spessasynth_core/dist/index.js"
+        }
+      }
+    </script>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
