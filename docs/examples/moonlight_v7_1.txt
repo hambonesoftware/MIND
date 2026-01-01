@@ -1,0 +1,8 @@
+# Moonlight v7.1 equation example
+lane=note
+key="C# minor"
+bars="1-16"
+
+harmony="1-2:C#m/G#;3-4:V;5-14:VI;15-16:i"
+
+motions="arpeggiate(pattern=low-mid-high,mode=tones,voicing=moonlight,order=5-1-3,start=0)"

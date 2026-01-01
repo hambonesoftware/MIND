@@ -23,7 +23,7 @@ def voice_chord(pitch_classes: List[int], register: str = "mid") -> List[int]:
         register = "mid"
     low, high = _RANGES[register]
     voiced: List[int] = []
-    for pc in sorted(pitch_classes):
+    for pc in pitch_classes:
         candidates = _notes_in_range(pc, low, high)
         if candidates:
             voiced.append(candidates[0])
@@ -34,4 +34,17 @@ def voice_chord(pitch_classes: List[int], register: str = "mid") -> List[int]:
             while midi > high:
                 midi -= 12
             voiced.append(midi)
+    return voiced
+
+
+def voice_chord_moonlight(pitch_classes_ordered: List[int]) -> List[int]:
+    voiced: List[int] = []
+    target_bases = [56, 61, 64, 67]
+    for idx, pc in enumerate(pitch_classes_ordered[:4]):
+        base = target_bases[min(idx, len(target_bases) - 1)]
+        while base % 12 != pc:
+            base += 1
+        while base > 68:
+            base -= 12
+        voiced.append(base)
     return voiced

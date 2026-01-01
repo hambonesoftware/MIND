@@ -5,7 +5,15 @@ from typing import List
 from ..models import EquationAST, Event
 from .lattice import Lattice, steps_per_bar_from_grid
 from .motions import apply_arpeggiate, apply_sustain
-from .theory import HarmonyPlan, parse_key, resolve_roman, voice_chord
+from .motions.motion_call import parse_motion_call
+from .theory import (
+    HarmonyPlan,
+    parse_chord_symbol,
+    parse_key,
+    resolve_roman,
+    voice_chord,
+    voice_chord_moonlight,
+)
 
 
 def _parse_motions(motions: str | None) -> List[str]:
@@ -14,11 +22,10 @@ def _parse_motions(motions: str | None) -> List[str]:
     return [chunk.strip() for chunk in motions.split(";") if chunk.strip()]
 
 
-def _pattern_from_motion(motion: str) -> str:
-    if "pattern=" not in motion:
-        return "low-mid-high-mid"
-    parts = motion.split("pattern=")
-    return parts[1].split(",")[0].strip().strip(")")
+def _resolve_chord_symbol(key, symbol: str) -> List[int]:
+    if symbol and symbol[0].upper() in {"A", "B", "C", "D", "E", "F", "G"}:
+        return parse_chord_symbol(symbol)
+    return resolve_roman(key, symbol)
 
 
 def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Event]:
@@ -29,7 +36,7 @@ def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Eve
     plan = HarmonyPlan.parse(ast.harmony)
     bar_number = bar_index + 1
     symbol = plan.get_symbol(bar_number)
-    chord_pcs = resolve_roman(key, symbol)
+    chord_pcs = _resolve_chord_symbol(key, symbol)
 
     voiced_low = voice_chord(chord_pcs, register="low")
     voiced_mid = voice_chord(chord_pcs, register="mid")
@@ -37,7 +44,8 @@ def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Eve
 
     motions = _parse_motions(ast.motions)
     for motion in motions:
-        if motion.startswith("sustain"):
+        name, kwargs = parse_motion_call(motion)
+        if name == "sustain":
             apply_sustain(
                 lattice,
                 chord=voiced_mid,
@@ -45,12 +53,52 @@ def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Eve
                 segment_start=plan.get_segment_start(bar_number),
                 segment_length=plan.get_segment_length(bar_number),
             )
-        elif motion.startswith("arpeggiate"):
-            pattern = _pattern_from_motion(motion)
+        elif name == "arpeggiate":
+            pattern = kwargs.get("pattern", "low-mid-high-mid")
+            mode = kwargs.get("mode", "registers")
+            order = kwargs.get("order")
+            start_raw = kwargs.get("start", "0")
+            try:
+                start = int(start_raw)
+            except ValueError:
+                start = 0
+            if mode == "tones":
+                voicing = kwargs.get("voicing", "mid")
+                if voicing != "moonlight" and voicing not in {"low", "mid", "high"}:
+                    voicing = "mid"
+                chord_cache: dict[tuple[str, str], List[int]] = {}
+                chord_by_step: List[List[int]] = []
+                for step in range(steps_per_bar):
+                    step_symbol = plan.get_symbol_at_step(
+                        bar_number, step, steps_per_bar
+                    )
+                    cache_key = (step_symbol, voicing)
+                    if cache_key not in chord_cache:
+                        chord_pcs = _resolve_chord_symbol(key, step_symbol)
+                        if voicing == "moonlight":
+                            chord_cache[cache_key] = voice_chord_moonlight(chord_pcs)
+                        else:
+                            chord_cache[cache_key] = voice_chord(
+                                chord_pcs, register=voicing
+                            )
+                    chord_by_step.append(chord_cache[cache_key])
+                apply_arpeggiate(
+                    lattice,
+                    chord_by_register=[voiced_low, voiced_mid, voiced_high],
+                    pattern=pattern,
+                    mode=mode,
+                    order=order,
+                    start=start,
+                    chord_by_step=chord_by_step,
+                )
+                continue
             apply_arpeggiate(
                 lattice,
                 chord_by_register=[voiced_low, voiced_mid, voiced_high],
                 pattern=pattern,
+                mode=mode,
+                order=order,
+                start=start,
             )
 
     return lattice.to_events(lane=ast.lane, preset=ast.preset)
