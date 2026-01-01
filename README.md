@@ -36,6 +36,20 @@ next bar boundary.  Use the **Latch** button to immediately latch
 all pending edits while stopped.  The playhead moves across the bar
 visualisation and pulses show where hits occur.
 
+## Demo workspaces
+
+The melodic lane supports **Theory** and **Render** blocks. Theory blocks
+contain scripts (including `equation(...)`), while render blocks wrap a
+single theory block and apply gesture transforms (strum/percussion).
+
+Use **Load Demo Workspace** in the transport bar to load:
+
+- **Moonlight** (equation + arpeggiate motion)
+- **Wonderwall (Oasis)** (sustain + strum + percussion)
+- **Wonderwall (Ryan)** (sustain + arpeggiate motion)
+
+After loading a demo, press **Play** to hear the result.
+
 This version bundles the **General GS** soundfont under
 ``assets/soundfonts/General-GS.sf2``.  A simple WebAssembly‑based
 engine streams and caches this file on first load.  If the soundfont
@@ -95,3 +109,13 @@ note:
 ```
 beat(note, "9...", grid="1/4", bars="1-16", notes="C4:E4:G4", preset="gm_piano")
 ```
+
+### Equation scripts
+
+```
+equation(lane="note", grid="1/12", bars="1-16", preset="gm:0:0", key="C# minor",
+         harmony="1-2:i;3-4:V;5-14:VI;15-16:i",
+         motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")
+```
+
+Equation nodes describe intent and are solved into events during compilation.

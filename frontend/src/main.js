@@ -183,7 +183,7 @@ class NodeCard {
   updateSteps(events) {
     // Determine step count from grid
     const grid = this.lastParsedGrid || '1/4';
-    const steps = { '1/4': 4, '1/8': 8, '1/16': 16 }[grid] || 4;
+    const steps = { '1/4': 4, '1/8': 8, '1/12': 12, '1/16': 16, '1/24': 24 }[grid] || 4;
     // Create or update step boxes
     // Remove existing boxes except playhead
     // Keep playhead as first child; remove others
@@ -679,22 +679,37 @@ class NoteWorkspaceCard {
             strum: {
               enabled: block.render.strumEnabled,
               spreadMs: block.render.spreadMs,
-              direction: block.render.direction,
+              directionByStep: block.render.direction,
             },
             perc: {
               enabled: block.render.percEnabled,
-              hatPattern: block.render.hatPattern,
-              kickPattern: block.render.kickPattern,
-              snarePattern: block.render.snarePattern,
+              hat: block.render.hatPattern,
+              kick: block.render.kickPattern,
+              snare: block.render.snarePattern,
             },
           },
         };
       });
   }
 
+  loadWorkspace(workspace) {
+    this.blocks = workspace.blocks.map(block => ({
+      ...block,
+      pendingText: null,
+      status: 'Latched',
+      lastParsedGrid: block.lastParsedGrid || '1/4',
+    }));
+    const maxIndex = this.blocks
+      .map(block => parseInt(block.id.split('-')[1], 10))
+      .filter(Number.isFinite)
+      .reduce((max, value) => Math.max(max, value), 0);
+    this.blockCounter = maxIndex + 1;
+    this.renderWorkspace();
+  }
+
   updateSteps(events) {
     const grid = this.lastParsedGrid || '1/4';
-    const steps = { '1/4': 4, '1/8': 8, '1/16': 16 }[grid] || 4;
+    const steps = { '1/4': 4, '1/8': 8, '1/12': 12, '1/16': 16, '1/24': 24 }[grid] || 4;
     while (this.stepStrip.children.length > 1) {
       this.stepStrip.removeChild(this.stepStrip.lastChild);
     }
@@ -737,6 +752,122 @@ function buildDefaultScript(lane, defaultPattern, defaultPreset) {
   return `beat(${lane}, "${defaultPattern}", grid="1/4", bars="1-16", preset="${defaultPreset}")`;
 }
 
+function buildDemoWorkspaces(presetId) {
+  return [
+    {
+      id: 'moonlight',
+      label: 'Moonlight (Theory + Render)',
+      workspace: {
+        blocks: [
+          {
+            id: 'theory-1',
+            kind: 'theory',
+            title: 'Moonlight Theory',
+            enabled: true,
+            latchedText: (
+              'equation(lane="note", grid="1/12", bars="1-16", '
+              + `preset="${presetId}", key="C# minor", `
+              + 'harmony="1-2:i;3-4:V;5-14:VI;15-16:i", '
+              + 'motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")'
+            ),
+            lastParsedGrid: '1/12',
+          },
+          {
+            id: 'render-2',
+            kind: 'render',
+            title: 'Moonlight Render',
+            enabled: true,
+            childId: 'theory-1',
+            render: {
+              strumEnabled: false,
+              spreadMs: 20,
+              direction: 'DUDUDUDU',
+              percEnabled: false,
+              hatPattern: '........',
+              kickPattern: '........',
+              snarePattern: '........',
+            },
+          },
+        ],
+      },
+    },
+    {
+      id: 'wonderwall-oasis',
+      label: 'Wonderwall (Oasis Render)',
+      workspace: {
+        blocks: [
+          {
+            id: 'theory-1',
+            kind: 'theory',
+            title: 'Wonderwall Theory',
+            enabled: true,
+            latchedText: (
+              'equation(lane="note", grid="1/8", bars="1-16", '
+              + `preset="${presetId}", key="F# minor", `
+              + 'harmony="1-4:i;5-8:V;9-12:VI;13-16:III", '
+              + 'motions="sustain(chord)")'
+            ),
+            lastParsedGrid: '1/8',
+          },
+          {
+            id: 'render-2',
+            kind: 'render',
+            title: 'Oasis Render',
+            enabled: true,
+            childId: 'theory-1',
+            render: {
+              strumEnabled: true,
+              spreadMs: 40,
+              direction: 'DUDUDU',
+              percEnabled: true,
+              hatPattern: 'x.x.x.x.',
+              kickPattern: 'x...x...',
+              snarePattern: '..x...x.',
+            },
+          },
+        ],
+      },
+    },
+    {
+      id: 'wonderwall-ryan',
+      label: 'Wonderwall (Ryan Render)',
+      workspace: {
+        blocks: [
+          {
+            id: 'theory-1',
+            kind: 'theory',
+            title: 'Wonderwall Theory',
+            enabled: true,
+            latchedText: (
+              'equation(lane="note", grid="1/12", bars="1-16", '
+              + `preset="${presetId}", key="F# minor", `
+              + 'harmony="1-4:i;5-8:V;9-12:VI;13-16:III", '
+              + 'motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")'
+            ),
+            lastParsedGrid: '1/12',
+          },
+          {
+            id: 'render-2',
+            kind: 'render',
+            title: 'Ryan Render',
+            enabled: true,
+            childId: 'theory-1',
+            render: {
+              strumEnabled: true,
+              spreadMs: 20,
+              direction: 'DUDUDU',
+              percEnabled: false,
+              hatPattern: '........',
+              kickPattern: '........',
+              snarePattern: '........',
+            },
+          },
+        ],
+      },
+    },
+  ];
+}
+
 /**
  * Entry point: build the UI and wire up the runtime.
  */
@@ -755,6 +886,11 @@ async function main() {
     const stopButton = document.createElement('button');
     stopButton.textContent = 'Stop';
     transport.appendChild(stopButton);
+    const demoSelect = document.createElement('select');
+    const demoButton = document.createElement('button');
+    demoButton.textContent = 'Load Demo Workspace';
+    transport.appendChild(demoSelect);
+    transport.appendChild(demoButton);
     // BPM input
     const bpmLabel = document.createElement('label');
     bpmLabel.textContent = ' BPM: ';
@@ -903,6 +1039,26 @@ async function main() {
     if (typeof updateEngineIndicator === 'function') {
       updateEngineIndicator();
     }
+    const demoWorkspaces = buildDemoWorkspaces(
+      nodeCards.find(card => card.lane === 'note')?.presetSelect.value || '',
+    );
+    demoSelect.innerHTML = '';
+    for (const demo of demoWorkspaces) {
+      const opt = document.createElement('option');
+      opt.value = demo.id;
+      opt.textContent = demo.label;
+      demoSelect.appendChild(opt);
+    }
+    demoButton.addEventListener('click', () => {
+      const noteCard = nodeCards.find(card => card.lane === 'note');
+      if (!noteCard || typeof noteCard.loadWorkspace !== 'function') {
+        return;
+      }
+      const selected = demoWorkspaces.find(demo => demo.id === demoSelect.value);
+      if (selected) {
+        noteCard.loadWorkspace(selected.workspace);
+      }
+    });
     // Playback state
     let isPlaying = false;
     let barIndex = 0;
