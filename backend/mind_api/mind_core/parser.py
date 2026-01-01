@@ -31,7 +31,8 @@ from __future__ import annotations
 import re
 from typing import Dict, Tuple, Optional, List
 
-from ..models import ParsedAST, Diagnostic
+from ..models import ParsedAST, Diagnostic, EquationAST
+from .equation_parser import parse_equation_text
 from .notes import parse_notes_spec, parse_sequence_spec
 
 
@@ -75,7 +76,7 @@ def _normalize_pattern(pattern: str) -> str:
     return "".join(c for c in pattern if c not in {" ", "|"})
 
 
-def parse_text(text: str) -> Tuple[Optional[ParsedAST], List[Diagnostic]]:
+def parse_text(text: str) -> Tuple[Optional[ParsedAST | EquationAST], List[Diagnostic]]:
     """Parse a node script into a structured AST.
 
     :param text: Raw script provided by the user.
@@ -88,6 +89,9 @@ def parse_text(text: str) -> Tuple[Optional[ParsedAST], List[Diagnostic]]:
     if not script:
         diagnostics.append(Diagnostic(level="error", message="Empty script", line=1, col=1))
         return None, diagnostics
+
+    if script.lower().startswith("equation"):
+        return parse_equation_text(script)
 
     # Match the top level beat call
     m = _BEAT_CALL_RE.match(script)

@@ -29,8 +29,8 @@ v0.4.7+ Triplet-friendly grids:
 
 from __future__ import annotations
 
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Literal, Optional, Union
+from pydantic import BaseModel, Field, model_validator
 
 
 class Diagnostic(BaseModel):
@@ -51,6 +51,7 @@ class ParseRequest(BaseModel):
 class ParsedAST(BaseModel):
     """Represents the parsed form of a node script."""
 
+    kind: Literal["beat"] = Field("beat", description="ast kind discriminator")
     lane: Optional[str] = Field(None, description="lane identifier: kick, snare, hat or note")
     pattern: Optional[str] = Field(
         None,
@@ -105,20 +106,78 @@ class ParsedAST(BaseModel):
     )
 
 
+class EquationAST(BaseModel):
+    """Represents the parsed form of an equation(...) script."""
+
+    kind: Literal["equation"] = Field("equation", description="ast kind discriminator")
+    lane: str = Field(..., description="lane identifier: kick, snare, hat or note")
+    grid: str = Field(..., description="grid division such as 1/4, 1/8, 1/12, 1/16, or 1/24")
+    bars: str = Field(..., description="bar range expressed as start-end")
+    key: str = Field(..., description="tonal center, e.g. C# minor")
+    preset: Optional[str] = Field(None, description="preset identifier used for audio synthesis")
+    harmony: Optional[str] = Field(None, description="harmony progression string")
+    motions: Optional[str] = Field(None, description="motions/gestures string")
+
+
 class ParseResponse(BaseModel):
     """Response body for the /api/parse endpoint."""
 
     ok: bool
-    ast: Optional[ParsedAST] = None
+    ast: Optional[Union[ParsedAST, EquationAST]] = None
     diagnostics: List[Diagnostic] = Field(default_factory=list)
+
+
+class StrumSpec(BaseModel):
+    """Render spec for strum transformations."""
+
+    enabled: bool = Field(False, description="toggle strum render transform")
+    grid: Optional[str] = Field(
+        None, description="grid override for strum (defaults to child grid)"
+    )
+    directionByStep: Optional[str] = Field(
+        None, description="strum direction pattern per step"
+    )
+    spreadMs: Optional[int] = Field(None, description="strum spread in milliseconds")
+
+
+class PercSpec(BaseModel):
+    """Render spec for percussion layering."""
+
+    enabled: bool = Field(False, description="toggle percussion render transform")
+    grid: Optional[str] = Field(None, description="grid override for percussion")
+    kick: Optional[str] = Field(None, description="kick pattern")
+    snare: Optional[str] = Field(None, description="snare pattern")
+    hat: Optional[str] = Field(None, description="hat pattern")
+
+
+class RenderSpec(BaseModel):
+    """Render node settings."""
+
+    strum: Optional[StrumSpec] = None
+    perc: Optional[PercSpec] = None
 
 
 class NodeInput(BaseModel):
     """Represents a node sent to the compiler."""
 
     id: str = Field(..., description="unique identifier for the node on the client")
-    text: str = Field(..., description="latched text of the node script")
+    kind: Literal["theory", "render"] = Field(
+        "theory", description="node kind discriminator"
+    )
+    text: Optional[str] = Field(None, description="latched text of the node script")
+    childId: Optional[str] = Field(None, description="child node id for render nodes")
+    render: Optional[RenderSpec] = Field(None, description="render transform settings")
     enabled: bool = Field(True, description="whether the node is active")
+
+    @model_validator(mode="after")
+    def validate_kind_payload(self) -> "NodeInput":
+        if self.kind == "theory":
+            if not self.text or not self.text.strip():
+                raise ValueError("theory nodes require non-empty text")
+        if self.kind == "render":
+            if not self.childId or not self.childId.strip():
+                raise ValueError("render nodes require a non-empty childId")
+        return self
 
 
 class CompileRequest(BaseModel):
@@ -128,6 +187,7 @@ class CompileRequest(BaseModel):
     bpm: float = Field(..., description="tempo in beats per minute")
     barIndex: int = Field(..., ge=0, le=15, description="current bar index (0–15) within the 16-bar loop")
     nodes: List[NodeInput] = Field(..., description="latched nodes used for compilation")
+    debug: bool = Field(False, description="enable debug outputs")
 
 
 class Event(BaseModel):
@@ -158,6 +218,8 @@ class CompileResponse(BaseModel):
     barIndex: int = Field(..., description="bar index echoed back from the request")
     loopBars: int = Field(..., description="length of the loop in bars (always 16)")
     events: List[Event] = Field(default_factory=list)
+    debugText: Optional[str] = Field(None, description="debug output text")
+    debugLattice: Optional[dict] = Field(None, description="debug lattice payload")
 
 
 class Preset(BaseModel):
