@@ -1,88 +1,148 @@
 from __future__ import annotations
 
-from typing import List
+import re
+from typing import List, Optional
 
 from ..lattice import Lattice
 
 
-def _parse_pattern(pattern: str) -> List[int]:
-    tokens = [t.strip() for t in pattern.split("-") if t.strip()]
-    mapping = {"low": 0, "mid": 1, "high": 2}
-    return [mapping.get(token, 0) for token in tokens] or [0]
+def _parse_pattern(pattern: str) -> List[str]:
+    """
+    Parse pattern tokens like:
+      "low-mid-high-mid"
+      "low mid high mid"
+      "0-1-2-1"
+    """
+    pat = (pattern or "").strip()
+    if not pat:
+        pat = "low-mid-high-mid"
+    tokens = re.split(r"[\s,\-_/]+", pat)
+    return [t.strip().lower() for t in tokens if t and t.strip()]
 
 
-def _triad_degree_indexes(chord: List[int]) -> dict[str, int]:
-    pcs = [note % 12 for note in chord]
-    if len(pcs) < 3:
-        return {"1": 0, "3": 1, "5": 2}
-    triad_map = {
-        (3, 7): (3, 7),
-        (4, 7): (4, 7),
-        (3, 6): (3, 6),
-        (4, 8): (4, 8),
-        (5, 7): (5, 7),
-    }
-    for root in pcs:
-        intervals = sorted(((pc - root) % 12) for pc in pcs if pc != root)
-        pair = tuple(intervals[:2])
-        if pair in triad_map:
-            third_interval, fifth_interval = triad_map[pair]
-            third_pc = (root + third_interval) % 12
-            fifth_pc = (root + fifth_interval) % 12
-            return {
-                "1": pcs.index(root),
-                "3": pcs.index(third_pc) if third_pc in pcs else 1,
-                "5": pcs.index(fifth_pc) if fifth_pc in pcs else 2,
-            }
-    return {"1": 0, "3": 1, "5": 2}
+def _parse_order(order: Optional[str], chord_len: int) -> List[int]:
+    """
+    Optional ordering of tones within the chosen chord.
+
+    Supports:
+      - "up", "down", "updown"
+      - "0,1,2,1" (any int list)
+
+    Falls back to "up" if nothing valid is provided.
+    """
+    if chord_len <= 0:
+        return [0]
+
+    if not order:
+        return list(range(chord_len))
+
+    o = order.strip().lower()
+    if o in {"up", "asc", "ascending"}:
+        return list(range(chord_len))
+    if o in {"down", "desc", "descending"}:
+        return list(reversed(range(chord_len)))
+    if o in {"updown", "up-down", "ascdesc"}:
+        if chord_len == 1:
+            return [0]
+        up = list(range(chord_len))
+        down = list(range(chord_len - 2, 0, -1))
+        return up + down
+
+    # Try to parse an explicit integer list
+    parts = re.split(r"[\s,]+", o)
+    ints: List[int] = []
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        try:
+            ints.append(int(p))
+        except ValueError:
+            ints = []
+            break
+
+    if ints:
+        return ints
+
+    return list(range(chord_len))
 
 
 def apply_arpeggiate(
     lattice: Lattice,
     chord_by_register: List[List[int]],
-    pattern: str,
-    mode: str = "registers",
-    order: str | None = None,
+    pattern: str = "low-mid-high-mid",
+    order: Optional[str] = None,
     start: int = 0,
-    chord_by_step: List[List[int]] | None = None,
+    chord_by_step: Optional[List[List[int]]] = None,
+    velocity: int = 90,
+    dur_steps: int = 1,
 ) -> None:
-    indexes = _parse_pattern(pattern)
-    steps = lattice.steps_per_bar
-    if mode == "registers":
-        for step in range(steps):
-            idx = indexes[step % len(indexes)]
-            chord = chord_by_register[min(idx, len(chord_by_register) - 1)]
-            if not chord:
-                continue
-            pitch = chord[step % len(chord)]
-            lattice.add_onset(step=step, pitches=[pitch], velocity=90, dur_steps=1)
+    """
+    Apply an arpeggio to a lattice by adding onsets at grid steps.
+
+    - chord_by_register: [lowChord, midChord, highChord]
+    - pattern: token sequence ("low-mid-high-mid" or "0-1-2-1")
+      * low/mid/high select register chord (0/1/2)
+      * digits select a tone index within the chosen chord
+    - order: optional ordering of tones when token is a register name
+    - start: pattern phase offset (shifts which token is used at step 0)
+    - chord_by_step: if provided, overrides chord selection per step (tones mode)
+    """
+    tokens = _parse_pattern(pattern)
+
+    steps_per_bar = getattr(lattice, "steps_per_bar", 0) or 0
+    if steps_per_bar <= 0:
         return
 
-    for step in range(steps):
-        if chord_by_step:
-            if step >= len(chord_by_step):
-                continue
-            chord = chord_by_step[step]
+    try:
+        start_i = int(start)
+    except Exception:
+        start_i = 0
+
+    arp_counter = 0
+
+    for step in range(steps_per_bar):
+        tok = tokens[(step + start_i) % len(tokens)] if tokens else "mid"
+
+        # Select chord for this step
+        if chord_by_step is not None:
+            if not chord_by_step:
+                chord: List[int] = []
+            else:
+                chord = chord_by_step[step] if step < len(chord_by_step) else chord_by_step[-1]
         else:
-            chord = chord_by_register[1] if len(chord_by_register) > 1 else []
+            reg_idx = 1  # mid default
+            if tok in {"low", "l"}:
+                reg_idx = 0
+            elif tok in {"mid", "m"}:
+                reg_idx = 1
+            elif tok in {"high", "h"}:
+                reg_idx = 2
+
+            if not chord_by_register:
+                chord = []
+            else:
+                reg_idx = max(0, min(len(chord_by_register) - 1, reg_idx))
+                chord = chord_by_register[reg_idx]
+
         if not chord:
             continue
 
-        idx = indexes[step % len(indexes)]
-        if order:
-            mapping = _triad_degree_indexes(chord)
-            order_cycle = []
-            for token in order.split("-"):
-                token = token.strip()
-                if not token:
-                    continue
-                order_cycle.append(mapping.get(token, 0))
+        # Choose pitch within chord
+        if tok.isdigit():
+            idx = int(tok) % len(chord)
+            pitch = chord[idx]
         else:
-            order_cycle = list(range(len(chord)))
+            tone_order = _parse_order(order, len(chord))
+            tone_idx = tone_order[arp_counter % len(tone_order)] % len(chord)
+            pitch = chord[tone_idx]
 
-        if not order_cycle:
-            order_cycle = list(range(len(chord)))
+        arp_counter += 1
 
-        tone_index = order_cycle[(idx + start) % len(order_cycle)]
-        pitch = chord[tone_index % len(chord)]
-        lattice.add_onset(step=step, pitches=[pitch], velocity=90, dur_steps=1)
+        # IMPORTANT: Lattice.add_onset expects pitches: List[int]
+        lattice.add_onset(
+            step=step,
+            pitches=[pitch],
+            velocity=velocity,
+            dur_steps=dur_steps,
+        )
