@@ -20,6 +20,7 @@ from __future__ import annotations
 DEFAULT_GRID = "1/12"
 DEFAULT_BEATS_PER_BAR = 4
 DEFAULT_TOLERANCE_STEPS = 1e-3
+ADAPTIVE_GRIDS = ("1/12", "1/16", "1/24")
 
 
 def steps_per_bar_from_grid(grid: str) -> int:
@@ -62,6 +63,42 @@ def quantize_beats_to_grid_steps(
     if abs(raw_steps - nearest) <= tolerance_steps:
         return float(nearest)
     return float(nearest)
+
+
+def select_grid_for_events(
+    event_beats: list[float],
+    *,
+    beats_per_bar: int = DEFAULT_BEATS_PER_BAR,
+    candidate_grids: tuple[str, ...] = ADAPTIVE_GRIDS,
+) -> str:
+    """Pick a grid that best fits the provided beat values."""
+    if not event_beats:
+        return DEFAULT_GRID
+
+    best_grid = candidate_grids[0] if candidate_grids else DEFAULT_GRID
+    best_error = float("inf")
+    best_steps = steps_per_bar_from_grid(best_grid)
+
+    for grid in candidate_grids:
+        steps_per_bar = steps_per_bar_from_grid(grid)
+        step_beats = grid_step_in_beats(
+            steps_per_bar=steps_per_bar, beats_per_bar=beats_per_bar
+        )
+        if step_beats <= 0:
+            continue
+        error = 0.0
+        for value in event_beats:
+            raw_steps = value / step_beats
+            error += abs(raw_steps - round(raw_steps))
+        if error < best_error - 1e-9:
+            best_error = error
+            best_grid = grid
+            best_steps = steps_per_bar
+        elif abs(error - best_error) <= 1e-9 and steps_per_bar > best_steps:
+            best_grid = grid
+            best_steps = steps_per_bar
+
+    return best_grid
 
 
 def normalize_note_timing(
