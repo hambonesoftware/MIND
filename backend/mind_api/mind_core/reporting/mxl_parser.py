@@ -72,21 +72,41 @@ def parse_mxl_note_events(
                 break
 
             divisions = _measure_divisions(measure, namespace)
-            voice_positions: dict[tuple[str, int], float] = {}
+            measure_cursor = 0.0
+            last_note_onset: Optional[float] = None
 
-            for note in measure.findall(f"{namespace}note"):
+            for element in measure:
+                if element.tag == f"{namespace}attributes":
+                    divisions = _divisions_from_attributes(element, namespace) or divisions
+                    continue
+
+                if element.tag == f"{namespace}backup":
+                    measure_cursor -= _duration_in_beats(element, namespace, divisions)
+                    continue
+
+                if element.tag == f"{namespace}forward":
+                    measure_cursor += _duration_in_beats(element, namespace, divisions)
+                    continue
+
+                if element.tag != f"{namespace}note":
+                    continue
+
+                note = element
                 voice_value = _child_text(note, f"{namespace}voice") or "1"
                 staff_value = int(_child_text(note, f"{namespace}staff") or 1)
-                position_key = (voice_value, staff_value)
-                current_position = voice_positions.get(position_key, 0.0)
 
                 duration_value = _duration_in_beats(note, namespace, divisions)
                 is_chord = note.find(f"{namespace}chord") is not None
                 is_rest = note.find(f"{namespace}rest") is not None
 
-                onset = current_position
+                if is_chord and last_note_onset is not None:
+                    onset = last_note_onset
+                else:
+                    onset = measure_cursor
+
                 if not is_chord:
-                    voice_positions[position_key] = current_position + duration_value
+                    last_note_onset = onset
+                    measure_cursor += duration_value
 
                 if is_rest:
                     continue
@@ -148,13 +168,7 @@ def _measure_divisions(measure: ElementTree.Element, namespace: str) -> int:
     attributes = measure.find(f"{namespace}attributes")
     if attributes is None:
         return 1
-    divisions = attributes.find(f"{namespace}divisions")
-    if divisions is None or divisions.text is None:
-        return 1
-    try:
-        return int(divisions.text.strip())
-    except ValueError:
-        return 1
+    return _divisions_from_attributes(attributes, namespace) or 1
 
 
 def _child_text(parent: ElementTree.Element, tag: str) -> Optional[str]:
@@ -164,10 +178,22 @@ def _child_text(parent: ElementTree.Element, tag: str) -> Optional[str]:
     return child.text.strip()
 
 
+def _divisions_from_attributes(
+    attributes: ElementTree.Element, namespace: str
+) -> Optional[int]:
+    divisions = attributes.find(f"{namespace}divisions")
+    if divisions is None or divisions.text is None:
+        return None
+    try:
+        return int(divisions.text.strip())
+    except ValueError:
+        return None
+
+
 def _duration_in_beats(
-    note: ElementTree.Element, namespace: str, divisions: int
+    element: ElementTree.Element, namespace: str, divisions: int
 ) -> float:
-    duration_text = _child_text(note, f"{namespace}duration")
+    duration_text = _child_text(element, f"{namespace}duration")
     if not duration_text:
         return 0.0
     try:
