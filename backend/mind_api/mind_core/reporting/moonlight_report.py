@@ -203,6 +203,27 @@ def _diff_onsets(
     return onset_diffs, timing_mismatches
 
 
+def compare_solver_events_to_mxl(
+    ast: EquationAST,
+    mxl_path: Path,
+    *,
+    part_ids: Iterable[str] = ("P1",),
+    staff: int = 1,
+    bar_start: int | None = None,
+    bar_end: int | None = None,
+) -> tuple[list[OnsetDiff], list[TimingMismatch]]:
+    bars = _bars_from_range(ast.bars)
+    solver_events = _collect_solver_events(ast, bars)
+    mxl_events = parse_mxl_note_events(
+        mxl_path,
+        part_ids=part_ids,
+        staff=staff,
+        bar_start=bar_start,
+        bar_end=bar_end,
+    )
+    return _diff_onsets(solver_events, mxl_events)
+
+
 def _render_text_report(
     onset_diffs: list[OnsetDiff],
     timing_mismatches: list[TimingMismatch],
