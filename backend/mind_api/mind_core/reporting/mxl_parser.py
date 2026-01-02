@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Iterable, Optional
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
 from .normalization import (
+    DEFAULT_BEATS_PER_BAR,
     DEFAULT_GRID,
     DEFAULT_TOLERANCE_STEPS,
-    normalize_note_timing,
+    quantize_beats_to_grid_steps,
+    select_grid_for_events,
+    steps_per_bar_from_grid,
 )
 
 
@@ -28,6 +32,20 @@ class NormalizedNoteEvent:
     part_id: str
 
 
+@dataclass
+class RawNoteEvent:
+    bar_index: int
+    onset_beats: Fraction
+    duration_beats: Fraction
+    pitch: int
+    voice: str
+    staff: int
+    part_id: str
+    tie_start: bool
+    tie_stop: bool
+    tie_continue: bool
+
+
 def parse_mxl_note_events(
     path: str | Path,
     *,
@@ -36,6 +54,7 @@ def parse_mxl_note_events(
     voice: Optional[str] = None,
     bar_start: Optional[int] = None,
     bar_end: Optional[int] = None,
+    grid: str = DEFAULT_GRID,
 ) -> list[NormalizedNoteEvent]:
     """Extract normalized note events from a MusicXML/MXL file.
 
@@ -49,7 +68,8 @@ def parse_mxl_note_events(
 
     Returns:
         List of note events with onsets and durations snapped to solver grid
-        steps (default grid "1/12").
+        steps. Timing is kept at high resolution until after chord grouping and
+        tie merging.
     """
     path = Path(path)
     part_filter = set(part_ids or []) or None
@@ -57,7 +77,7 @@ def parse_mxl_note_events(
     root = _load_score_root(path)
     namespace = _extract_namespace(root.tag)
 
-    events: list[NormalizedNoteEvent] = []
+    raw_events: list[RawNoteEvent] = []
     for part in root.findall(f"{namespace}part"):
         part_id = part.get("id", "")
         if part_filter and part_id not in part_filter:
@@ -72,8 +92,8 @@ def parse_mxl_note_events(
                 break
 
             divisions = _measure_divisions(measure, namespace)
-            measure_cursor = 0.0
-            last_note_onset: Optional[float] = None
+            measure_cursor = Fraction(0, 1)
+            last_note_onset: Optional[Fraction] = None
 
             for element in measure:
                 if element.tag == f"{namespace}attributes":
@@ -119,26 +139,31 @@ def parse_mxl_note_events(
                 if pitch is None:
                     continue
 
-                grid_onset, grid_duration = normalize_note_timing(
-                    onset,
-                    duration_value,
-                    grid=DEFAULT_GRID,
-                    tolerance_steps=DEFAULT_TOLERANCE_STEPS,
-                )
+                tie_start, tie_stop, tie_continue = _tie_flags(note, namespace)
 
-                events.append(
-                    NormalizedNoteEvent(
+                raw_events.append(
+                    RawNoteEvent(
                         bar_index=measure_index - 1,
-                        grid_onset=grid_onset,
-                        duration=grid_duration,
+                        onset_beats=onset,
+                        duration_beats=duration_value,
                         pitch=pitch,
                         voice=voice_value,
                         staff=staff_value,
                         part_id=part_id,
+                        tie_start=tie_start,
+                        tie_stop=tie_stop,
+                        tie_continue=tie_continue,
                     )
                 )
 
-    return events
+    merged_events = _merge_tied_events(raw_events)
+    normalized = _quantize_events(
+        merged_events,
+        grid=grid,
+        beats_per_bar=DEFAULT_BEATS_PER_BAR,
+        tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+    )
+    return normalized
 
 
 def _load_score_root(path: Path) -> ElementTree.Element:
@@ -192,17 +217,17 @@ def _divisions_from_attributes(
 
 def _duration_in_beats(
     element: ElementTree.Element, namespace: str, divisions: int
-) -> float:
+) -> Fraction:
     duration_text = _child_text(element, f"{namespace}duration")
     if not duration_text:
-        return 0.0
+        return Fraction(0, 1)
     try:
         duration_divisions = int(duration_text)
     except ValueError:
-        return 0.0
+        return Fraction(0, 1)
     if divisions <= 0:
-        return 0.0
-    return duration_divisions / float(divisions)
+        return Fraction(0, 1)
+    return Fraction(duration_divisions, divisions)
 
 
 def _pitch_to_midi(note: ElementTree.Element, namespace: str) -> Optional[int]:
@@ -232,3 +257,88 @@ def _pitch_to_midi(note: ElementTree.Element, namespace: str) -> Optional[int]:
     if 0 <= midi <= 127:
         return midi
     return None
+
+
+def _tie_flags(note: ElementTree.Element, namespace: str) -> tuple[bool, bool, bool]:
+    types: set[str] = set()
+    for tie in note.findall(f"{namespace}tie"):
+        tie_type = tie.get("type")
+        if tie_type:
+            types.add(tie_type)
+    for tied in note.findall(f"{namespace}notations/{namespace}tied"):
+        tie_type = tied.get("type")
+        if tie_type:
+            types.add(tie_type)
+    return "start" in types, "stop" in types, "continue" in types
+
+
+def _merge_tied_events(events: list[RawNoteEvent]) -> list[RawNoteEvent]:
+    merged: list[RawNoteEvent] = []
+    active: dict[tuple[str, int, str, int], RawNoteEvent] = {}
+
+    for event in events:
+        key = (event.part_id, event.staff, event.voice, event.pitch)
+        if key in active:
+            active_event = active[key]
+            active_event.duration_beats += event.duration_beats
+            if event.tie_stop and not event.tie_continue:
+                merged.append(active_event)
+                del active[key]
+            continue
+
+        if event.tie_start or event.tie_continue:
+            if event.tie_stop and not event.tie_continue:
+                merged.append(event)
+            else:
+                active[key] = event
+            continue
+
+        merged.append(event)
+
+    merged.extend(active.values())
+    return merged
+
+
+def _quantize_events(
+    events: list[RawNoteEvent],
+    *,
+    grid: str,
+    beats_per_bar: int,
+    tolerance_steps: float,
+) -> list[NormalizedNoteEvent]:
+    beat_values = []
+    for event in events:
+        beat_values.append(float(event.onset_beats))
+        beat_values.append(float(event.duration_beats))
+
+    effective_grid = grid
+    if grid == "adaptive":
+        effective_grid = select_grid_for_events(beat_values, beats_per_bar=beats_per_bar)
+
+    steps_per_bar = steps_per_bar_from_grid(effective_grid)
+    normalized: list[NormalizedNoteEvent] = []
+    for event in events:
+        onset_steps = quantize_beats_to_grid_steps(
+            float(event.onset_beats),
+            steps_per_bar=steps_per_bar,
+            beats_per_bar=beats_per_bar,
+            tolerance_steps=tolerance_steps,
+        )
+        duration_steps = quantize_beats_to_grid_steps(
+            float(event.duration_beats),
+            steps_per_bar=steps_per_bar,
+            beats_per_bar=beats_per_bar,
+            tolerance_steps=tolerance_steps,
+        )
+        normalized.append(
+            NormalizedNoteEvent(
+                bar_index=event.bar_index,
+                grid_onset=onset_steps,
+                duration=duration_steps,
+                pitch=event.pitch,
+                voice=event.voice,
+                staff=event.staff,
+                part_id=event.part_id,
+            )
+        )
+    return normalized
