@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------
@@ -69,7 +69,16 @@ class ParseResponse(BaseModel):
 class StrumSpec(BaseModel):
     enabled: bool = False
     spreadMs: int = 0
-    directionByStep: bool = False
+    directionByStep: Optional[str] = None
+
+    @field_validator("directionByStep", mode="before")
+    @classmethod
+    def normalize_direction(cls, value: Any) -> Optional[str]:
+        if value is True:
+            return "D"
+        if value in (False, None):
+            return None
+        return value
 
 
 class PercSpec(BaseModel):
@@ -101,6 +110,26 @@ class NodeInput(BaseModel):
     render: Optional[RenderSpec] = None
     childId: Optional[str] = None
 
+    @field_validator("kind", mode="before")
+    @classmethod
+    def normalize_kind(cls, value: Any) -> Any:
+        if value is None:
+            return "theory"
+        if isinstance(value, str):
+            return value.lower()
+        return value
+
+    @field_validator("render", mode="before")
+    @classmethod
+    def coerce_render(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, RenderSpec):
+            return value
+        if isinstance(value, dict):
+            return RenderSpec.model_validate(value)
+        return value
+
 
 class Event(BaseModel):
     tBeat: float
@@ -121,6 +150,38 @@ class CompileRequest(BaseModel):
     barIndex: int = 0
     nodes: List[NodeInput] = Field(default_factory=list)
     debug: bool = False
+
+    @field_validator("seed", mode="before")
+    @classmethod
+    def coerce_seed(cls, value: Any) -> Any:
+        return 0 if value is None else value
+
+    @field_validator("bpm", mode="before")
+    @classmethod
+    def coerce_bpm(cls, value: Any) -> Any:
+        return 120.0 if value is None else value
+
+    @field_validator("barIndex", mode="before")
+    @classmethod
+    def coerce_bar_index(cls, value: Any) -> Any:
+        return 0 if value is None else value
+
+    @field_validator("nodes", mode="before")
+    @classmethod
+    def coerce_nodes(cls, value: Any) -> Any:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            cleaned = []
+            for item in value:
+                if item is None:
+                    continue
+                if isinstance(item, dict):
+                    if not item.get("id"):
+                        continue
+                cleaned.append(item)
+            return cleaned
+        return value
 
 
 class CompileResponse(BaseModel):
