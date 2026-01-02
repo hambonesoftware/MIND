@@ -767,8 +767,8 @@ function buildDemoWorkspaces(presetId) {
             latchedText: (
               'equation(lane="note", grid="1/12", bars="1-16", '
               + `preset="${presetId}", key="C# minor", `
-              + 'harmony="1-2:i;3-4:V;5-14:VI;15-16:i", '
-              + 'motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")'
+              + 'harmony="1-2:C#m/G#;3-4:V;5-14:VI;15-16:i", '
+              + 'motions="arpeggiate(pattern=low-mid-high,mode=tones,voicing=moonlight,order=5-1-3,start=0)"'
             ),
             lastParsedGrid: '1/12',
           },
