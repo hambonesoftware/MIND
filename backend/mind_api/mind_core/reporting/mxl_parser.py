@@ -8,9 +8,17 @@ from typing import Iterable, Optional
 from xml.etree import ElementTree
 from zipfile import ZipFile
 
+from .normalization import (
+    DEFAULT_GRID,
+    DEFAULT_TOLERANCE_STEPS,
+    normalize_note_timing,
+)
+
 
 @dataclass(frozen=True)
 class NormalizedNoteEvent:
+    """Note event aligned to solver grid steps within a bar."""
+
     bar_index: int
     grid_onset: float
     duration: float
@@ -38,6 +46,10 @@ def parse_mxl_note_events(
         voice: Optional voice label to include.
         bar_start: Optional 1-based start bar (inclusive).
         bar_end: Optional 1-based end bar (inclusive).
+
+    Returns:
+        List of note events with onsets and durations snapped to solver grid
+        steps (default grid "1/12").
     """
     path = Path(path)
     part_filter = set(part_ids or []) or None
@@ -87,11 +99,18 @@ def parse_mxl_note_events(
                 if pitch is None:
                     continue
 
+                grid_onset, grid_duration = normalize_note_timing(
+                    onset,
+                    duration_value,
+                    grid=DEFAULT_GRID,
+                    tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+                )
+
                 events.append(
                     NormalizedNoteEvent(
                         bar_index=measure_index - 1,
-                        grid_onset=onset,
-                        duration=duration_value,
+                        grid_onset=grid_onset,
+                        duration=grid_duration,
                         pitch=pitch,
                         voice=voice_value,
                         staff=staff_value,
