@@ -20,6 +20,8 @@ LANE_TO_MIDI_NOTE = {
     "note": 60,
 }
 
+MAX_GRAPH_DEPTH = 256
+
 
 def _intensity_to_velocity(char: str) -> int:
     try:
@@ -226,12 +228,70 @@ def compile_request(req: CompileRequest) -> CompileResponse:
     events: List[Event] = []
 
     nodes = {n.id: n for n in req.nodes if n.enabled}
+    graph_edges: List[tuple[str, str]] = []
+    if req.edges:
+        graph_edges = [(edge.from_.nodeId, edge.to.nodeId) for edge in req.edges]
+    else:
+        graph_edges = [
+            (node.id, node.childId)
+            for node in nodes.values()
+            if node.kind == "render" and node.childId
+        ]
+    outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+    incoming: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+    for from_id, to_id in graph_edges:
+        if from_id not in nodes:
+            diagnostics.append(Diagnostic(level="error", message=f"Edge references missing node '{from_id}'", line=1, col=1))
+            continue
+        if to_id not in nodes:
+            diagnostics.append(Diagnostic(level="error", message=f"Edge references missing node '{to_id}'", line=1, col=1))
+            continue
+        outgoing[from_id].append(to_id)
+        incoming[to_id].append(from_id)
+
+    def add_type_mismatch(message: str) -> None:
+        diagnostics.append(Diagnostic(level="error", message=message, line=1, col=1))
+
+    for from_id, to_ids in outgoing.items():
+        node = nodes[from_id]
+        if node.kind == "theory" and to_ids:
+            add_type_mismatch(f"Theory node '{from_id}' cannot have child edges.")
+        if node.kind == "render" and len(to_ids) > 1:
+            add_type_mismatch(f"Render node '{from_id}' has multiple child edges.")
+        for to_id in to_ids:
+            target = nodes.get(to_id)
+            if target and target.kind == "start":
+                add_type_mismatch(f"Start node '{to_id}' cannot accept incoming edges.")
+
+    for node_id, node in nodes.items():
+        if node.kind == "render" and not outgoing.get(node_id):
+            diagnostics.append(Diagnostic(level="error", message=f"Render node '{node_id}' is missing a child edge.", line=1, col=1))
+
+    entry_nodes: List[str] = []
+    if req.startNodeIds:
+        for node_id in req.startNodeIds:
+            if node_id not in nodes:
+                diagnostics.append(
+                    Diagnostic(level="error", message=f"Start node '{node_id}' is missing from graph.", line=1, col=1)
+                )
+                continue
+            entry_nodes.append(node_id)
+    else:
+        entry_nodes = [node_id for node_id, node in nodes.items() if node.kind == "start"]
+        if not entry_nodes:
+            entry_nodes = [node_id for node_id in nodes if not incoming.get(node_id)]
+
     compiled: Dict[str, List[Event]] = {}
     visiting: Set[str] = set()
 
-    def compile_node(node_id: str) -> List[Event]:
+    def compile_node(node_id: str, depth: int = 0) -> List[Event]:
         if node_id in compiled:
             return compiled[node_id]
+        if depth > MAX_GRAPH_DEPTH:
+            diagnostics.append(
+                Diagnostic(level="error", message=f"Loop guard tripped at '{node_id}' (depth {depth}).", line=1, col=1)
+            )
+            return []
         if node_id in visiting:
             diagnostics.append(Diagnostic(level="error", message=f"Cycle detected at {node_id}", line=1, col=1))
             return []
@@ -242,15 +302,22 @@ def compile_request(req: CompileRequest) -> CompileResponse:
 
         visiting.add(node_id)
         node = nodes[node_id]
+        children = outgoing.get(node_id, [])
 
-        if node.kind == "render":
-            if not node.childId:
+        if node.kind == "start":
+            aggregated: List[Event] = []
+            for child_id in children:
+                aggregated.extend(compile_node(child_id, depth + 1))
+            compiled[node_id] = aggregated
+        elif node.kind == "render":
+            child_id = children[0] if children else None
+            if not child_id:
                 diagnostics.append(
-                    Diagnostic(level="error", message=f"Render node {node.id} is missing childId", line=1, col=1)
+                    Diagnostic(level="error", message=f"Render node '{node.id}' is missing a child edge.", line=1, col=1)
                 )
                 compiled[node_id] = []
             else:
-                child = compile_node(node.childId)
+                child = compile_node(child_id, depth + 1)
                 render_spec = _coerce_render_spec(node.render)
                 compiled[node_id] = apply_render_chain(child, render_spec, req)
         else:
@@ -259,7 +326,7 @@ def compile_request(req: CompileRequest) -> CompileResponse:
         visiting.remove(node_id)
         return compiled[node_id]
 
-    for node_id in nodes:
+    for node_id in entry_nodes:
         events.extend(compile_node(node_id))
 
     events.sort(key=lambda e: (e.tBeat, e.lane))

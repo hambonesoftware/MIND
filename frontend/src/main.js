@@ -369,7 +369,7 @@ class NoteWorkspaceCard {
   updateActiveHint() {
     const active = this.getActiveTheoryBlock();
     if (active) {
-      this.activeHint.textContent = `Using Theory Block ${active.title} for playback (Phase 02 will send full graph).`;
+      this.activeHint.textContent = `Using Theory Block ${active.title} for playback.`;
     } else {
       this.activeHint.textContent = 'Add a Theory block to enable playback.';
     }
@@ -690,6 +690,16 @@ class NoteWorkspaceCard {
           },
         };
       });
+  }
+
+  toGraphEdges() {
+    return this.blocks
+      .filter(block => block.kind === 'render' && block.childId)
+      .map(block => ({
+        id: `edge-${block.id}-${block.childId}`,
+        from: { nodeId: block.id },
+        to: { nodeId: block.childId },
+      }));
   }
 
   loadWorkspace(workspace) {
@@ -1060,14 +1070,30 @@ async function main() {
       }
     });
     // Playback state
+    const LOOP_BARS = 16;
+    const LOOKAHEAD_BARS = 2;
     let isPlaying = false;
     let barIndex = 0;
     let barStartTime = 0;
     let intervalId = null;
+    const barEvents = new Map();
 
-    async function compileCurrentBar() {
-      const seed = parseInt(seedInput.value || '0', 10);
-      const bpm = parseFloat(bpmInput.value || '80');
+    const updateUiForEvents = (events) => {
+      const byLane = {};
+      for (const ev of events) {
+        if (!byLane[ev.lane]) byLane[ev.lane] = [];
+        byLane[ev.lane].push(ev);
+      }
+      for (const card of nodeCards) {
+        card.updateSteps(byLane[card.lane] || []);
+      }
+    };
+
+    const updateUiForBar = (targetBar) => {
+      updateUiForEvents(barEvents.get(targetBar) || []);
+    };
+
+    const buildGraphInputs = () => {
       const laneNodes = nodeCards
         .filter(card => card.lane !== 'note')
         .map(card => card.toGraphNode())
@@ -1076,47 +1102,78 @@ async function main() {
       const noteNodes = noteCard && typeof noteCard.toGraphNodes === 'function'
         ? noteCard.toGraphNodes()
         : [];
+      const edges = noteCard && typeof noteCard.toGraphEdges === 'function'
+        ? noteCard.toGraphEdges()
+        : [];
       const legacyNodes = nodeCards.map(card => card.toNodeInput());
+      const nodes = [...laneNodes, ...noteNodes];
+      const incoming = new Set(
+        edges.map(edge => edge.to?.nodeId).filter(Boolean),
+      );
+      const startNodeIds = nodes
+        .filter(node => node.enabled && !incoming.has(node.id))
+        .map(node => node.id);
+      return { laneNodes, noteNodes, edges, startNodeIds, legacyNodes };
+    };
+
+    const compileBar = async (targetBar, whenSec, graphInputs) => {
+      const seed = parseInt(seedInput.value || '0', 10);
+      const bpm = parseFloat(bpmInput.value || '80');
       const req = buildCompilePayload({
         seed,
         bpm,
-        barIndex,
-        laneNodes,
-        noteNodes,
-        legacyNodes,
+        barIndex: targetBar,
+        laneNodes: graphInputs.laneNodes,
+        noteNodes: graphInputs.noteNodes,
+        edges: graphInputs.edges,
+        startNodeIds: graphInputs.startNodeIds,
+        legacyNodes: graphInputs.legacyNodes,
         useNodeGraph: USE_NODE_GRAPH,
       });
       try {
-        // Inform the audio engine of the current tempo before compiling
-        if (typeof audioEngine.setBpm === 'function') {
-          audioEngine.setBpm(req.bpm);
-        }
         const res = await compileSession(req);
-        // group events by lane
-        const byLane = {};
-        for (const ev of res.events) {
-          if (!byLane[ev.lane]) byLane[ev.lane] = [];
-          byLane[ev.lane].push(ev);
+        barEvents.set(targetBar, res.events);
+        if (targetBar === barIndex) {
+          updateUiForEvents(res.events);
         }
-        for (const card of nodeCards) {
-          card.updateSteps(byLane[card.lane] || []);
-        }
-        // schedule events into audio engine (ignored for null engine)
-        audioEngine.schedule(res.events, 0);
+        audioEngine.schedule(res.events, whenSec);
       } catch (err) {
         console.error('Compile error', err);
       }
-    }
+    };
+
+    const scheduleLookaheadWindow = async () => {
+      const graphInputs = buildGraphInputs();
+      const bpm = parseFloat(bpmInput.value || '80');
+      if (typeof audioEngine.setBpm === 'function') {
+        audioEngine.setBpm(bpm);
+      }
+      const barDurMs = (60 / bpm) * 4 * 1000;
+      const now = performance.now();
+      const pending = [];
+      for (let offset = 0; offset < LOOKAHEAD_BARS; offset++) {
+        const targetBar = (barIndex + offset) % LOOP_BARS;
+        if (barEvents.has(targetBar)) {
+          continue;
+        }
+        const targetStart = barStartTime + offset * barDurMs;
+        const whenSec = Math.max(0, (targetStart - now) / 1000);
+        pending.push(compileBar(targetBar, whenSec, graphInputs));
+      }
+      await Promise.all(pending);
+    };
 
     function startPlayback() {
       if (isPlaying) return;
       isPlaying = true;
       barIndex = 0;
       barStartTime = performance.now();
+      barEvents.clear();
       audioEngine.start();
       // Latch any pending nodes immediately before starting
       nodeCards.forEach(c => c.latch());
-      compileCurrentBar();
+      scheduleLookaheadWindow().catch(err => console.error('Compile error', err));
+      updateUiForBar(barIndex);
       intervalId = setInterval(() => {
         const now = performance.now();
         const bpm = parseFloat(bpmInput.value || '80');
@@ -1127,11 +1184,14 @@ async function main() {
         nodeCards.forEach(c => c.updatePlayhead(progress % 1));
         if (elapsed >= barDur) {
           // Move to next bar
-          barIndex = (barIndex + 1) % 16;
+          const previousBar = barIndex;
+          barIndex = (barIndex + 1) % LOOP_BARS;
           barStartTime = now;
+          barEvents.delete(previousBar);
           // At the boundary latch pending nodes
           nodeCards.forEach(c => c.latch());
-          compileCurrentBar();
+          scheduleLookaheadWindow().catch(err => console.error('Compile error', err));
+          updateUiForBar(barIndex);
         }
       }, 50);
     }
@@ -1144,6 +1204,7 @@ async function main() {
         intervalId = null;
       }
       audioEngine.stop();
+      barEvents.clear();
       // Reset playheads
       nodeCards.forEach(c => c.updatePlayhead(0));
     }

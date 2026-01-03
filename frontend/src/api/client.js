@@ -25,7 +25,12 @@ export async function parseScript(text) {
 }
 
 export async function compileSession(req) {
-  return await postJson('/api/compile', req);
+  const body = {
+    ...req,
+    edges: Array.isArray(req.edges) ? req.edges : [],
+    startNodeIds: Array.isArray(req.startNodeIds) ? req.startNodeIds : [],
+  };
+  return await postJson('/api/compile', body);
 }
 
 export async function getPresets() {
