@@ -1,7 +1,7 @@
-import { parseScript, compileSession, getPresets } from './api/client.js';
+import { parseScript, getPresets } from './api/client.js';
 import { createAudioEngine } from './audio/audioEngine.js';
+import { createTransportScheduler } from './audio/transport.js';
 import { USE_NODE_GRAPH } from './config.js';
-import { buildCompilePayload } from './state/compilePayload.js';
 import { createGraphStore } from './state/graphStore.js';
 import { createFlowGraphStore } from './state/flowGraph.js';
 import { createExecutionsPanel } from './ui/executionsPanel.js';
@@ -1322,254 +1322,19 @@ async function main() {
         noteCard.loadWorkspace(selected.workspace);
       }
     });
-    // Playback state
-    const LOOP_BARS = 16;
-    const LOOKAHEAD_BARS = 2;
-    let isPlaying = false;
-    let barIndex = 0;
-    let barStartTime = 0;
-    let intervalId = null;
-    let lastBeat = 0;
-    const barEvents = new Map();
-
-    const describeRenderSinks = () => {
-      const noteCard = nodeCards.find(card => card.lane === 'note');
-      if (!noteCard || !Array.isArray(noteCard.blocks)) {
-        return [];
-      }
-      const renderBlocks = noteCard.blocks.filter(
-        block => block.kind === 'render' && block.enabled,
-      );
-      return renderBlocks.map(block => {
-        const modes = [];
-        if (block.render?.strumEnabled) {
-          modes.push('strum');
-        }
-        if (block.render?.percEnabled) {
-          modes.push('perc');
-        }
-        const modeText = modes.length ? ` [${modes.join('+')}]` : '';
-        const childText = block.childId ? ` → ${block.childId}` : ' (no child)';
-        return `${block.title}${childText}${modeText}`;
-      });
-    };
-
-    const formatScheduleWindow = () => {
-      if (!isPlaying) {
-        return `Idle (lookahead ${LOOKAHEAD_BARS} bars)`;
-      }
-      const start = barIndex + 1;
-      const end = ((barIndex + LOOKAHEAD_BARS - 1) % LOOP_BARS) + 1;
-      const segments = [];
-      for (let offset = 0; offset < LOOKAHEAD_BARS; offset++) {
-        const targetBar = (barIndex + offset) % LOOP_BARS;
-        const status = barEvents.has(targetBar) ? 'queued' : 'pending';
-        segments.push(`bar ${targetBar + 1} ${status}`);
-      }
-      return `Bars ${start}-${end}: ${segments.join(', ')}`;
-    };
-
-    const updateExecutionsPanel = () => {
-      const transportState = isPlaying
-        ? `Playing (${audioEngine.name})`
-        : `Stopped (${audioEngine.name})`;
-      const barBeat = isPlaying
-        ? `Bar ${barIndex + 1} • Beat ${lastBeat.toFixed(2)}`
-        : 'Idle';
-      executionsPanel.update({
-        transportState,
-        barBeat,
-        renderSinks: describeRenderSinks(),
-        scheduleWindow: formatScheduleWindow(),
-      });
-    };
-
-    const updateUiForEvents = (events) => {
-      const byLane = {};
-      for (const ev of events) {
-        if (!byLane[ev.lane]) byLane[ev.lane] = [];
-        byLane[ev.lane].push(ev);
-      }
-      for (const card of nodeCards) {
-        card.updateSteps(byLane[card.lane] || []);
-      }
-    };
-
-    const updateUiForBar = (targetBar) => {
-      updateUiForEvents(barEvents.get(targetBar) || []);
-    };
-
-    const buildGraphInputs = () => {
-      const graphState = graphStore.getState();
-      const graphNodes = graphState.nodes || [];
-      const graphEdges = graphState.edges || [];
-      const renderLinks = new Map(
-        graphEdges
-          .filter(edge => edge?.from?.nodeId && edge?.to?.nodeId)
-          .map(edge => [edge.from.nodeId, edge.to.nodeId]),
-      );
-      const laneNodes = graphNodes
-        .filter(node => node.type === 'lane')
-        .map(node => ({
-          id: node.id,
-          kind: 'theory',
-          enabled: node.params?.enabled !== false,
-          text: node.params?.text || '',
-        }))
-        .sort((a, b) => a.id.localeCompare(b.id));
-      const noteNodes = graphNodes
-        .filter(node => node.type !== 'lane')
-        .map(node => {
-          if (node.type === 'render') {
-            const renderParams = node.params?.render || {};
-            return {
-              id: node.id,
-              kind: 'render',
-              enabled: node.params?.enabled !== false,
-              childId: renderLinks.get(node.id) || node.params?.childId || null,
-              render: {
-                strum: {
-                  enabled: renderParams.strumEnabled ?? false,
-                  spreadMs: renderParams.spreadMs ?? 0,
-                  directionByStep: renderParams.direction ?? '',
-                },
-                perc: {
-                  enabled: renderParams.percEnabled ?? false,
-                  hat: renderParams.hatPattern ?? '',
-                  kick: renderParams.kickPattern ?? '',
-                  snare: renderParams.snarePattern ?? '',
-                },
-              },
-            };
-          }
-          return {
-            id: node.id,
-            kind: 'theory',
-            enabled: node.params?.enabled !== false,
-            text: node.params?.text || '',
-          };
-        });
-      const edges = graphEdges.map(edge => ({
-        id: edge.id,
-        from: { nodeId: edge.from?.nodeId, portId: edge.from?.portId || null },
-        to: { nodeId: edge.to?.nodeId, portId: edge.to?.portId || null },
-      }));
-      const legacyNodes = nodeCards.map(card => card.toNodeInput());
-      const nodes = [...laneNodes, ...noteNodes];
-      const incoming = new Set(
-        edges.map(edge => edge.to?.nodeId).filter(Boolean),
-      );
-      const startNodeIds = nodes
-        .filter(node => node.enabled && !incoming.has(node.id))
-        .map(node => node.id);
-      return { laneNodes, noteNodes, edges, startNodeIds, legacyNodes };
-    };
-
-    const compileBar = async (targetBar, whenSec, graphInputs) => {
-      const seed = parseInt(seedInput.value || '0', 10);
-      const bpm = parseFloat(bpmInput.value || '80');
-      const req = buildCompilePayload({
-        seed,
-        bpm,
-        barIndex: targetBar,
-        laneNodes: graphInputs.laneNodes,
-        noteNodes: graphInputs.noteNodes,
-        edges: graphInputs.edges,
-        startNodeIds: graphInputs.startNodeIds,
-        legacyNodes: graphInputs.legacyNodes,
-        useNodeGraph: USE_NODE_GRAPH,
-      });
-      try {
-        const res = await compileSession(req);
-        barEvents.set(targetBar, res.events);
-        if (targetBar === barIndex) {
-          updateUiForEvents(res.events);
-        }
-        audioEngine.schedule(res.events, whenSec);
-      } catch (err) {
-        console.error('Compile error', err);
-      }
-    };
-
-    const scheduleLookaheadWindow = async () => {
-      const graphInputs = buildGraphInputs();
-      const bpm = parseFloat(bpmInput.value || '80');
-      if (typeof audioEngine.setBpm === 'function') {
-        audioEngine.setBpm(bpm);
-      }
-      const barDurMs = (60 / bpm) * 4 * 1000;
-      const now = performance.now();
-      const pending = [];
-      for (let offset = 0; offset < LOOKAHEAD_BARS; offset++) {
-        const targetBar = (barIndex + offset) % LOOP_BARS;
-        if (barEvents.has(targetBar)) {
-          continue;
-        }
-        const targetStart = barStartTime + offset * barDurMs;
-        const whenSec = Math.max(0, (targetStart - now) / 1000);
-        pending.push(compileBar(targetBar, whenSec, graphInputs));
-      }
-      await Promise.all(pending);
-      updateExecutionsPanel();
-    };
-
-    function startPlayback() {
-      if (isPlaying) return;
-      isPlaying = true;
-      barIndex = 0;
-      barStartTime = performance.now();
-      barEvents.clear();
-      audioEngine.start();
-      // Latch any pending nodes immediately before starting
-      nodeCards.forEach(c => c.latch());
-      scheduleLookaheadWindow().catch(err => console.error('Compile error', err));
-      updateUiForBar(barIndex);
-      updateExecutionsPanel();
-      intervalId = setInterval(() => {
-        const now = performance.now();
-        const bpm = parseFloat(bpmInput.value || '80');
-        const barDur = (60 / bpm) * 4 * 1000; // in ms
-        const elapsed = now - barStartTime;
-        const progress = elapsed / barDur;
-        // update playhead
-        nodeCards.forEach(c => c.updatePlayhead(progress % 1));
-        lastBeat = (progress % 1) * 4;
-        updateExecutionsPanel();
-        if (elapsed >= barDur) {
-          // Move to next bar
-          const previousBar = barIndex;
-          barIndex = (barIndex + 1) % LOOP_BARS;
-          barStartTime = now;
-          barEvents.delete(previousBar);
-          // At the boundary latch pending nodes
-          nodeCards.forEach(c => c.latch());
-          scheduleLookaheadWindow().catch(err => console.error('Compile error', err));
-          updateUiForBar(barIndex);
-        }
-      }, 50);
-    }
-
-    function stopPlayback() {
-      if (!isPlaying) return;
-      isPlaying = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-      audioEngine.stop();
-      barEvents.clear();
-      // Reset playheads
-      nodeCards.forEach(c => c.updatePlayhead(0));
-      updateExecutionsPanel();
-    }
-
-    playButton.addEventListener('click', startPlayback);
-    stopButton.addEventListener('click', stopPlayback);
-    latchButton.addEventListener('click', () => {
-      nodeCards.forEach(c => c.latch());
+    createTransportScheduler({
+      audioEngine,
+      nodeCards,
+      graphStore,
+      flowStore,
+      executionsPanel,
+      bpmInput,
+      seedInput,
+      playButton,
+      stopButton,
+      latchButton,
+      useNodeGraph: USE_NODE_GRAPH,
     });
-
-    updateExecutionsPanel();
 }
 
 main().catch(err => {

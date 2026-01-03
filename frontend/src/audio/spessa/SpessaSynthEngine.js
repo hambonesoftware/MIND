@@ -250,6 +250,10 @@ export class SpessaSynthEngine {
     } catch {}
   }
 
+  getCurrentTime() {
+    return this._audioContext ? this._audioContext.currentTime : 0;
+  }
+
   setBpm(bpm) {
     const v = Number(bpm);
     if (isFinite(v) && v > 0) {
@@ -567,15 +571,21 @@ export class SpessaSynthEngine {
       }
       if (!pitches || pitches.length === 0) continue;
 
-      let relSec = null;
-      if (ev.tBeat !== undefined && ev.tBeat !== null && isFinite(Number(ev.tBeat))) {
-        relSec = Number(ev.tBeat) * beatDur;
-      } else if (ev.tSec !== undefined && ev.tSec !== null && isFinite(Number(ev.tSec))) {
-        relSec = Number(ev.tSec);
-      } else if (ev.timeSec !== undefined && ev.timeSec !== null && isFinite(Number(ev.timeSec))) {
-        relSec = Number(ev.timeSec);
+      let timeSec = null;
+      if (ev.audioTime !== undefined && ev.audioTime !== null && isFinite(Number(ev.audioTime))) {
+        timeSec = Number(ev.audioTime);
+      } else {
+        let relSec = null;
+        if (ev.tBeat !== undefined && ev.tBeat !== null && isFinite(Number(ev.tBeat))) {
+          relSec = Number(ev.tBeat) * beatDur;
+        } else if (ev.tSec !== undefined && ev.tSec !== null && isFinite(Number(ev.tSec))) {
+          relSec = Number(ev.tSec);
+        } else if (ev.timeSec !== undefined && ev.timeSec !== null && isFinite(Number(ev.timeSec))) {
+          relSec = Number(ev.timeSec);
+        }
+        if (relSec === null) continue;
+        timeSec = baseAbs + relSec;
       }
-      if (relSec === null) continue;
 
       let durSec = null;
       if (ev.durationBeats !== undefined && ev.durationBeats !== null && isFinite(Number(ev.durationBeats))) {
@@ -595,7 +605,7 @@ export class SpessaSynthEngine {
       const presetId = ev.preset || ev.presetId || this._presetByLane[lane] || null;
 
       normalized.push({
-        timeSec: baseAbs + relSec,
+        timeSec,
         lane,
         pitches: pitches.map((p) => clampInt(p, 0, 127)),
         durSec,

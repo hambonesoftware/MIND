@@ -30,6 +30,10 @@ export class NullAudioEngine {
     this.scheduled = [];
   }
 
+  getCurrentTime() {
+    return 0;
+  }
+
   /**
    * Schedule a list of events at a given absolute time (in seconds).
    * For the null engine we simply record them; the UI will handle
@@ -42,7 +46,10 @@ export class NullAudioEngine {
     if (!this.isRunning) return;
     // Tag events with the absolute time they should occur
     for (const ev of events) {
-      this.scheduled.push({ ...ev, when: whenSec + (ev.tBeat / 1 /* beats per second placeholder */) });
+      const audioTime = (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime))
+        ? ev.audioTime
+        : whenSec;
+      this.scheduled.push({ ...ev, when: audioTime });
     }
   }
 
