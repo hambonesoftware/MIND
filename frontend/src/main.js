@@ -2,6 +2,7 @@ import { parseScript, compileSession, getPresets } from './api/client.js';
 import { createAudioEngine } from './audio/audioEngine.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { buildCompilePayload } from './state/compilePayload.js';
+import { createExecutionsPanel } from './ui/executionsPanel.js';
 
 /**
  * Represents a single node/lane in the UI.  Each node manages its
@@ -1049,6 +1050,12 @@ async function main() {
     if (typeof updateEngineIndicator === 'function') {
       updateEngineIndicator();
     }
+
+    const executionsMount = document.getElementById('executionsPanel');
+    const executionsPanel = createExecutionsPanel();
+    if (executionsMount) {
+      executionsMount.appendChild(executionsPanel.element);
+    }
     const demoWorkspaces = buildDemoWorkspaces(
       nodeCards.find(card => card.lane === 'note')?.presetSelect.value || '',
     );
@@ -1076,7 +1083,60 @@ async function main() {
     let barIndex = 0;
     let barStartTime = 0;
     let intervalId = null;
+    let lastBeat = 0;
     const barEvents = new Map();
+
+    const describeRenderSinks = () => {
+      const noteCard = nodeCards.find(card => card.lane === 'note');
+      if (!noteCard || !Array.isArray(noteCard.blocks)) {
+        return [];
+      }
+      const renderBlocks = noteCard.blocks.filter(
+        block => block.kind === 'render' && block.enabled,
+      );
+      return renderBlocks.map(block => {
+        const modes = [];
+        if (block.render?.strumEnabled) {
+          modes.push('strum');
+        }
+        if (block.render?.percEnabled) {
+          modes.push('perc');
+        }
+        const modeText = modes.length ? ` [${modes.join('+')}]` : '';
+        const childText = block.childId ? ` → ${block.childId}` : ' (no child)';
+        return `${block.title}${childText}${modeText}`;
+      });
+    };
+
+    const formatScheduleWindow = () => {
+      if (!isPlaying) {
+        return `Idle (lookahead ${LOOKAHEAD_BARS} bars)`;
+      }
+      const start = barIndex + 1;
+      const end = ((barIndex + LOOKAHEAD_BARS - 1) % LOOP_BARS) + 1;
+      const segments = [];
+      for (let offset = 0; offset < LOOKAHEAD_BARS; offset++) {
+        const targetBar = (barIndex + offset) % LOOP_BARS;
+        const status = barEvents.has(targetBar) ? 'queued' : 'pending';
+        segments.push(`bar ${targetBar + 1} ${status}`);
+      }
+      return `Bars ${start}-${end}: ${segments.join(', ')}`;
+    };
+
+    const updateExecutionsPanel = () => {
+      const transportState = isPlaying
+        ? `Playing (${audioEngine.name})`
+        : `Stopped (${audioEngine.name})`;
+      const barBeat = isPlaying
+        ? `Bar ${barIndex + 1} • Beat ${lastBeat.toFixed(2)}`
+        : 'Idle';
+      executionsPanel.update({
+        transportState,
+        barBeat,
+        renderSinks: describeRenderSinks(),
+        scheduleWindow: formatScheduleWindow(),
+      });
+    };
 
     const updateUiForEvents = (events) => {
       const byLane = {};
@@ -1161,6 +1221,7 @@ async function main() {
         pending.push(compileBar(targetBar, whenSec, graphInputs));
       }
       await Promise.all(pending);
+      updateExecutionsPanel();
     };
 
     function startPlayback() {
@@ -1174,6 +1235,7 @@ async function main() {
       nodeCards.forEach(c => c.latch());
       scheduleLookaheadWindow().catch(err => console.error('Compile error', err));
       updateUiForBar(barIndex);
+      updateExecutionsPanel();
       intervalId = setInterval(() => {
         const now = performance.now();
         const bpm = parseFloat(bpmInput.value || '80');
@@ -1182,6 +1244,8 @@ async function main() {
         const progress = elapsed / barDur;
         // update playhead
         nodeCards.forEach(c => c.updatePlayhead(progress % 1));
+        lastBeat = (progress % 1) * 4;
+        updateExecutionsPanel();
         if (elapsed >= barDur) {
           // Move to next bar
           const previousBar = barIndex;
@@ -1207,6 +1271,7 @@ async function main() {
       barEvents.clear();
       // Reset playheads
       nodeCards.forEach(c => c.updatePlayhead(0));
+      updateExecutionsPanel();
     }
 
     playButton.addEventListener('click', startPlayback);
@@ -1214,6 +1279,8 @@ async function main() {
     latchButton.addEventListener('click', () => {
       nodeCards.forEach(c => c.latch());
     });
+
+    updateExecutionsPanel();
 }
 
 main().catch(err => {

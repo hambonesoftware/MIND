@@ -71,7 +71,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 10px 20px 40px;
+  padding: 10px 20px 160px;
 }
 
 .node-card {
@@ -241,4 +241,48 @@ label.mute-label {
   width: 2px;
   background: red;
   pointer-events: none;
+}
+
+.executions-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  padding: 12px 20px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 20;
+}
+
+.executions-title {
+  font-weight: bold;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.executions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 20px;
+  font-size: 0.85rem;
+}
+
+.executions-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.executions-label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: #666;
+}
+
+.executions-value {
+  color: #222;
+  font-weight: 600;
+  word-break: break-word;
 }
