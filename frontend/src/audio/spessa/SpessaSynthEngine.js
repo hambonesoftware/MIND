@@ -305,7 +305,7 @@ export class SpessaSynthEngine {
     let activeMode = 'Worklet';
     try {
       this._engineLabel = 'SpessaSynth: Creating worker…';
-      const worker = new Worker(new URL('./SpessaSynthWorker.js', import.meta.url), { type: 'module' });
+      const worker = new Worker('/assets/vendor/spessasynth/spessasynth_worker.js', { type: 'module' });
       this._worker = worker;
 
       this._engineLabel = 'SpessaSynth: Registering worker worklet…';
