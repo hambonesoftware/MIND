@@ -23,3 +23,6 @@
 - **Audio engines**:
   - Each engine implements `schedule(events, whenSec)` for the current bar; SF2/Spessa engines use their own internal scheduler to enqueue events with a short lookahead.
   - `sampleEngine`, `nullEngine`, and `wasmEngine` provide lightweight/fallback scheduling that still records events for UI visualization.
+
+## UI status notes
+- **Timeline pane**: Not implemented in this upgrade.
