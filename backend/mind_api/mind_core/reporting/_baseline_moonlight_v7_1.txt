@@ -1,0 +1,12 @@
+Phase 00 baseline snapshot (v7.1)
+
+Commands run:
+- PYTHONPATH=backend python backend/mind_api/mind_core/_dev_verify_moonlight.py --compare
+- PYTHONPATH=backend python -m mind_api.mind_core.reporting.moonlight_report --json
+
+Comparison summary:
+- onset_diffs: 288
+- timing_mismatches: 16
+
+Notes:
+- No warnings or errors observed during baseline runs.

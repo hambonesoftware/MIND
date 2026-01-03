@@ -1,0 +1,2923 @@
+{
+  "onset_differences": [
+    {
+      "bar": 2,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 2,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 36.0,
+      "missing_pitches": [
+        56
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        56
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        56
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 2,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        57
+      ],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 3,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 36.0,
+      "missing_pitches": [
+        57
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        57
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        62
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        57
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        62
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 3,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        56
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        60
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        63
+      ]
+    },
+    {
+      "bar": 4,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        60
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 36.0,
+      "missing_pitches": [
+        56
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        56
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        60
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 4,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 0.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 5,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 5,
+      "grid_onset": 135.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 6,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 6,
+      "grid_onset": 135.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 7,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        69
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        61
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 7,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        68
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 8,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        71
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 8,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 9,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 9,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 9,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 9,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 9,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 0.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 10,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 10,
+      "grid_onset": 135.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 11,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        65
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        65
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        65
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        65
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 11,
+      "grid_onset": 135.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 12,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 12,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 12,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 12,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 12,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 13,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 13,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 13,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 14,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        57
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 14,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        59
+      ],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 15,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        62
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 36.0,
+      "missing_pitches": [
+        59
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        62
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        59
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        59,
+        71
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        63
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 15,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        66
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 0.0,
+      "missing_pitches": [
+        59,
+        72
+      ],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 1.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 2.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 3.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 4.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 5.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 6.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 7.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 8.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 9.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        61
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 10.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        64
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 11.0,
+      "missing_pitches": [],
+      "extra_pitches": [
+        68
+      ]
+    },
+    {
+      "bar": 16,
+      "grid_onset": 12.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 24.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 36.0,
+      "missing_pitches": [
+        59
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 48.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 60.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 72.0,
+      "missing_pitches": [
+        59
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 84.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 96.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 108.0,
+      "missing_pitches": [
+        59,
+        70
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 120.0,
+      "missing_pitches": [
+        64
+      ],
+      "extra_pitches": []
+    },
+    {
+      "bar": 16,
+      "grid_onset": 132.0,
+      "missing_pitches": [
+        67
+      ],
+      "extra_pitches": []
+    }
+  ],
+  "timing_mismatches": [
+    {
+      "bar": 2,
+      "pitch": 56,
+      "mxl": [
+        {
+          "grid_onset": 0.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 36.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 72.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 108.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 0.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 3.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 6.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 9.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 2,
+      "pitch": 61,
+      "mxl": [
+        {
+          "grid_onset": 12.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 48.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 84.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 120.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 1.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 4.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 7.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 10.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 2,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 132.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 4,
+      "pitch": 56,
+      "mxl": [
+        {
+          "grid_onset": 0.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 36.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 72.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 0.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 3.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 6.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 9.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 4,
+      "pitch": 60,
+      "mxl": [
+        {
+          "grid_onset": 12.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 120.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 1.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 4.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 7.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 10.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 4,
+      "pitch": 63,
+      "mxl": [
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 132.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 5,
+      "pitch": 61,
+      "mxl": [
+        {
+          "grid_onset": 48.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 84.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 120.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 1.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 4.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 7.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 10.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 5,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 132.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 7,
+      "pitch": 61,
+      "mxl": [
+        {
+          "grid_onset": 12.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 48.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 84.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 120.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 1.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 4.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 7.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 10.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 7,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 8,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 9,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 0.0,
+          "duration": 36.0
+        },
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 132.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 10,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 132.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 12,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 24.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 60.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 96.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 13,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 108.0,
+          "duration": 36.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 2.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 5.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 8.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 11.0,
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "bar": 16,
+      "pitch": 64,
+      "mxl": [
+        {
+          "grid_onset": 12.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 48.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 84.0,
+          "duration": 12.0
+        },
+        {
+          "grid_onset": 120.0,
+          "duration": 12.0
+        }
+      ],
+      "solver": [
+        {
+          "grid_onset": 1.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 4.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 7.0,
+          "duration": 1.0
+        },
+        {
+          "grid_onset": 10.0,
+          "duration": 1.0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "onset_diff_count": 288,
+    "timing_mismatch_count": 16
+  }
+}

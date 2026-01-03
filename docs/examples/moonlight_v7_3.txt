@@ -1,0 +1,14 @@
+# Moonlight v7.3 elements-based example
+mode="elements"
+lane=note
+grid="1/12"
+bars="1-16"
+key="C# minor"
+harmony="1-2:C#m/G#;3-4:V;5-14:VI;15-16:i"
+
+seed=7
+piece_id="moonlight_v7_3"
+pattern_family="low-mid-high|high-mid-low|low-high-mid"
+# Density curve over the phrase (values repeat for remaining bars)
+density_curve="0.65,0.7,0.75,0.8,0.85,0.85,0.8,0.75"
+sustain_policy="hold_until_change"

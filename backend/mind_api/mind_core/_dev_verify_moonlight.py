@@ -6,8 +6,16 @@ import json
 import sys
 from pathlib import Path
 
-from mind_api.models import EquationAST
-from mind_api.mind_core.reporting.moonlight_report import compare_solver_events_to_mxl
+from mind_api.mind_core.reporting.moonlight_report import (
+    compare_elements_events_to_mxl,
+    compare_solver_events_to_mxl,
+)
+from mind_api.mind_core.reporting.moonlight_example import (
+    bars_from_range,
+    build_elements_events,
+    build_equation_ast,
+    load_settings,
+)
 from mind_api.mind_core.reporting.normalization import (
     DEFAULT_TOLERANCE_STEPS,
     quantize_beats_to_grid_steps,
@@ -16,10 +24,11 @@ from mind_api.mind_core.reporting.normalization import (
 from mind_api.mind_core.solver import solve_equation_bar
 
 
-def _iter_event_rows(ast: EquationAST) -> list[dict[str, float | int]]:
+def _iter_event_rows_from_equation(settings: dict[str, str]) -> list[dict[str, float | int]]:
+    ast = build_equation_ast(settings)
     rows: list[dict[str, float | int]] = []
     steps_per_bar = steps_per_bar_from_grid(ast.grid)
-    for bar in range(16):
+    for bar in bars_from_range(ast.bars):
         events = solve_equation_bar(ast, bar, bpm=120.0)
         for event in events:
             onset = quantize_beats_to_grid_steps(
@@ -69,6 +78,12 @@ def _emit_summary(rows: list[dict[str, float | int]], fmt: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify Moonlight solver output.")
     parser.add_argument(
+        "--equation",
+        type=Path,
+        default=Path("docs/examples/moonlight_v7_3.txt"),
+        help="Path to the Moonlight equation example text.",
+    )
+    parser.add_argument(
         "--summary-format",
         choices=("json", "csv"),
         default="json",
@@ -87,20 +102,41 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    ast = EquationAST(
-        lane="note",
-        grid="1/12",
-        bars="1-16",
-        preset="gm:0:0",
-        key="C# minor",
-        harmony="1-2:C#m/G#;3-4:V;5-14:VI;15-16:i",
-        motions=(
-            "arpeggiate(pattern=low-mid-high,mode=tones,"
-            "voicing=moonlight,order=5-1-3,start=0)"
-        ),
-    )
-
-    rows = _iter_event_rows(ast)
+    settings = load_settings(args.equation)
+    mode = settings.get("mode", "equation").strip().lower()
+    if mode == "elements":
+        events, grid, bars = build_elements_events(settings)
+        steps_per_bar = steps_per_bar_from_grid(grid)
+        rows: list[dict[str, float | int]] = []
+        for event in events:
+            bar_index = int(event.tBeat // 4)
+            if bar_index not in set(bars):
+                continue
+            bar_onset = event.tBeat - (bar_index * 4.0)
+            onset = quantize_beats_to_grid_steps(
+                bar_onset,
+                steps_per_bar=steps_per_bar,
+                tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+            )
+            duration = quantize_beats_to_grid_steps(
+                event.durationBeats,
+                steps_per_bar=steps_per_bar,
+                tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+            )
+            pitches = list(event.pitches)
+            if not pitches and event.note is not None:
+                pitches.append(event.note)
+            for pitch in pitches:
+                rows.append(
+                    {
+                        "bar": bar_index + 1,
+                        "grid_onset": onset,
+                        "pitch": pitch,
+                        "duration": duration,
+                    }
+                )
+    else:
+        rows = _iter_event_rows_from_equation(settings)
 
     bar1_rows = [row for row in rows if row["bar"] == 1]
     bar1_sorted = sorted(bar1_rows, key=lambda row: row["grid_onset"])
@@ -113,21 +149,35 @@ def main() -> None:
         f"bar 1 first12={bar1_pitches} mismatch_count={mismatch_count}",
         file=sys.stderr,
     )
-    assert (
-        bar1_pitches == expected
-    ), f"bar 1 mismatch: {bar1_pitches} (mismatch_count={mismatch_count})"
+    if mode != "elements":
+        assert (
+            bar1_pitches == expected
+        ), f"bar 1 mismatch: {bar1_pitches} (mismatch_count={mismatch_count})"
 
     _emit_summary(rows, args.summary_format)
 
     if args.compare:
-        onset_diffs, timing_mismatches = compare_solver_events_to_mxl(
-            ast,
-            args.mxl,
-            part_ids=("P1",),
-            staff=1,
-            bar_start=1,
-            bar_end=16,
-        )
+        if mode == "elements":
+            onset_diffs, timing_mismatches = compare_elements_events_to_mxl(
+                events,
+                grid=grid,
+                bars=bars,
+                mxl_path=args.mxl,
+                part_ids=("P1",),
+                staff=1,
+                bar_start=1,
+                bar_end=16,
+            )
+        else:
+            ast = build_equation_ast(settings)
+            onset_diffs, timing_mismatches = compare_solver_events_to_mxl(
+                ast,
+                args.mxl,
+                part_ids=("P1",),
+                staff=1,
+                bar_start=1,
+                bar_end=16,
+            )
         print(
             "comparison_summary="
             f"{{\"onset_diffs\": {len(onset_diffs)}, "

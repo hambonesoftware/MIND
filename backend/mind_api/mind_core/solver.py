@@ -29,6 +29,23 @@ def _resolve_chord_symbol(key, symbol: str) -> List[int]:
     return resolve_roman(key, symbol)
 
 
+def _parse_step_list(value: str | None, *, steps_per_bar: int) -> List[int]:
+    if not value:
+        return []
+    steps: List[int] = []
+    for token in value.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            step = int(token)
+        except ValueError:
+            continue
+        if 0 <= step <= steps_per_bar:
+            steps.append(step)
+    return steps
+
+
 def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Event]:
     steps_per_bar = steps_per_bar_from_grid(ast.grid)
     lattice = Lattice(steps_per_bar)
@@ -49,12 +66,34 @@ def solve_equation_bar(ast: EquationAST, bar_index: int, bpm: float) -> List[Eve
         name, kwargs = parse_motion_call(motion)
 
         if name == "sustain":
+            policy = (kwargs.get("policy") or "hold_until_change").strip().lower()
+            pedal_lift_steps = _parse_step_list(
+                kwargs.get("pedal_lifts"), steps_per_bar=steps_per_bar
+            )
+            chord_by_step: List[List[int]] | None = None
+
+            if policy in {"hold_until_change", "pedal_hold"}:
+                chord_by_step = []
+                chord_cache: dict[str, List[int]] = {}
+                for step in range(steps_per_bar):
+                    step_symbol = plan.get_symbol_at_step(
+                        bar_number, step, steps_per_bar
+                    )
+                    if step_symbol not in chord_cache:
+                        pcs = _resolve_chord_symbol(key, step_symbol)
+                        chord_cache[step_symbol] = voice_chord(pcs, register="mid")
+                    chord_by_step.append(chord_cache[step_symbol])
+
             apply_sustain(
                 lattice,
                 chord=voiced_mid,
                 bar_index=bar_index,
                 segment_start=plan.get_segment_start(bar_number),
                 segment_length=plan.get_segment_length(bar_number),
+                policy=policy,
+                chord_by_step=chord_by_step,
+                steps_per_bar=steps_per_bar,
+                pedal_lift_steps=pedal_lift_steps,
             )
             continue
 

@@ -1,0 +1,17 @@
+Phase 02 - Tie merge notes
+
+Baseline counts (Phase 00)
+- onset_diffs: 288
+- timing_mismatches: 16
+
+After tie-merge run
+- onset_diffs: 134
+- timing_mismatches: 10
+
+Changes
+- Added unit tests for tie merges within a measure and across measures.
+- Persist MusicXML divisions across measures so tie durations are summed in correct beat units.
+
+Commands
+- pytest -q backend/tests/test_mxl_parser_ties.py backend/tests/test_mxl_parser_timing.py
+- PYTHONPATH=backend python -m mind_api.mind_core.reporting.moonlight_report --json

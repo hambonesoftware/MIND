@@ -1,0 +1,19 @@
+Phase 04 music elements notes
+
+API summary
+- HarmonyPlan: stores per-bar chord change steps and returns chord lists via chord_at_step().
+- TextureRecipe: picks a pattern variant deterministically via stable_seed and defines sustain_policy.
+- PhrasePlan: exposes density/register/ornament curves by bar.
+- generate_events(): builds events from HarmonyPlan + TextureRecipe + PhrasePlan using a fixed grid.
+
+Example
+from mind_api.mind_core.music_elements import HarmonyPlan, PhrasePlan, TextureRecipe, generate_events
+
+harmony = HarmonyPlan.from_chords([[60, 64, 67], [62, 65, 69]], steps_per_bar=12)
+phrase = PhrasePlan(density_curve=(0.6, 0.9))
+texture = TextureRecipe(pattern_family=("low-mid-high", "high-mid-low"), sustain_policy="hold_until_change")
+
+events = generate_events(harmony, texture, phrase, bars=2, grid="1/12", seed=7, piece_id="demo")
+
+Tests
+- pytest -q backend/tests/test_music_elements.py

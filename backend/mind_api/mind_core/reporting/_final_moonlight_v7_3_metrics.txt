@@ -1,0 +1,16 @@
+Final Moonlight v7.3 metrics
+
+Baseline (v7.1 Phase 00)
+- onset_diffs: 288
+- timing_mismatches: 16
+
+Final (v7.3 Phase 08)
+- onset_diffs: 174
+- timing_mismatches: 3
+
+Improvements
+- onset_diffs: 39.6%
+- timing_mismatches: 81.2%
+
+Notes
+- Remaining diffs are expected because the demo remains algorithmic (non-transcription).

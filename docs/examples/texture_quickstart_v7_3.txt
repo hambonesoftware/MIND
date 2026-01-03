@@ -1,0 +1,14 @@
+# Texture quickstart v7.3
+mode="elements"
+lane=note
+grid="1/12"
+bars="1-4"
+key="C minor"
+harmony="1-2:i;3-4:V"
+
+seed=3
+piece_id="texture_quickstart_v7_3"
+pattern_family="low-mid-high|high-mid-low"
+# Density curve per bar (repeats if fewer values than bars)
+density_curve="0.5,0.7,0.9,0.8"
+sustain_policy="hold_until_change"
