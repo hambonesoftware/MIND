@@ -134,7 +134,8 @@ export class SpessaSynthEngine {
     this._audioContext = null;
     this._masterGain = null;
 
-    this._synth = null; // WorkletSynthesizer instance
+    this._synth = null; // WorkerSynthesizer or WorkletSynthesizer instance
+    this._worker = null;
 
     this._ready = false;
     this._active = false;
@@ -282,17 +283,7 @@ export class SpessaSynthEngine {
     // Ensure we resume on user interaction if browser starts suspended
     this._installAutoResume();
 
-    // 1) Add AudioWorklet module (processor must register "spessasynth-worklet-processor")
-    this._engineLabel = 'SpessaSynth: Loading worklet…';
-    this._log('init(): addModule', SPESSA_WORKLET_URL);
-
-    await withTimeout(
-      this._audioContext.audioWorklet.addModule(SPESSA_WORKLET_URL),
-      ADDMODULE_TIMEOUT_MS,
-      `SpessaSynth addModule timed out (${SPESSA_WORKLET_URL})`
-    );
-
-    // 2) Dynamically import the ESM library (avoid bundler trying to resolve it at build time)
+    // 1) Dynamically import the ESM library (avoid bundler trying to resolve it at build time)
     this._engineLabel = 'SpessaSynth: Loading library…';
     this._log('init(): importing library', SPESSA_LIB_URL);
 
@@ -303,15 +294,68 @@ export class SpessaSynthEngine {
       `SpessaSynth import timed out (${SPESSA_LIB_URL})`
     );
 
+    const WorkerSynthesizer = mod?.WorkerSynthesizer;
     const WorkletSynthesizer = mod?.WorkletSynthesizer;
-    if (!WorkletSynthesizer) {
-      this._warn('init(): WorkletSynthesizer export not found in', SPESSA_LIB_URL, 'exports=', Object.keys(mod || {}));
-      throw new Error('SpessaSynth lib missing WorkletSynthesizer export');
+    if (!WorkerSynthesizer || !WorkletSynthesizer) {
+      this._warn('init(): expected exports missing in', SPESSA_LIB_URL, 'exports=', Object.keys(mod || {}));
+      throw new Error('SpessaSynth lib missing Worker/WorkletSynthesizer export');
     }
 
-    // 3) Create synth
-    this._engineLabel = 'SpessaSynth: Creating synth…';
-    this._synth = new WorkletSynthesizer(this._audioContext);
+    // 2) Prefer worker-based synth with playback worklet
+    let activeMode = 'Worklet';
+    try {
+      this._engineLabel = 'SpessaSynth: Creating worker…';
+      const worker = new Worker(new URL('./SpessaSynthWorker.js', import.meta.url), { type: 'module' });
+      this._worker = worker;
+
+      this._engineLabel = 'SpessaSynth: Registering worker worklet…';
+      await withTimeout(
+        WorkerSynthesizer.registerPlaybackWorklet(this._audioContext),
+        ADDMODULE_TIMEOUT_MS,
+        'SpessaSynth registerPlaybackWorklet timed out'
+      );
+
+      this._engineLabel = 'SpessaSynth: Creating worker synth…';
+      const synth = new WorkerSynthesizer(this._audioContext, worker.postMessage.bind(worker));
+      worker.onmessage = (e) => synth.handleWorkerMessage(e.data ?? e);
+
+      this._engineLabel = 'SpessaSynth: Waiting ready…';
+      await withTimeout(
+        Promise.resolve(synth.isReady),
+        INIT_TIMEOUT_MS,
+        'SpessaSynth WorkerSynthesizer isReady timed out'
+      );
+
+      this._synth = synth;
+      activeMode = 'Worker';
+    } catch (err) {
+      const reason = err?.message ?? String(err);
+      this._warn(`WorkerSynthesizer failed, falling back to WorkletSynthesizer: ${reason}`);
+      if (this._worker) {
+        this._worker.terminate();
+        this._worker = null;
+      }
+
+      // Fallback: AudioWorklet-based synthesizer
+      this._engineLabel = 'SpessaSynth: Loading worklet…';
+      this._log('init(): addModule', SPESSA_WORKLET_URL);
+
+      await withTimeout(
+        this._audioContext.audioWorklet.addModule(SPESSA_WORKLET_URL),
+        ADDMODULE_TIMEOUT_MS,
+        `SpessaSynth addModule timed out (${SPESSA_WORKLET_URL})`
+      );
+
+      this._engineLabel = 'SpessaSynth: Creating worklet synth…';
+      this._synth = new WorkletSynthesizer(this._audioContext);
+
+      this._engineLabel = 'SpessaSynth: Waiting ready…';
+      await withTimeout(
+        Promise.resolve(this._synth.isReady),
+        INIT_TIMEOUT_MS,
+        'SpessaSynth WorkletSynthesizer isReady timed out'
+      );
+    }
 
     // Route synth outputs through master gain
     // (spessasynth_lib connect() connects its outputs to a destination node)
@@ -323,23 +367,15 @@ export class SpessaSynthEngine {
       this._synth.connect(this._audioContext.destination);
     }
 
-    // 4) Wait for synth ready
-    this._engineLabel = 'SpessaSynth: Waiting ready…';
-    await withTimeout(
-      Promise.resolve(this._synth.isReady),
-      INIT_TIMEOUT_MS,
-      'SpessaSynth isReady timed out'
-    );
-
     this._active = true;
     this._log('init(): synth isReady ok.');
 
-    // 5) Load sound bank
-    this._engineLabel = 'SpessaSynth: Loading soundfont…';
+    // 3) Load sound bank
+    this._engineLabel = `SpessaSynth: Loading soundfont (${activeMode})…`;
     await this._loadSoundBank(this._sf2Url);
 
     this._soundBankLoaded = true;
-    this._engineLabel = 'SpessaSynth: Active';
+    this._engineLabel = `SpessaSynth: Active (${activeMode})`;
     this._ready = true;
 
     this._log('init(): complete.', this.statusObject());
