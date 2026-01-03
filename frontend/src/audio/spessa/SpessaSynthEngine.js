@@ -20,6 +20,7 @@
 //   The worklet queues the message if time > current synth time (see processor logic).
 
 const DEBUG_SPESSA = true;
+const HEALTH_LOG_INTERVAL_MS = 10000;
 
 // -----------------------------------------------------------------------------
 // URLs / Worklet configuration
@@ -157,9 +158,13 @@ export class SpessaSynthEngine {
 
     // init bookkeeping
     this._initStarted = false;
+    this._loggedInitInfo = false;
+    this._healthLogHandle = null;
+    this._synthMode = 'unknown';
 
     // config
     this._sf2Url = (options.sf2Url || DEFAULT_SF2_URL);
+    this._latencyHint = 'interactive';
 
     // auto-resume bookkeeping
     this._autoResumeInstalled = false;
@@ -200,6 +205,13 @@ export class SpessaSynthEngine {
       if (this._tickHandle) {
         window.clearInterval(this._tickHandle);
         this._tickHandle = null;
+      }
+    } catch {}
+
+    try {
+      if (this._healthLogHandle) {
+        window.clearInterval(this._healthLogHandle);
+        this._healthLogHandle = null;
       }
     } catch {}
 
@@ -272,7 +284,7 @@ export class SpessaSynthEngine {
       throw new Error('WebAudio AudioContext not supported');
     }
 
-    this._audioContext = new AudioContextCtor({ latencyHint: 'interactive' });
+    this._audioContext = new AudioContextCtor({ latencyHint: this._latencyHint });
     this._log('init(): AudioContext created.', 'state=', this._audioContext.state);
 
     // master gain (match FluidSynth engine pattern)
@@ -357,6 +369,7 @@ export class SpessaSynthEngine {
       );
     }
 
+    this._synthMode = activeMode.toLowerCase();
     // Route synth outputs through master gain
     // (spessasynth_lib connect() connects its outputs to a destination node)
     try {
@@ -378,6 +391,8 @@ export class SpessaSynthEngine {
     this._engineLabel = `SpessaSynth: Active (${activeMode})`;
     this._ready = true;
 
+    this._logEngineInfoOnce(mod);
+    this._startHealthLog();
     this._log('init(): complete.', this.statusObject());
   }
 
@@ -679,6 +694,69 @@ export class SpessaSynthEngine {
     this._synth.noteOff(MELODY_CHANNEL, 60, false, { time: t + 0.35 });
 
     this._log('debugPlayMiddleC(): scheduled at', t);
+  }
+
+  _logEngineInfoOnce(mod) {
+    if (this._loggedInitInfo) return;
+    if (!this._audioContext) return;
+    if (!this._active) return;
+    this._loggedInitInfo = true;
+
+    const libVersion = this._resolveLibVersion(mod);
+    const sampleRate = this._audioContext.sampleRate ?? 'unknown';
+    const latencyHint = this._latencyHint ?? 'unknown';
+    const baseLatency = (typeof this._audioContext.baseLatency === 'number' && isFinite(this._audioContext.baseLatency))
+      ? this._audioContext.baseLatency
+      : 'unknown';
+
+    try {
+      console.log(`SpessaSynth mode: ${this._synthMode}`);
+      console.log(`SpessaSynth: version=${libVersion}`);
+      console.log(`AudioContext: sampleRate=${sampleRate} latencyHint=${latencyHint} baseLatency=${baseLatency}`);
+    } catch {}
+  }
+
+  _resolveLibVersion(mod) {
+    const candidates = [
+      mod?.VERSION,
+      mod?.version,
+      mod?.SPESSA_VERSION,
+      this._synth?.version
+    ];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+      if (typeof candidate === 'number' && isFinite(candidate)) return String(candidate);
+      if (candidate && typeof candidate === 'object' && 'major' in candidate && 'minor' in candidate) {
+        const major = candidate.major ?? 'x';
+        const minor = candidate.minor ?? 'x';
+        const patch = candidate.patch ?? candidate.revision ?? null;
+        return patch === null ? `${major}.${minor}` : `${major}.${minor}.${patch}`;
+      }
+    }
+    return 'unknown';
+  }
+
+  _startHealthLog() {
+    if (!DEBUG_SPESSA) return;
+    if (this._healthLogHandle) return;
+    this._healthLogHandle = window.setInterval(() => {
+      if (!this._audioContext || !this._synth || !this._active) return;
+      const underrun = this._getUnderrunInfo();
+      const payload = {
+        currentTime: this._audioContext.currentTime
+      };
+      if (underrun) payload.underrun = underrun;
+      this._log('health:', payload);
+    }, HEALTH_LOG_INTERVAL_MS);
+  }
+
+  _getUnderrunInfo() {
+    const direct = this._synth?.underrunCount ?? this._synth?.underruns;
+    if (typeof direct === 'number' && isFinite(direct)) return { count: direct };
+    const stats = this._synth?.stats ?? this._synth?.metrics ?? null;
+    const statCount = stats?.underrunCount ?? stats?.underruns ?? null;
+    if (typeof statCount === 'number' && isFinite(statCount)) return { count: statCount };
+    return null;
   }
 
   // -------------------------------------------------------------------------
