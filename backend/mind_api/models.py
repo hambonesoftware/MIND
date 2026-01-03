@@ -99,7 +99,7 @@ class RenderSpec(BaseModel):
 
 class NodeInput(BaseModel):
     id: str
-    kind: Literal["theory", "render"] = "theory"
+    kind: Literal["theory", "render", "start"] = "theory"
     enabled: bool = True
 
     # theory nodes
@@ -149,6 +149,8 @@ class CompileRequest(BaseModel):
     bpm: float = 120.0
     barIndex: int = 0
     nodes: List[NodeInput] = Field(default_factory=list)
+    edges: List["EdgeInput"] = Field(default_factory=list)
+    startNodeIds: List[str] = Field(default_factory=list)
     debug: bool = False
 
     @field_validator("seed", mode="before")
@@ -183,6 +185,32 @@ class CompileRequest(BaseModel):
             return cleaned
         return value
 
+    @field_validator("edges", mode="before")
+    @classmethod
+    def coerce_edges(cls, value: Any) -> Any:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            cleaned = []
+            for item in value:
+                if not item:
+                    continue
+                if isinstance(item, dict):
+                    if not item.get("from") or not item.get("to"):
+                        continue
+                cleaned.append(item)
+            return cleaned
+        return value
+
+    @field_validator("startNodeIds", mode="before")
+    @classmethod
+    def coerce_start_nodes(cls, value: Any) -> Any:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item) for item in value if item]
+        return value
+
 
 class CompileResponse(BaseModel):
     ok: bool = True
@@ -204,3 +232,25 @@ class Preset(BaseModel):
 
 class PresetsResponse(BaseModel):
     presets: List[Preset] = Field(default_factory=list)
+
+
+# ---------------------------
+# Graph edge models
+# ---------------------------
+
+class EdgeEndpoint(BaseModel):
+    nodeId: str
+    portId: Optional[str] = None
+
+
+class EdgeInput(BaseModel):
+    id: Optional[str] = None
+    from_: EdgeEndpoint = Field(alias="from")
+    to: EdgeEndpoint
+
+    @field_validator("from_", "to", mode="before")
+    @classmethod
+    def coerce_endpoint(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return EdgeEndpoint.model_validate(value)
+        return value
