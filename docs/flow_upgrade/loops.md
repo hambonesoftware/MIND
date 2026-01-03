@@ -1,23 +1,20 @@
-# Loop handling in graph compilation
+# Loop safety and scheduler behavior
 
-When compiling a node graph, the backend traverses edges starting from the
-provided start nodes (or inferred roots when none are provided). Cycles can
-exist in a graph, so the compiler includes a **LoopGuard** to ensure traversal
-terminates safely and the server does not hang.
+## Loop safety rules (compiler)
+The compiler treats the node graph as a directed graph and evaluates it from the entry nodes. Loop safety is enforced in `backend/mind_api/mind_core/compiler.py`:
 
-## What the LoopGuard does
+- **Cycle detection**: The traversal tracks a recursion stack (`visiting`). If a node is re-entered, compilation records an error diagnostic (`Cycle detected at ...`) and stops expanding that branch.
+- **Depth guard**: `MAX_GRAPH_DEPTH` caps recursion depth. If the limit is exceeded, compilation records an error (`Loop guard tripped ...`) and stops expanding that branch.
+- **Schedule horizon**: `MAX_SCHEDULE_STEPS` caps total traversal steps. When exceeded, compilation emits a warning (`Scheduling horizon exceeded ...`) and stops expanding that branch.
 
-- Tracks the current recursion stack and reports a diagnostic if a node is
-  revisited in the same traversal (cycle detected).
-- Enforces a maximum traversal depth (`MAX_GRAPH_DEPTH`) as a secondary safety
-  net. If the depth limit is exceeded, compilation stops for that branch and an
-  error diagnostic is emitted.
+These guards ensure that cyclic or excessively deep graphs never hang the compiler.
 
-## Practical implications
+## Scheduler behavior (frontend)
+`frontend/src/audio/transport.js` is the loop-aware scheduler used during playback:
 
-- Cyclic graphs compile without freezing, but the cyclic branch will not emit
-  events once the guard triggers.
-- Fix cycles by inserting a `Start` node and ensuring render chains remain
-  acyclic.
-- If you intentionally need deep graphs, update the `MAX_GRAPH_DEPTH` constant
-  in `backend/mind_api/mind_core/compiler.py`.
+- **Lookahead window**: The scheduler advances a window of `LOOKAHEAD_SEC` seconds and requests the next bar when the current window reaches the bar boundary.
+- **Bar loop**: Bars are computed modulo `loopBars` (default 16) so playback wraps in a bounded loop.
+- **Event ownership**: Each bar’s events are cached in `barEvents` and cleared when the transport advances to a new bar to avoid unbounded growth.
+- **Engine integration**: The scheduler always calls `audioEngine.schedule(events, 0)` for the current bar, while the engine itself handles sub-bar lookahead and event timing.
+
+Together, the backend loop guards and frontend lookahead windows keep playback deterministic and bounded even if the graph contains cycles.

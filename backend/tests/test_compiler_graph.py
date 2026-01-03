@@ -101,6 +101,37 @@ def test_graph_validation_reports_missing_edge_nodes():
     assert any("Edge references missing node" in diag.message for diag in resp.diagnostics)
 
 
+def test_graph_validation_reports_port_type_mismatch():
+    start = NodeInput(
+        id="start",
+        kind="start",
+        outputPorts=[{"id": "out", "direction": "out", "dataType": "events"}],
+    )
+    render = NodeInput(
+        id="render",
+        kind="render",
+        render=RenderSpec(),
+        inputPorts=[{"id": "in", "direction": "in", "dataType": "flow"}],
+        childId="theory",
+    )
+    theory = _simple_theory_node("theory")
+    req = _base_request([start, render, theory])
+    req.edges = [
+        EdgeInput.model_validate(
+            {
+                "from": {"nodeId": "start", "portId": "out"},
+                "to": {"nodeId": "render", "portId": "in"},
+            },
+        ),
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "render"}, "to": {"nodeId": "theory"}},
+        ),
+    ]
+    resp = compile_request(req)
+    assert resp.ok is False
+    assert any("connects incompatible port types" in diag.message for diag in resp.diagnostics)
+
+
 def test_reachable_node_traversal_honors_start_nodes():
     start = NodeInput(id="start", kind="start")
     theory = _simple_theory_node("t1")
@@ -115,6 +146,32 @@ def test_reachable_node_traversal_honors_start_nodes():
     resp = compile_request(req)
     assert resp.ok is True
     assert len(resp.events) == 1
+
+
+def test_unreachable_nodes_skip_missing_input_validation():
+    start = NodeInput(id="start", kind="start")
+    reachable = _simple_theory_node("t1")
+    unreachable = NodeInput(id="render-missing", kind="render", render=RenderSpec())
+    req = _base_request([start, reachable, unreachable])
+    req.startNodeIds = ["start"]
+    req.edges = [
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "t1"}},
+        ),
+    ]
+    resp = compile_request(req)
+    assert resp.ok is True
+    assert len(resp.events) == 1
+    assert not any("missing a required input" in diag.message for diag in resp.diagnostics)
+
+
+def test_missing_input_reports_error_for_entry_node():
+    theory = _simple_theory_node("t1")
+    req = _base_request([theory])
+    req.startNodeIds = ["t1"]
+    resp = compile_request(req)
+    assert resp.ok is False
+    assert any("missing a required input" in diag.message for diag in resp.diagnostics)
 
 
 def test_loop_guard_trips_on_excessive_depth():
