@@ -24,7 +24,14 @@ def _base_request(nodes: list[NodeInput]) -> CompileRequest:
 
 
 def test_compile_theory_node_returns_events():
-    req = _base_request([_simple_theory_node("n1")])
+    start = NodeInput(id="start", kind="start")
+    theory = _simple_theory_node("n1")
+    req = _base_request([start, theory])
+    req.edges = [
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "n1"}},
+        ),
+    ]
     resp = compile_request(req)
     assert resp.ok is True
     assert len(resp.events) == 1
@@ -38,7 +45,16 @@ def test_compile_render_node_wraps_child_identity():
         childId="n1",
         render=RenderSpec(),
     )
-    req = _base_request([child, render])
+    start = NodeInput(id="start", kind="start")
+    req = _base_request([start, child, render])
+    req.edges = [
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "r1"}},
+        ),
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "r1"}, "to": {"nodeId": "n1"}},
+        ),
+    ]
     resp = compile_request(req)
     assert resp.ok is True
     assert len(resp.events) == 1
@@ -69,11 +85,17 @@ def test_compile_cycle_reports_error():
 
 def test_graph_validation_reports_missing_edge_nodes():
     node = _simple_theory_node("n1")
+    start = NodeInput(id="start", kind="start")
     edge = EdgeInput.model_validate(
         {"from": {"nodeId": "n1"}, "to": {"nodeId": "missing"}},
     )
-    req = _base_request([node])
-    req.edges = [edge]
+    req = _base_request([start, node])
+    req.edges = [
+        EdgeInput.model_validate(
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "n1"}},
+        ),
+        edge,
+    ]
     resp = compile_request(req)
     assert resp.ok is False
     assert any("Edge references missing node" in diag.message for diag in resp.diagnostics)

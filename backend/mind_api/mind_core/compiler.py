@@ -4,9 +4,16 @@ Compiler for the MIND language v0.1.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
-from ..models import CompileRequest, CompileResponse, Event, Diagnostic, NodeInput, RenderSpec
+from ..models import (
+    CompileRequest,
+    CompileResponse,
+    Event,
+    Diagnostic,
+    NodeInput,
+    RenderSpec,
+)
 from .post.chain import apply_render_chain
 from .solver import solve_equation_bar
 from .parser import parse_text
@@ -21,6 +28,14 @@ LANE_TO_MIDI_NOTE = {
 }
 
 MAX_GRAPH_DEPTH = 256
+MAX_SCHEDULE_STEPS = 2048
+
+DEFAULT_PORT_TYPES: Dict[Tuple[str, str], str] = {
+    ("start", "out"): "flow",
+    ("render", "in"): "flow",
+    ("render", "out"): "flow",
+    ("theory", "in"): "flow",
+}
 
 
 def _intensity_to_velocity(char: str) -> int:
@@ -228,18 +243,38 @@ def compile_request(req: CompileRequest) -> CompileResponse:
     events: List[Event] = []
 
     nodes = {n.id: n for n in req.nodes if n.enabled}
-    graph_edges: List[tuple[str, str]] = []
+    outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+    incoming: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+
+    def resolve_port_type(node: NodeInput, direction: str, port_id: Optional[str], port_type: Optional[str]) -> Optional[str]:
+        if port_type:
+            return port_type
+        ports = node.inputPorts if direction == "in" else node.outputPorts
+        for port in ports:
+            if port.id == port_id:
+                return port.dataType
+        return DEFAULT_PORT_TYPES.get((node.kind, direction))
+
+    graph_edges: List[tuple[str, str, Optional[str], Optional[str]]] = []
     if req.edges:
-        graph_edges = [(edge.from_.nodeId, edge.to.nodeId) for edge in req.edges]
+        for edge in req.edges:
+            from_id = edge.from_.nodeId
+            to_id = edge.to.nodeId
+            from_type = None
+            to_type = None
+            if from_id in nodes:
+                from_type = resolve_port_type(nodes[from_id], "out", edge.from_.portId, edge.from_.portType)
+            if to_id in nodes:
+                to_type = resolve_port_type(nodes[to_id], "in", edge.to.portId, edge.to.portType)
+            graph_edges.append((from_id, to_id, from_type, to_type))
     else:
         graph_edges = [
-            (node.id, node.childId)
+            (node.id, node.childId, DEFAULT_PORT_TYPES.get((node.kind, "out")), DEFAULT_PORT_TYPES.get(("theory", "in")))
             for node in nodes.values()
             if node.kind == "render" and node.childId
         ]
-    outgoing: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
-    incoming: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
-    for from_id, to_id in graph_edges:
+
+    for from_id, to_id, from_type, to_type in graph_edges:
         if from_id not in nodes:
             diagnostics.append(Diagnostic(level="error", message=f"Edge references missing node '{from_id}'", line=1, col=1))
             continue
@@ -248,24 +283,24 @@ def compile_request(req: CompileRequest) -> CompileResponse:
             continue
         outgoing[from_id].append(to_id)
         incoming[to_id].append(from_id)
-
-    def add_type_mismatch(message: str) -> None:
-        diagnostics.append(Diagnostic(level="error", message=message, line=1, col=1))
-
-    for from_id, to_ids in outgoing.items():
-        node = nodes[from_id]
-        if node.kind == "theory" and to_ids:
-            add_type_mismatch(f"Theory node '{from_id}' cannot have child edges.")
-        if node.kind == "render" and len(to_ids) > 1:
-            add_type_mismatch(f"Render node '{from_id}' has multiple child edges.")
-        for to_id in to_ids:
-            target = nodes.get(to_id)
-            if target and target.kind == "start":
-                add_type_mismatch(f"Start node '{to_id}' cannot accept incoming edges.")
-
-    for node_id, node in nodes.items():
-        if node.kind == "render" and not outgoing.get(node_id):
-            diagnostics.append(Diagnostic(level="error", message=f"Render node '{node_id}' is missing a child edge.", line=1, col=1))
+        if from_type is None or to_type is None:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Edge '{from_id}' -> '{to_id}' is missing a typed port definition.",
+                    line=1,
+                    col=1,
+                )
+            )
+        elif from_type != to_type:
+            diagnostics.append(
+                Diagnostic(
+                    level="error",
+                    message=f"Edge '{from_id}' -> '{to_id}' connects incompatible port types ({from_type} -> {to_type}).",
+                    line=1,
+                    col=1,
+                )
+            )
 
     entry_nodes: List[str] = []
     if req.startNodeIds:
@@ -278,56 +313,102 @@ def compile_request(req: CompileRequest) -> CompileResponse:
             entry_nodes.append(node_id)
     else:
         entry_nodes = [node_id for node_id, node in nodes.items() if node.kind == "start"]
-        if not entry_nodes:
-            entry_nodes = [node_id for node_id in nodes if not incoming.get(node_id)]
 
-    compiled: Dict[str, List[Event]] = {}
+    if not entry_nodes:
+        diagnostics.append(
+            Diagnostic(level="error", message="No start nodes provided. Add a Start node to the graph.", line=1, col=1)
+        )
+
+    def add_type_mismatch(message: str) -> None:
+        diagnostics.append(Diagnostic(level="error", message=message, line=1, col=1))
+
+    for from_id, to_ids in outgoing.items():
+        node = nodes[from_id]
+        if node.kind == "theory" and to_ids:
+            add_type_mismatch(f"Theory node '{from_id}' cannot have child edges.")
+        if node.kind == "render" and len(to_ids) > 1:
+            add_type_mismatch(f"Render node '{from_id}' has multiple child edges.")
+        if node.kind == "start" and not to_ids:
+            diagnostics.append(Diagnostic(level="error", message=f"Start node '{from_id}' has no outgoing edges.", line=1, col=1))
+        for to_id in to_ids:
+            target = nodes.get(to_id)
+            if target and target.kind == "start":
+                add_type_mismatch(f"Start node '{to_id}' cannot accept incoming edges.")
+
+    reachable: Set[str] = set()
+    execution_plan: List[str] = []
     visiting: Set[str] = set()
+    schedule_steps = 0
 
-    def compile_node(node_id: str, depth: int = 0) -> List[Event]:
-        if node_id in compiled:
-            return compiled[node_id]
+    def walk(node_id: str, depth: int = 0) -> None:
+        nonlocal schedule_steps
+        if node_id in reachable:
+            return
         if depth > MAX_GRAPH_DEPTH:
             diagnostics.append(
                 Diagnostic(level="error", message=f"Loop guard tripped at '{node_id}' (depth {depth}).", line=1, col=1)
             )
-            return []
+            return
+        if schedule_steps > MAX_SCHEDULE_STEPS:
+            diagnostics.append(
+                Diagnostic(
+                    level="warn",
+                    message=f"Scheduling horizon exceeded at '{node_id}'. Loop evaluation was bounded.",
+                    line=1,
+                    col=1,
+                )
+            )
+            return
+        schedule_steps += 1
         if node_id in visiting:
-            diagnostics.append(Diagnostic(level="error", message=f"Cycle detected at {node_id}", line=1, col=1))
-            return []
-
-        if node_id not in nodes:
-            diagnostics.append(Diagnostic(level="error", message=f"Missing node '{node_id}'", line=1, col=1))
-            return []
-
+            diagnostics.append(Diagnostic(level="error", message=f"Cycle detected at '{node_id}'", line=1, col=1))
+            return
         visiting.add(node_id)
-        node = nodes[node_id]
-        children = outgoing.get(node_id, [])
+        for child_id in outgoing.get(node_id, []):
+            walk(child_id, depth + 1)
+        visiting.remove(node_id)
+        reachable.add(node_id)
+        execution_plan.append(node_id)
 
+    for node_id in entry_nodes:
+        walk(node_id)
+
+    for node_id in reachable:
+        node = nodes[node_id]
+        if node.kind in {"render", "theory"} and not incoming.get(node_id):
+            diagnostics.append(
+                Diagnostic(level="error", message=f"Node '{node_id}' is missing a required input.", line=1, col=1)
+            )
+        if node.kind == "render" and not outgoing.get(node_id):
+            diagnostics.append(
+                Diagnostic(level="error", message=f"Render node '{node_id}' is missing a child edge.", line=1, col=1)
+            )
+
+    compiled: Dict[str, List[Event]] = {}
+
+    for node_id in execution_plan:
+        node = nodes.get(node_id)
+        if not node:
+            continue
+        children = outgoing.get(node_id, [])
         if node.kind == "start":
             aggregated: List[Event] = []
             for child_id in children:
-                aggregated.extend(compile_node(child_id, depth + 1))
+                aggregated.extend(compiled.get(child_id, []))
             compiled[node_id] = aggregated
         elif node.kind == "render":
             child_id = children[0] if children else None
             if not child_id:
-                diagnostics.append(
-                    Diagnostic(level="error", message=f"Render node '{node.id}' is missing a child edge.", line=1, col=1)
-                )
                 compiled[node_id] = []
             else:
-                child = compile_node(child_id, depth + 1)
+                child = compiled.get(child_id, [])
                 render_spec = _coerce_render_spec(node.render)
                 compiled[node_id] = apply_render_chain(child, render_spec, req)
         else:
             compiled[node_id] = _compile_theory_node(node, req.barIndex, req.bpm, diagnostics)
 
-        visiting.remove(node_id)
-        return compiled[node_id]
-
     for node_id in entry_nodes:
-        events.extend(compile_node(node_id))
+        events.extend(compiled.get(node_id, []))
 
     events.sort(key=lambda e: (e.tBeat, e.lane))
     return CompileResponse(
