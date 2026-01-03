@@ -3,7 +3,12 @@ import { createAudioEngine } from './audio/audioEngine.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { buildCompilePayload } from './state/compilePayload.js';
 import { createGraphStore } from './state/graphStore.js';
+import { createFlowGraphStore } from './state/flowGraph.js';
 import { createExecutionsPanel } from './ui/executionsPanel.js';
+import { createFlowCanvas } from './ui/flowCanvas.js';
+import { createFlowInspector } from './ui/flowInspector.js';
+import { createFlowPalette } from './ui/flowPalette.js';
+import { createToastManager } from './ui/toast.js';
 
 /**
  * Represents a single node/lane in the UI.  Each node manages its
@@ -1273,6 +1278,29 @@ async function main() {
     const executionsPanel = createExecutionsPanel();
     if (executionsMount) {
       executionsMount.appendChild(executionsPanel.element);
+    }
+
+    const flowStore = createFlowGraphStore();
+    flowStore.load();
+    const toast = createToastManager();
+    const flowCanvasMount = document.getElementById('flowCanvas');
+    const flowPaletteMount = document.getElementById('flowPalette');
+    const flowInspectorMount = document.getElementById('flowInspector');
+    const flowCanvas = createFlowCanvas({ store: flowStore, toast });
+    if (flowCanvasMount) {
+      flowCanvasMount.appendChild(flowCanvas.element);
+    }
+    const addNodeAtCenter = (type) => {
+      const center = flowCanvas.getViewportCenter();
+      flowStore.addNode(type, { ui: center });
+    };
+    const flowPalette = createFlowPalette({ store: flowStore, onAddNode: addNodeAtCenter });
+    if (flowPaletteMount) {
+      flowPaletteMount.appendChild(flowPalette.element);
+    }
+    const flowInspector = createFlowInspector({ store: flowStore });
+    if (flowInspectorMount) {
+      flowInspectorMount.appendChild(flowInspector.element);
     }
     const demoWorkspaces = buildDemoWorkspaces(
       nodeCards.find(card => card.lane === 'note')?.presetSelect.value || '',
