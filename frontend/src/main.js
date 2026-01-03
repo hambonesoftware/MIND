@@ -2,6 +2,7 @@ import { parseScript, compileSession, getPresets } from './api/client.js';
 import { createAudioEngine } from './audio/audioEngine.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { buildCompilePayload } from './state/compilePayload.js';
+import { createGraphStore } from './state/graphStore.js';
 import { createExecutionsPanel } from './ui/executionsPanel.js';
 
 /**
@@ -10,10 +11,11 @@ import { createExecutionsPanel } from './ui/executionsPanel.js';
  * visualise scheduled events.
  */
 class NodeCard {
-  constructor({ lane, displayName, presets }) {
+  constructor({ lane, displayName, presets, onGraphChange = null }) {
     this.lane = lane;
     this.displayName = displayName;
     this.presets = presets;
+    this.onGraphChange = onGraphChange;
     const defaultPattern = lane === 'kick'
       ? '9...'
       : lane === 'snare'
@@ -45,6 +47,11 @@ class NodeCard {
     muteLabel.className = 'mute-label';
     this.muteCheckbox = document.createElement('input');
     this.muteCheckbox.type = 'checkbox';
+    this.muteCheckbox.addEventListener('change', () => {
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
     muteLabel.appendChild(this.muteCheckbox);
     muteLabel.appendChild(document.createTextNode(' Mute'));
     header.appendChild(muteLabel);
@@ -154,6 +161,9 @@ class NodeCard {
       this.latchedText = this.pendingText;
       this.pendingText = null;
       this.updateStatus('Latched');
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     }
   }
 
@@ -218,10 +228,11 @@ class NodeCard {
 }
 
 class NoteWorkspaceCard {
-  constructor({ displayName, presets }) {
+  constructor({ displayName, presets, onGraphChange = null }) {
     this.lane = 'note';
     this.displayName = displayName;
     this.presets = presets;
+    this.onGraphChange = onGraphChange;
     this.blockCounter = 1;
     this.blocks = [];
     this.lastParsedGrid = '1/4';
@@ -318,6 +329,9 @@ class NoteWorkspaceCard {
     };
     this.blocks.push(block);
     this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
   }
 
   addRenderBlock() {
@@ -339,6 +353,9 @@ class NoteWorkspaceCard {
     };
     this.blocks.push(block);
     this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
   }
 
   getBlockById(id) {
@@ -400,6 +417,9 @@ class NoteWorkspaceCard {
       }
     }
     this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
   }
 
   renderWorkspace() {
@@ -444,6 +464,9 @@ class NoteWorkspaceCard {
     enabledInput.addEventListener('change', () => {
       block.enabled = enabledInput.checked;
       this.updateActiveHint();
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     enabledLabel.appendChild(enabledInput);
     enabledLabel.appendChild(document.createTextNode(' Enabled'));
@@ -497,6 +520,9 @@ class NoteWorkspaceCard {
     enabledInput.addEventListener('change', () => {
       block.enabled = enabledInput.checked;
       this.updateActiveHint();
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     enabledLabel.appendChild(enabledInput);
     enabledLabel.appendChild(document.createTextNode(' Enabled'));
@@ -511,6 +537,9 @@ class NoteWorkspaceCard {
     strumInput.checked = block.render.strumEnabled;
     strumInput.addEventListener('change', () => {
       block.render.strumEnabled = strumInput.checked;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     strumLabel.appendChild(strumInput);
     strumLabel.appendChild(document.createTextNode(' Strum'));
@@ -528,6 +557,9 @@ class NoteWorkspaceCard {
     spreadInput.addEventListener('input', () => {
       block.render.spreadMs = parseInt(spreadInput.value, 10);
       spreadValue.textContent = ` ${block.render.spreadMs}`;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     spreadLabel.appendChild(spreadInput);
     spreadLabel.appendChild(spreadValue);
@@ -540,6 +572,9 @@ class NoteWorkspaceCard {
     directionInput.value = block.render.direction;
     directionInput.addEventListener('input', () => {
       block.render.direction = directionInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     directionLabel.appendChild(directionInput);
     controls.appendChild(directionLabel);
@@ -550,6 +585,9 @@ class NoteWorkspaceCard {
     percInput.checked = block.render.percEnabled;
     percInput.addEventListener('change', () => {
       block.render.percEnabled = percInput.checked;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     percLabel.appendChild(percInput);
     percLabel.appendChild(document.createTextNode(' Perc'));
@@ -562,6 +600,9 @@ class NoteWorkspaceCard {
     hatInput.value = block.render.hatPattern;
     hatInput.addEventListener('input', () => {
       block.render.hatPattern = hatInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     hatLabel.appendChild(hatInput);
     controls.appendChild(hatLabel);
@@ -573,6 +614,9 @@ class NoteWorkspaceCard {
     kickInput.value = block.render.kickPattern;
     kickInput.addEventListener('input', () => {
       block.render.kickPattern = kickInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     kickLabel.appendChild(kickInput);
     controls.appendChild(kickLabel);
@@ -584,6 +628,9 @@ class NoteWorkspaceCard {
     snareInput.value = block.render.snarePattern;
     snareInput.addEventListener('input', () => {
       block.render.snarePattern = snareInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
     });
     snareLabel.appendChild(snareInput);
     controls.appendChild(snareLabel);
@@ -607,6 +654,9 @@ class NoteWorkspaceCard {
       if (droppedBlock && droppedBlock.kind === 'theory') {
         block.childId = droppedBlock.id;
         this.renderWorkspace();
+        if (typeof this.onGraphChange === 'function') {
+          this.onGraphChange();
+        }
       }
     });
     if (block.childId) {
@@ -623,6 +673,9 @@ class NoteWorkspaceCard {
         removeButton.addEventListener('click', () => {
           block.childId = null;
           this.renderWorkspace();
+          if (typeof this.onGraphChange === 'function') {
+            this.onGraphChange();
+          }
         });
         nested.appendChild(removeButton);
         dropzone.appendChild(nested);
@@ -644,6 +697,9 @@ class NoteWorkspaceCard {
       }
     }
     this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
   }
 
   toNodeInput() {
@@ -716,6 +772,9 @@ class NoteWorkspaceCard {
       .reduce((max, value) => Math.max(max, value), 0);
     this.blockCounter = maxIndex + 1;
     this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
   }
 
   updateSteps(events) {
@@ -888,6 +947,10 @@ async function main() {
     const presets = presetResp.presets || [];
     // Create audio engine
     const audioEngine = await createAudioEngine();
+    const graphStore = createGraphStore();
+    const restoredGraph = graphStore.loadFromStorage();
+    let syncGraphStoreFromUi = () => {};
+    let isRestoringGraph = false;
     // Build transport bar
     const transport = document.getElementById('transport');
     // Play/Stop button
@@ -1026,8 +1089,17 @@ async function main() {
     const nodeCards = [];
     for (const ln of lanes) {
       const card = ln.lane === 'note'
-        ? new NoteWorkspaceCard({ displayName: ln.displayName, presets })
-        : new NodeCard({ lane: ln.lane, displayName: ln.displayName, presets });
+        ? new NoteWorkspaceCard({
+          displayName: ln.displayName,
+          presets,
+          onGraphChange: () => syncGraphStoreFromUi(),
+        })
+        : new NodeCard({
+          lane: ln.lane,
+          displayName: ln.displayName,
+          presets,
+          onGraphChange: () => syncGraphStoreFromUi(),
+        });
       nodeCards.push(card);
       nodeStackEl.appendChild(card.element);
       // Set the initial preset on the audio engine based on the default selection
@@ -1050,6 +1122,152 @@ async function main() {
     if (typeof updateEngineIndicator === 'function') {
       updateEngineIndicator();
     }
+
+    const buildGraphStateFromUi = () => {
+      const baseState = graphStore.getState();
+      const nodes = [];
+      const edges = [];
+      const buildPorts = () => ({ inputs: [], outputs: [] });
+
+      for (const card of nodeCards) {
+        if (card.lane === 'note') {
+          continue;
+        }
+        nodes.push({
+          id: card.lane,
+          type: 'lane',
+          params: {
+            kind: 'lane',
+            lane: card.lane,
+            text: card.latchedText,
+            enabled: !card.muteCheckbox.checked,
+          },
+          ui: { x: 0, y: 0 },
+          ports: buildPorts(),
+        });
+      }
+
+      const noteCard = nodeCards.find(card => card.lane === 'note');
+      if (noteCard && Array.isArray(noteCard.blocks)) {
+        for (const block of noteCard.blocks) {
+          if (block.kind === 'theory') {
+            nodes.push({
+              id: block.id,
+              type: 'theory',
+              params: {
+                kind: 'theory',
+                title: block.title,
+                text: block.latchedText,
+                enabled: block.enabled,
+                lastParsedGrid: block.lastParsedGrid,
+              },
+              ui: { x: 0, y: 0 },
+              ports: buildPorts(),
+            });
+          } else if (block.kind === 'render') {
+            nodes.push({
+              id: block.id,
+              type: 'render',
+              params: {
+                kind: 'render',
+                title: block.title,
+                enabled: block.enabled,
+                childId: block.childId || null,
+                render: { ...block.render },
+              },
+              ui: { x: 0, y: 0 },
+              ports: buildPorts(),
+            });
+            if (block.childId) {
+              edges.push({
+                id: `edge-${block.id}-${block.childId}`,
+                from: { nodeId: block.id, portId: null },
+                to: { nodeId: block.childId, portId: null },
+              });
+            }
+          }
+        }
+      }
+
+      return {
+        nodes,
+        edges,
+        selection: baseState.selection,
+        viewport: baseState.viewport,
+      };
+    };
+
+    syncGraphStoreFromUi = ({ recordHistory = !isRestoringGraph } = {}) => {
+      graphStore.setGraph(buildGraphStateFromUi(), { recordHistory });
+    };
+
+    const applyGraphStateToUi = (graphState) => {
+      if (!graphState || !Array.isArray(graphState.nodes)) {
+        return;
+      }
+      const laneNodes = graphState.nodes.filter(node => node.type === 'lane');
+      for (const card of nodeCards) {
+        if (card.lane === 'note') {
+          continue;
+        }
+        const laneNode = laneNodes.find(node => node.params?.lane === card.lane || node.id === card.lane);
+        if (laneNode) {
+          card.latchedText = laneNode.params?.text || card.latchedText;
+          card.pendingText = null;
+          card.scriptInput.value = card.latchedText;
+          card.updateStatus('Latched');
+          card.muteCheckbox.checked = laneNode.params?.enabled === false;
+        }
+      }
+
+      const noteCard = nodeCards.find(card => card.lane === 'note');
+      if (noteCard) {
+        const renderLinks = new Map();
+        for (const edge of graphState.edges || []) {
+          if (edge?.from?.nodeId && edge?.to?.nodeId) {
+            renderLinks.set(edge.from.nodeId, edge.to.nodeId);
+          }
+        }
+        const theoryNodes = graphState.nodes.filter(node => node.type === 'theory');
+        const renderNodes = graphState.nodes.filter(node => node.type === 'render');
+        const blocks = [
+          ...theoryNodes.map((node, index) => ({
+            id: node.id,
+            kind: 'theory',
+            title: node.params?.title || `Theory ${index + 1}`,
+            enabled: node.params?.enabled !== false,
+            latchedText: node.params?.text || '',
+            lastParsedGrid: node.params?.lastParsedGrid || '1/4',
+          })),
+          ...renderNodes.map((node, index) => ({
+            id: node.id,
+            kind: 'render',
+            title: node.params?.title || `Render ${index + 1}`,
+            enabled: node.params?.enabled !== false,
+            childId: renderLinks.get(node.id) || node.params?.childId || null,
+            render: node.params?.render || {
+              strumEnabled: false,
+              spreadMs: 20,
+              direction: 'DUDUDUDU',
+              percEnabled: false,
+              hatPattern: '........',
+              kickPattern: '........',
+              snarePattern: '........',
+            },
+          })),
+        ];
+        if (blocks.length > 0) {
+          noteCard.loadWorkspace({ blocks });
+        }
+      }
+    };
+
+    if (restoredGraph?.nodes?.length) {
+      isRestoringGraph = true;
+      applyGraphStateToUi(restoredGraph);
+      isRestoringGraph = false;
+    }
+    syncGraphStoreFromUi({ recordHistory: false });
 
     const executionsMount = document.getElementById('executionsPanel');
     const executionsPanel = createExecutionsPanel();
@@ -1154,17 +1372,60 @@ async function main() {
     };
 
     const buildGraphInputs = () => {
-      const laneNodes = nodeCards
-        .filter(card => card.lane !== 'note')
-        .map(card => card.toGraphNode())
+      const graphState = graphStore.getState();
+      const graphNodes = graphState.nodes || [];
+      const graphEdges = graphState.edges || [];
+      const renderLinks = new Map(
+        graphEdges
+          .filter(edge => edge?.from?.nodeId && edge?.to?.nodeId)
+          .map(edge => [edge.from.nodeId, edge.to.nodeId]),
+      );
+      const laneNodes = graphNodes
+        .filter(node => node.type === 'lane')
+        .map(node => ({
+          id: node.id,
+          kind: 'theory',
+          enabled: node.params?.enabled !== false,
+          text: node.params?.text || '',
+        }))
         .sort((a, b) => a.id.localeCompare(b.id));
-      const noteCard = nodeCards.find(card => card.lane === 'note');
-      const noteNodes = noteCard && typeof noteCard.toGraphNodes === 'function'
-        ? noteCard.toGraphNodes()
-        : [];
-      const edges = noteCard && typeof noteCard.toGraphEdges === 'function'
-        ? noteCard.toGraphEdges()
-        : [];
+      const noteNodes = graphNodes
+        .filter(node => node.type !== 'lane')
+        .map(node => {
+          if (node.type === 'render') {
+            const renderParams = node.params?.render || {};
+            return {
+              id: node.id,
+              kind: 'render',
+              enabled: node.params?.enabled !== false,
+              childId: renderLinks.get(node.id) || node.params?.childId || null,
+              render: {
+                strum: {
+                  enabled: renderParams.strumEnabled ?? false,
+                  spreadMs: renderParams.spreadMs ?? 0,
+                  directionByStep: renderParams.direction ?? '',
+                },
+                perc: {
+                  enabled: renderParams.percEnabled ?? false,
+                  hat: renderParams.hatPattern ?? '',
+                  kick: renderParams.kickPattern ?? '',
+                  snare: renderParams.snarePattern ?? '',
+                },
+              },
+            };
+          }
+          return {
+            id: node.id,
+            kind: 'theory',
+            enabled: node.params?.enabled !== false,
+            text: node.params?.text || '',
+          };
+        });
+      const edges = graphEdges.map(edge => ({
+        id: edge.id,
+        from: { nodeId: edge.from?.nodeId, portId: edge.from?.portId || null },
+        to: { nodeId: edge.to?.nodeId, portId: edge.to?.portId || null },
+      }));
       const legacyNodes = nodeCards.map(card => card.toNodeInput());
       const nodes = [...laneNodes, ...noteNodes];
       const incoming = new Set(
