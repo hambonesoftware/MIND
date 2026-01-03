@@ -1,0 +1,12 @@
+Phase 01 - MusicXML timing fix notes
+
+Changes
+- Reset the chord-onset tracker when <backup> or <forward> elements move the measure cursor so chord stacks cannot leak across voice repositioning.
+- Added unit tests covering <backup>, <chord/>, and <forward> timing behavior using planV7.3 fixtures and an inline XML example.
+
+Tests
+- pytest -q backend/tests/test_mxl_parser_timing.py
+
+Assumptions
+- Chord stacks are represented by consecutive <note><chord/></note> entries without intervening <backup>/<forward>.
+- Measure-level cursor adjustments should invalidate prior chord onset context.

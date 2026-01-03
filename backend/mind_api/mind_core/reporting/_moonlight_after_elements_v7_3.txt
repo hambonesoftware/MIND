@@ -1,0 +1,17 @@
+Phase 05 Moonlight after-elements snapshot (v7.3)
+
+Commands run:
+- PYTHONPATH=backend python backend/mind_api/mind_core/_dev_verify_moonlight.py --compare
+- PYTHONPATH=backend python -m mind_api.mind_core.reporting.moonlight_report --json
+
+Baseline (v7.1 Phase 00)
+- onset_diffs: 288
+- timing_mismatches: 16
+
+After elements (v7.3)
+- onset_diffs: 174
+- timing_mismatches: 3
+
+Notes
+- Elements-based generator introduces sustained harmony plus deterministic variation, reducing onset noise.
+- Timing mismatches drop after using the updated parser/tie merge and sustained durations.

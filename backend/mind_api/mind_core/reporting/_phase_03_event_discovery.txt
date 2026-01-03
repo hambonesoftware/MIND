@@ -1,0 +1,13 @@
+Phase 03 event discovery
+
+Event definitions
+- backend/mind_api/models.py: class Event with fields tBeat, lane, note (alias), pitches, velocity, durationBeats.
+
+Compilation path
+- backend/mind_api/mind_core/compiler.py builds Event objects and sets durationBeats based on sustain steps.
+- backend/mind_api/mind_core/lattice.py converts lattice onsets into Event objects with durationBeats derived from dur_steps.
+
+Render/scheduling touchpoints
+- backend/mind_api/mind_core/post/strum.py offsets tBeat and shortens durationBeats accordingly.
+- backend/mind_api/mind_core/post/perc.py emits events with durationBeats set per pattern.
+- backend/mind_api/mind_core/reporting/moonlight_report.py reads tBeat and durationBeats for comparison output.

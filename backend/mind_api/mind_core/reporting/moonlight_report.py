@@ -9,11 +9,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from mind_api.models import EquationAST
-from mind_api.mind_core.equation_parser import parse_equation_text
+from mind_api.models import EquationAST, Event
 from mind_api.mind_core.solver import solve_equation_bar
 
 from .mxl_parser import NormalizedNoteEvent, parse_mxl_note_events
+from .moonlight_example import (
+    bars_from_range,
+    build_elements_events,
+    build_equation_ast,
+    load_settings,
+)
 from .normalization import (
     DEFAULT_GRID,
     DEFAULT_TOLERANCE_STEPS,
@@ -44,56 +49,12 @@ class TimingMismatch:
     solver_timings: tuple[PitchTiming, ...]
 
 
-def _parse_key_value_block(path: Path) -> dict[str, str]:
-    payload: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-        if value.startswith("\"") and value.endswith("\""):
-            value = value[1:-1]
-        payload[key] = value
-    return payload
-
-
-def _load_equation_from_example(path: Path) -> EquationAST:
-    settings = _parse_key_value_block(path)
-    lane = settings.get("lane", "note")
-    grid = settings.get("grid", DEFAULT_GRID)
-    bars = settings.get("bars", "1-16")
-    key = settings.get("key", "C major")
-    harmony = settings.get("harmony", "1-16:I")
-    motions = settings.get("motions", "sustain(chord)")
-    preset = settings.get("preset")
-
-    equation_text = (
-        "equation("
-        f"lane=\"{lane}\", "
-        f"grid=\"{grid}\", "
-        f"bars=\"{bars}\", "
-        f"key=\"{key}\", "
-        f"harmony=\"{harmony}\", "
-        f"motions=\"{motions}\""
-        + (f", preset=\"{preset}\"" if preset else "")
-        + ")"
-    )
-    ast, diagnostics = parse_equation_text(equation_text)
-    if diagnostics or ast is None:
-        messages = "; ".join(diag.message for diag in diagnostics)
-        raise ValueError(f"Failed to parse equation from {path}: {messages}")
-    return ast
-
-
-def _bars_from_range(bars: str) -> range:
-    start_raw, end_raw = bars.split("-", 1)
-    start = int(start_raw.strip())
-    end = int(end_raw.strip())
-    return range(start - 1, end)
+@dataclass(frozen=True)
+class SoundingStateDiff:
+    bar_index: int
+    step: int
+    missing_pitches: tuple[int, ...]
+    extra_pitches: tuple[int, ...]
 
 
 def _collect_solver_events(ast: EquationAST, bars: Iterable[int]) -> list[NormalizedNoteEvent]:
@@ -129,6 +90,48 @@ def _collect_solver_events(ast: EquationAST, bars: Iterable[int]) -> list[Normal
                     )
                 )
     return events
+
+
+def _collect_elements_events(
+    events: Iterable[Event],
+    *,
+    grid: str,
+    bars: Iterable[int],
+) -> list[NormalizedNoteEvent]:
+    normalized: list[NormalizedNoteEvent] = []
+    steps_per_bar = steps_per_bar_from_grid(grid)
+    bar_set = set(bars)
+    for event in events:
+        bar_index = int(event.tBeat // 4)
+        if bar_index not in bar_set:
+            continue
+        bar_onset = event.tBeat - (bar_index * 4.0)
+        onset = quantize_beats_to_grid_steps(
+            bar_onset,
+            steps_per_bar=steps_per_bar,
+            tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+        )
+        duration = quantize_beats_to_grid_steps(
+            event.durationBeats,
+            steps_per_bar=steps_per_bar,
+            tolerance_steps=DEFAULT_TOLERANCE_STEPS,
+        )
+        pitches = list(event.pitches)
+        if not pitches and event.note is not None:
+            pitches.append(event.note)
+        for pitch in pitches:
+            normalized.append(
+                NormalizedNoteEvent(
+                    bar_index=bar_index,
+                    grid_onset=onset,
+                    duration=duration,
+                    pitch=pitch,
+                    voice="elements",
+                    staff=1,
+                    part_id="elements",
+                )
+            )
+    return normalized
 
 
 def _group_by_bar_onset(
@@ -203,6 +206,57 @@ def _diff_onsets(
     return onset_diffs, timing_mismatches
 
 
+def _build_sounding_state(
+    events: Iterable[NormalizedNoteEvent],
+    *,
+    steps_per_bar: int,
+    bars: Iterable[int],
+) -> dict[int, dict[int, set[int]]]:
+    state: dict[int, dict[int, set[int]]] = defaultdict(lambda: defaultdict(set))
+    bar_set = set(bars)
+    for event in events:
+        if event.bar_index not in bar_set:
+            continue
+        onset_step = int(round(event.grid_onset))
+        duration_steps = max(1, int(round(event.duration)))
+        end_step = min(steps_per_bar, onset_step + duration_steps)
+        for step in range(onset_step, end_step):
+            state[event.bar_index][step].add(event.pitch)
+    return state
+
+
+def _diff_sounding_state(
+    solver_events: Iterable[NormalizedNoteEvent],
+    mxl_events: Iterable[NormalizedNoteEvent],
+    *,
+    steps_per_bar: int,
+    bars: Iterable[int],
+) -> list[SoundingStateDiff]:
+    solver_state = _build_sounding_state(
+        solver_events, steps_per_bar=steps_per_bar, bars=bars
+    )
+    mxl_state = _build_sounding_state(
+        mxl_events, steps_per_bar=steps_per_bar, bars=bars
+    )
+    diffs: list[SoundingStateDiff] = []
+    for bar_index in sorted(set(solver_state) | set(mxl_state) | set(bars)):
+        for step in range(steps_per_bar):
+            solver_pitches = solver_state.get(bar_index, {}).get(step, set())
+            mxl_pitches = mxl_state.get(bar_index, {}).get(step, set())
+            missing = tuple(sorted(mxl_pitches - solver_pitches))
+            extra = tuple(sorted(solver_pitches - mxl_pitches))
+            if missing or extra:
+                diffs.append(
+                    SoundingStateDiff(
+                        bar_index=bar_index,
+                        step=step,
+                        missing_pitches=missing,
+                        extra_pitches=extra,
+                    )
+                )
+    return diffs
+
+
 def compare_solver_events_to_mxl(
     ast: EquationAST,
     mxl_path: Path,
@@ -212,8 +266,30 @@ def compare_solver_events_to_mxl(
     bar_start: int | None = None,
     bar_end: int | None = None,
 ) -> tuple[list[OnsetDiff], list[TimingMismatch]]:
-    bars = _bars_from_range(ast.bars)
+    bars = bars_from_range(ast.bars)
     solver_events = _collect_solver_events(ast, bars)
+    mxl_events = parse_mxl_note_events(
+        mxl_path,
+        part_ids=part_ids,
+        staff=staff,
+        bar_start=bar_start,
+        bar_end=bar_end,
+    )
+    return _diff_onsets(solver_events, mxl_events)
+
+
+def compare_elements_events_to_mxl(
+    events: Iterable[Event],
+    *,
+    grid: str,
+    bars: Iterable[int],
+    mxl_path: Path,
+    part_ids: Iterable[str] = ("P1",),
+    staff: int = 1,
+    bar_start: int | None = None,
+    bar_end: int | None = None,
+) -> tuple[list[OnsetDiff], list[TimingMismatch]]:
+    solver_events = _collect_elements_events(events, grid=grid, bars=bars)
     mxl_events = parse_mxl_note_events(
         mxl_path,
         part_ids=part_ids,
@@ -261,6 +337,8 @@ def _render_text_report(
 def _as_json(
     onset_diffs: list[OnsetDiff],
     timing_mismatches: list[TimingMismatch],
+    *,
+    sounding_state_diffs: list[SoundingStateDiff] | None = None,
 ) -> str:
     payload = {
         "onset_differences": [
@@ -292,6 +370,21 @@ def _as_json(
             "timing_mismatch_count": len(timing_mismatches),
         },
     }
+    if sounding_state_diffs is not None:
+        payload["compare_modes"] = {
+            "sounding_state": {
+                "diff_count": len(sounding_state_diffs),
+            }
+        }
+        payload["sounding_state_differences"] = [
+            {
+                "bar": diff.bar_index + 1,
+                "grid_onset": diff.step,
+                "missing_pitches": list(diff.missing_pitches),
+                "extra_pitches": list(diff.extra_pitches),
+            }
+            for diff in sounding_state_diffs
+        ]
     return json.dumps(payload, indent=2)
 
 
@@ -300,7 +393,7 @@ def main() -> None:
     parser.add_argument(
         "--equation",
         type=Path,
-        default=Path("docs/examples/moonlight_v7_1.txt"),
+        default=Path("docs/examples/moonlight_v7_3.txt"),
         help="Path to the Moonlight equation example text.",
     )
     parser.add_argument(
@@ -326,22 +419,62 @@ def main() -> None:
         action="store_true",
         help="Emit the report as JSON.",
     )
+    parser.add_argument(
+        "--compare-mode",
+        choices=("note_on", "sounding_state"),
+        default="note_on",
+        help="Comparison mode for reporting (default: note_on).",
+    )
     args = parser.parse_args()
 
-    ast = _load_equation_from_example(args.equation)
-    bars = _bars_from_range(ast.bars)
-    solver_events = _collect_solver_events(ast, bars)
+    settings = load_settings(args.equation)
+    mode = settings.get("mode", "equation").strip().lower()
+    if mode == "elements":
+        elements_events, grid, bars = build_elements_events(settings)
+        solver_events = _collect_elements_events(
+            elements_events, grid=grid, bars=bars
+        )
+    else:
+        ast = build_equation_ast(settings)
+        bars = bars_from_range(ast.bars)
+        solver_events = _collect_solver_events(ast, bars)
 
     mxl_events = parse_mxl_note_events(
         args.mxl, part_ids=args.part_id, staff=args.staff, bar_start=1, bar_end=16
     )
 
     onset_diffs, timing_mismatches = _diff_onsets(solver_events, mxl_events)
+    sounding_state_diffs: list[SoundingStateDiff] | None = None
+    if args.compare_mode == "sounding_state":
+        if mode == "elements":
+            grid = settings.get("grid", DEFAULT_GRID)
+        else:
+            grid = ast.grid
+        steps_per_bar = steps_per_bar_from_grid(grid)
+        sounding_state_diffs = _diff_sounding_state(
+            solver_events,
+            mxl_events,
+            steps_per_bar=steps_per_bar,
+            bars=bars,
+        )
 
     if args.json:
-        print(_as_json(onset_diffs, timing_mismatches))
+        print(
+            _as_json(
+                onset_diffs,
+                timing_mismatches,
+                sounding_state_diffs=sounding_state_diffs,
+            )
+        )
     else:
-        print(_render_text_report(onset_diffs, timing_mismatches))
+        report = _render_text_report(onset_diffs, timing_mismatches)
+        if sounding_state_diffs is not None:
+            report = (
+                report
+                + "\n\nSounding-state differences: "
+                + str(len(sounding_state_diffs))
+            )
+        print(report)
 
 
 if __name__ == "__main__":

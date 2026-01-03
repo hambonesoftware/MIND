@@ -83,6 +83,7 @@ def parse_mxl_note_events(
         if part_filter and part_id not in part_filter:
             continue
 
+        divisions = 1
         measure_index = 0
         for measure in part.findall(f"{namespace}measure"):
             measure_index += 1
@@ -91,7 +92,7 @@ def parse_mxl_note_events(
             if bar_end is not None and measure_index > bar_end:
                 break
 
-            divisions = _measure_divisions(measure, namespace)
+            divisions = _measure_divisions(measure, namespace) or divisions
             measure_cursor = Fraction(0, 1)
             last_note_onset: Optional[Fraction] = None
 
@@ -102,10 +103,12 @@ def parse_mxl_note_events(
 
                 if element.tag == f"{namespace}backup":
                     measure_cursor -= _duration_in_beats(element, namespace, divisions)
+                    last_note_onset = None
                     continue
 
                 if element.tag == f"{namespace}forward":
                     measure_cursor += _duration_in_beats(element, namespace, divisions)
+                    last_note_onset = None
                     continue
 
                 if element.tag != f"{namespace}note":
@@ -189,11 +192,11 @@ def _extract_namespace(tag: str) -> str:
     return ""
 
 
-def _measure_divisions(measure: ElementTree.Element, namespace: str) -> int:
+def _measure_divisions(measure: ElementTree.Element, namespace: str) -> Optional[int]:
     attributes = measure.find(f"{namespace}attributes")
     if attributes is None:
-        return 1
-    return _divisions_from_attributes(attributes, namespace) or 1
+        return None
+    return _divisions_from_attributes(attributes, namespace)
 
 
 def _child_text(parent: ElementTree.Element, tag: str) -> Optional[str]:

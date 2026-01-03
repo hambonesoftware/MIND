@@ -1,0 +1,14 @@
+Phase 03 sustain semantics notes
+
+Changes
+- Added sustain policies in motions/sustain.py:
+  - hold_until_change: start tones on chord-change steps and hold until the next change.
+  - pedal_hold: start tones on chord-change steps and hold until the next pedal lift (or bar end).
+- Updated solver sustain motion to build stepwise harmony and pass policy + pedal lift steps to apply_sustain.
+
+Tests
+- pytest -q backend/tests/test_sustain_semantics.py
+
+Usage notes
+- sustain(policy=hold_until_change) uses HarmonyPlan chord changes as boundaries.
+- sustain(policy=pedal_hold,pedal_lifts=12) holds tones through chord changes until the specified lift step.
