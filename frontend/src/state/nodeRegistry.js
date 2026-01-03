@@ -1,30 +1,31 @@
 const PORT_TYPES = {
-  TRIGGER: 'trigger',
-  SIGNAL: 'signal',
-  NUMBER: 'number',
-  BOOL: 'bool',
+  EVENTS: 'events',
+  CONTROL: 'control',
+  AUDIO_OUT: 'audioOut',
+  THEORY: 'theory',
 };
 
-const NODE_REGISTRY = {
+const nodeRegistry = {
   Start: {
     label: 'Start',
     category: 'Flow',
-    ports: {
-      inputs: [],
-      outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.TRIGGER }],
-    },
-    defaultParams: {
+    inputs: [],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.EVENTS }],
+    paramSchema: {},
+    defaults: {
       label: 'Start',
     },
   },
   Beat: {
     label: 'Beat',
     category: 'Rhythm',
-    ports: {
-      inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.TRIGGER, required: false }],
-      outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.TRIGGER }],
+    inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.EVENTS, required: false }],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.EVENTS }],
+    paramSchema: {
+      pattern: { type: 'string' },
+      grid: { type: 'string' },
     },
-    defaultParams: {
+    defaults: {
       pattern: 'x...x...',
       grid: '1/4',
     },
@@ -32,37 +33,42 @@ const NODE_REGISTRY = {
   Transform: {
     label: 'Transform',
     category: 'Control',
-    ports: {
-      inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.SIGNAL, required: true }],
-      outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.SIGNAL }],
+    inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.EVENTS, required: true }],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.EVENTS }],
+    paramSchema: {
+      mode: { type: 'string' },
+      amount: { type: 'number' },
     },
-    defaultParams: {
-      operation: 'scale',
+    defaults: {
+      mode: 'arpeggiate',
       amount: 1,
     },
   },
   Gate: {
     label: 'Gate',
     category: 'Control',
-    ports: {
-      inputs: [
-        { id: 'signal', label: 'Signal', type: PORT_TYPES.TRIGGER, required: true },
-        { id: 'gate', label: 'Gate', type: PORT_TYPES.BOOL, required: false },
-      ],
-      outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.TRIGGER }],
+    inputs: [
+      { id: 'signal', label: 'Signal', type: PORT_TYPES.EVENTS, required: true },
+      { id: 'gate', label: 'Gate', type: PORT_TYPES.CONTROL, required: false },
+    ],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.EVENTS }],
+    paramSchema: {
+      threshold: { type: 'number' },
     },
-    defaultParams: {
+    defaults: {
       threshold: 0.5,
     },
   },
   Counter: {
     label: 'Counter',
     category: 'Control',
-    ports: {
-      inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.TRIGGER, required: true }],
-      outputs: [{ id: 'count', label: 'Count', type: PORT_TYPES.NUMBER }],
+    inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.EVENTS, required: true }],
+    outputs: [{ id: 'count', label: 'Count', type: PORT_TYPES.CONTROL }],
+    paramSchema: {
+      start: { type: 'number' },
+      step: { type: 'number' },
     },
-    defaultParams: {
+    defaults: {
       start: 0,
       step: 1,
     },
@@ -70,26 +76,28 @@ const NODE_REGISTRY = {
   Switch: {
     label: 'Switch',
     category: 'Control',
-    ports: {
-      inputs: [
-        { id: 'a', label: 'A', type: PORT_TYPES.SIGNAL, required: true },
-        { id: 'b', label: 'B', type: PORT_TYPES.SIGNAL, required: true },
-        { id: 'select', label: 'Select', type: PORT_TYPES.NUMBER, required: true },
-      ],
-      outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.SIGNAL }],
+    inputs: [
+      { id: 'a', label: 'A', type: PORT_TYPES.CONTROL, required: true },
+      { id: 'b', label: 'B', type: PORT_TYPES.CONTROL, required: true },
+      { id: 'select', label: 'Select', type: PORT_TYPES.CONTROL, required: true },
+    ],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.CONTROL }],
+    paramSchema: {
+      defaultIndex: { type: 'number' },
     },
-    defaultParams: {
+    defaults: {
       defaultIndex: 0,
     },
   },
   Render: {
     label: 'Render',
     category: 'Output',
-    ports: {
-      inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.SIGNAL, required: true }],
-      outputs: [],
+    inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.EVENTS, required: true }],
+    outputs: [{ id: 'out', label: 'Out', type: PORT_TYPES.AUDIO_OUT }],
+    paramSchema: {
+      output: { type: 'string' },
     },
-    defaultParams: {
+    defaults: {
       output: 'main',
     },
   },
@@ -107,35 +115,38 @@ function generateId(prefix) {
 }
 
 function listNodeTypes() {
-  return Object.keys(NODE_REGISTRY);
+  return Object.keys(nodeRegistry);
 }
 
 function getNodeDefinition(type) {
-  return NODE_REGISTRY[type] ? clone(NODE_REGISTRY[type]) : null;
+  return nodeRegistry[type] ? clone(nodeRegistry[type]) : null;
 }
 
 function getPortDefinition(nodeType, portId, direction) {
-  const definition = NODE_REGISTRY[nodeType];
+  const definition = nodeRegistry[nodeType];
   if (!definition) {
     return null;
   }
-  const ports = direction === 'outputs' ? definition.ports.outputs : definition.ports.inputs;
+  const ports = direction === 'outputs' ? definition.outputs : definition.inputs;
   return ports.find((port) => port.id === portId) || null;
 }
 
 function createNode(type, overrides = {}) {
-  const definition = NODE_REGISTRY[type];
+  const definition = nodeRegistry[type];
   if (!definition) {
     throw new Error(`Unknown node type: ${type}`);
   }
-  const params = { ...definition.defaultParams, ...overrides.params };
+  const params = { ...definition.defaults, ...overrides.params };
   const ui = { x: 0, y: 0, ...overrides.ui };
   return {
     id: overrides.id || generateId(type.toLowerCase()),
     type,
     params,
     ui,
-    ports: clone(definition.ports),
+    ports: {
+      inputs: clone(definition.inputs),
+      outputs: clone(definition.outputs),
+    },
   };
 }
 
@@ -149,7 +160,10 @@ function validateConnection({ fromType, fromPortId, toType, toPortId }) {
     return { ok: false, reason: 'Unknown target port.' };
   }
   if (fromPort.type !== toPort.type) {
-    return { ok: false, reason: 'Port types do not match.' };
+    return {
+      ok: false,
+      reason: `Port types do not match (${fromPort.type} -> ${toPort.type}).`,
+    };
   }
   return { ok: true };
 }
@@ -169,11 +183,11 @@ function validateRequiredInputs(nodes, edges) {
   }
   const missing = [];
   for (const node of nodes) {
-    const definition = NODE_REGISTRY[node.type];
+    const definition = nodeRegistry[node.type];
     if (!definition) {
       continue;
     }
-    const requiredInputs = definition.ports.inputs.filter(port => port.required);
+    const requiredInputs = definition.inputs.filter(port => port.required);
     for (const input of requiredInputs) {
       const connected = (edgesByTarget.get(node.id) || []).some(edge => edge.to?.portId === input.id);
       if (!connected) {
@@ -190,7 +204,7 @@ function validateRequiredInputs(nodes, edges) {
 
 export {
   PORT_TYPES,
-  NODE_REGISTRY,
+  nodeRegistry,
   listNodeTypes,
   getNodeDefinition,
   getPortDefinition,
