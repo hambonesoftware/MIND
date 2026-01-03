@@ -101,6 +101,10 @@ export class SampleAudioEngine {
     this.scheduled = [];
   }
 
+  getCurrentTime() {
+    return this.ac ? this.ac.currentTime : 0;
+  }
+
   /**
    * Schedule a list of events relative to the current time.  Each
    * event object should contain ``tBeat`` (time in beats), ``lane``,
@@ -159,7 +163,9 @@ export class SampleAudioEngine {
         const vel = ev.velocity ?? 80;
         gainNode.gain.value = Math.max(0, Math.min(1, vel / 127));
         src.connect(gainNode).connect(this.masterGain);
-        const startTime = now + (whenSec || 0) + ev.tBeat * beatDur;
+        const startTime = (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime))
+          ? ev.audioTime
+          : now + (whenSec || 0) + ev.tBeat * beatDur;
         const durationSec = (ev.durationBeats ?? 0.1) * beatDur;
         try {
           src.start(startTime);
@@ -170,7 +176,9 @@ export class SampleAudioEngine {
       }
       // Record scheduled time for visualisation purposes using the first
       // pitch only.  Visualisation does not need to track each voice.
-      const startTime = now + (whenSec || 0) + ev.tBeat * beatDur;
+      const startTime = (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime))
+        ? ev.audioTime
+        : now + (whenSec || 0) + ev.tBeat * beatDur;
       this.scheduled.push({ ...ev, when: startTime });
     }
   }
