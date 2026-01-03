@@ -286,3 +286,282 @@ label.mute-label {
   font-weight: 600;
   word-break: break-word;
 }
+
+.flow-editor {
+  display: grid;
+  grid-template-columns: 220px 1fr 260px;
+  gap: 12px;
+  padding: 12px 20px 20px;
+}
+
+.flow-center {
+  min-height: 420px;
+  background: #f5f7fb;
+  border: 1px solid #d9e1f2;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-panel {
+  border: 1px solid #d8dce6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 420px;
+}
+
+.flow-panel-header {
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.flow-search {
+  padding: 6px 8px;
+  border: 1px solid #d2d7e2;
+  border-radius: 6px;
+}
+
+.flow-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.flow-palette-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-palette-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.flow-palette-item {
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid #d2d7e2;
+  border-radius: 6px;
+  background: #f9fafc;
+  cursor: pointer;
+}
+
+.flow-palette-item:hover {
+  background: #eef2fb;
+}
+
+.flow-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.flow-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.flow-viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.flow-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.flow-edge {
+  pointer-events: stroke;
+}
+
+.flow-edge-selected {
+  stroke: #1d4ed8;
+  stroke-width: 3;
+}
+
+.flow-nodes {
+  position: absolute;
+  inset: 0;
+}
+
+.flow-node {
+  position: absolute;
+  width: 180px;
+  background: #fff;
+  border: 1px solid #c9d3e6;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  font-size: 0.85rem;
+}
+
+.flow-node-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.flow-node-header {
+  padding: 6px 8px;
+  background: #eef2fb;
+  border-bottom: 1px solid #d5def1;
+  font-weight: bold;
+  cursor: grab;
+}
+
+.flow-node-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+}
+
+.flow-node-ports {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-port {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.flow-port-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.flow-port-input .flow-port-dot {
+  background: #94a3b8;
+}
+
+.flow-port-output .flow-port-dot {
+  background: #2563eb;
+}
+
+.flow-port-connecting .flow-port-dot {
+  background: #f59e0b;
+}
+
+.flow-port-valid .flow-port-dot {
+  background: #16a34a;
+}
+
+.flow-port-invalid .flow-port-dot {
+  background: #dc2626;
+}
+
+.flow-inline-error {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.flow-inspector-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.flow-inspector-title {
+  font-weight: bold;
+}
+
+.flow-inspector-meta {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.flow-inspector-empty {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.flow-inspector-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.flow-field-label {
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.flow-field-input {
+  padding: 6px 8px;
+  border: 1px solid #d2d7e2;
+  border-radius: 6px;
+}
+
+.flow-danger {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.flow-bottom {
+  padding: 10px 20px 30px;
+}
+
+.toast-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2000;
+}
+
+.toast {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+}
+
+.toast-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.toast-info {
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border: 1px solid #bae6fd;
+}

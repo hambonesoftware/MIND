@@ -1,0 +1,450 @@
+import { getNodeDefinition, validateConnection } from '../state/nodeRegistry.js';
+
+const EDGE_COLOR = '#3a6ea5';
+const EDGE_COLOR_MUTED = '#c7d7ea';
+
+function buildPortLabel(port) {
+  if (!port) {
+    return '';
+  }
+  return port.label || port.id;
+}
+
+export function createFlowCanvas({ store, toast } = {}) {
+  const container = document.createElement('div');
+  container.className = 'flow-canvas';
+
+  const viewportLayer = document.createElement('div');
+  viewportLayer.className = 'flow-viewport';
+
+  const edgeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  edgeSvg.classList.add('flow-edges');
+  edgeSvg.setAttribute('viewBox', '0 0 1 1');
+  const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  edgeGroup.classList.add('flow-edges-group');
+  edgeSvg.appendChild(edgeGroup);
+
+  const tempEdge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  tempEdge.classList.add('flow-edge', 'flow-edge-temp');
+  tempEdge.setAttribute('stroke', EDGE_COLOR_MUTED);
+  tempEdge.setAttribute('fill', 'none');
+  tempEdge.setAttribute('stroke-width', '2');
+  edgeGroup.appendChild(tempEdge);
+
+  const nodeLayer = document.createElement('div');
+  nodeLayer.className = 'flow-nodes';
+
+  viewportLayer.appendChild(edgeSvg);
+  viewportLayer.appendChild(nodeLayer);
+  container.appendChild(viewportLayer);
+
+  const inlineError = document.createElement('div');
+  inlineError.className = 'flow-inline-error';
+  inlineError.hidden = true;
+  container.appendChild(inlineError);
+
+  const nodeElements = new Map();
+  const edgeElements = new Map();
+  let currentState = store.getState();
+  let connection = null;
+  let isPanning = false;
+  let panStart = null;
+
+  const setInlineError = (message) => {
+    if (message) {
+      inlineError.textContent = message;
+      inlineError.hidden = false;
+    } else {
+      inlineError.hidden = true;
+    }
+  };
+
+  const getViewportTransform = () => {
+    const { x, y, zoom } = currentState.viewport;
+    return { x, y, zoom };
+  };
+
+  const getPortCenterInGraph = (portEl) => {
+    const portRect = portEl.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const { x, y, zoom } = getViewportTransform();
+    const screenX = portRect.left + portRect.width / 2 - containerRect.left;
+    const screenY = portRect.top + portRect.height / 2 - containerRect.top;
+    return {
+      x: (screenX - x) / zoom,
+      y: (screenY - y) / zoom,
+    };
+  };
+
+  const updateViewportTransform = () => {
+    const { x, y, zoom } = getViewportTransform();
+    nodeLayer.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+    edgeGroup.setAttribute('transform', `translate(${x} ${y}) scale(${zoom})`);
+  };
+
+  const drawCurve = (from, to) => {
+    const dx = Math.max(60, Math.abs(to.x - from.x));
+    const c1 = { x: from.x + dx * 0.45, y: from.y };
+    const c2 = { x: to.x - dx * 0.45, y: to.y };
+    return `M ${from.x} ${from.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${to.x} ${to.y}`;
+  };
+
+  const clearConnection = () => {
+    if (connection?.fromPortEl) {
+      connection.fromPortEl.classList.remove('flow-port-connecting');
+    }
+    tempEdge.setAttribute('d', '');
+    connection = null;
+    setInlineError(null);
+  };
+
+  const addEdgePath = (edge) => {
+    let path = edgeElements.get(edge.id);
+    if (!path) {
+      path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.classList.add('flow-edge');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-width', '2');
+      path.dataset.edgeId = edge.id;
+      path.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        store.setSelection({ nodes: [], edges: [edge.id] });
+      });
+      edgeElements.set(edge.id, path);
+      edgeGroup.appendChild(path);
+    }
+    path.setAttribute('stroke', EDGE_COLOR);
+    if (currentState.selection.edges.includes(edge.id)) {
+      path.classList.add('flow-edge-selected');
+    } else {
+      path.classList.remove('flow-edge-selected');
+    }
+    return path;
+  };
+
+  const renderEdges = () => {
+    const edges = currentState.edges || [];
+    const portLookup = new Map();
+    for (const nodeEl of nodeLayer.querySelectorAll('[data-port-id]')) {
+      const key = `${nodeEl.dataset.nodeId}:${nodeEl.dataset.portId}:${nodeEl.dataset.portDirection}`;
+      portLookup.set(key, nodeEl);
+    }
+
+    const seen = new Set();
+    for (const edge of edges) {
+      const sourceKey = `${edge.from.nodeId}:${edge.from.portId}:output`;
+      const targetKey = `${edge.to.nodeId}:${edge.to.portId}:input`;
+      const sourceEl = portLookup.get(sourceKey);
+      const targetEl = portLookup.get(targetKey);
+      if (!sourceEl || !targetEl) {
+        continue;
+      }
+      const source = getPortCenterInGraph(sourceEl);
+      const target = getPortCenterInGraph(targetEl);
+      const path = addEdgePath(edge);
+      path.setAttribute('d', drawCurve(source, target));
+      seen.add(edge.id);
+    }
+    for (const [edgeId, path] of edgeElements.entries()) {
+      if (!seen.has(edgeId)) {
+        path.remove();
+        edgeElements.delete(edgeId);
+      }
+    }
+  };
+
+  const renderNodes = () => {
+    const nodes = currentState.nodes || [];
+    const seen = new Set();
+
+    for (const node of nodes) {
+      let nodeEl = nodeElements.get(node.id);
+      if (!nodeEl) {
+        const definition = getNodeDefinition(node.type);
+        nodeEl = document.createElement('div');
+        nodeEl.className = 'flow-node';
+        nodeEl.dataset.nodeId = node.id;
+
+        const header = document.createElement('div');
+        header.className = 'flow-node-header';
+        header.textContent = node.params?.label || definition?.label || node.type;
+        header.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) {
+            return;
+          }
+          event.stopPropagation();
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const origin = { ...node.ui };
+          const { zoom } = getViewportTransform();
+          const onMove = (moveEvent) => {
+            const dx = (moveEvent.clientX - startX) / zoom;
+            const dy = (moveEvent.clientY - startY) / zoom;
+            store.updateNode(node.id, {
+              ui: {
+                ...origin,
+                x: origin.x + dx,
+                y: origin.y + dy,
+              },
+            });
+          };
+          const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+          };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+        });
+
+        const body = document.createElement('div');
+        body.className = 'flow-node-body';
+
+        const inputs = document.createElement('div');
+        inputs.className = 'flow-node-ports flow-node-inputs';
+        const outputs = document.createElement('div');
+        outputs.className = 'flow-node-ports flow-node-outputs';
+
+        const buildPort = (port, direction) => {
+          const portEl = document.createElement('div');
+          portEl.className = `flow-port flow-port-${direction}`;
+          portEl.dataset.nodeId = node.id;
+          portEl.dataset.portId = port.id;
+          portEl.dataset.portDirection = direction;
+          const dot = document.createElement('span');
+          dot.className = 'flow-port-dot';
+          const label = document.createElement('span');
+          label.className = 'flow-port-label';
+          label.textContent = buildPortLabel(port);
+          if (direction === 'input') {
+            portEl.appendChild(dot);
+            portEl.appendChild(label);
+          } else {
+            portEl.appendChild(label);
+            portEl.appendChild(dot);
+          }
+
+          if (direction === 'output') {
+            portEl.addEventListener('pointerdown', (event) => {
+              event.stopPropagation();
+              connection = {
+                fromNodeId: node.id,
+                fromPortId: port.id,
+                fromType: node.type,
+                fromPortEl: portEl,
+              };
+              portEl.classList.add('flow-port-connecting');
+              tempEdge.setAttribute('d', '');
+            });
+          } else {
+            portEl.addEventListener('pointerenter', () => {
+              if (!connection) {
+                return;
+              }
+              const result = validateConnection({
+                fromType: connection.fromType,
+                fromPortId: connection.fromPortId,
+                toType: node.type,
+                toPortId: port.id,
+              });
+              if (result.ok) {
+                portEl.classList.add('flow-port-valid');
+                portEl.classList.remove('flow-port-invalid');
+                setInlineError(null);
+              } else {
+                portEl.classList.add('flow-port-invalid');
+                portEl.classList.remove('flow-port-valid');
+                setInlineError(result.reason);
+              }
+            });
+            portEl.addEventListener('pointerleave', () => {
+              portEl.classList.remove('flow-port-valid', 'flow-port-invalid');
+              setInlineError(null);
+            });
+            portEl.addEventListener('pointerup', (event) => {
+              if (!connection) {
+                return;
+              }
+              event.stopPropagation();
+              const result = validateConnection({
+                fromType: connection.fromType,
+                fromPortId: connection.fromPortId,
+                toType: node.type,
+                toPortId: port.id,
+              });
+              if (!result.ok) {
+                if (toast?.showToast) {
+                  toast.showToast(result.reason, { tone: 'error' });
+                }
+                clearConnection();
+                return;
+              }
+              try {
+                store.addEdge({
+                  from: { nodeId: connection.fromNodeId, portId: connection.fromPortId },
+                  to: { nodeId: node.id, portId: port.id },
+                });
+              } catch (error) {
+                if (toast?.showToast) {
+                  toast.showToast(error.message, { tone: 'error' });
+                }
+              }
+              clearConnection();
+            });
+          }
+          return portEl;
+        };
+
+        const inputPorts = node.ports?.inputs || [];
+        const outputPorts = node.ports?.outputs || [];
+        inputPorts.forEach(port => inputs.appendChild(buildPort(port, 'input')));
+        outputPorts.forEach(port => outputs.appendChild(buildPort(port, 'output')));
+
+        body.appendChild(inputs);
+        body.appendChild(outputs);
+        nodeEl.appendChild(header);
+        nodeEl.appendChild(body);
+        nodeEl.addEventListener('pointerdown', (event) => {
+          event.stopPropagation();
+          store.setSelection({ nodes: [node.id], edges: [] });
+        });
+        nodeElements.set(node.id, nodeEl);
+        nodeLayer.appendChild(nodeEl);
+      } else {
+        const header = nodeEl.querySelector('.flow-node-header');
+        if (header) {
+          const definition = getNodeDefinition(node.type);
+          header.textContent = node.params?.label || definition?.label || node.type;
+        }
+      }
+      nodeEl.style.left = `${node.ui?.x || 0}px`;
+      nodeEl.style.top = `${node.ui?.y || 0}px`;
+      if (currentState.selection.nodes.includes(node.id)) {
+        nodeEl.classList.add('flow-node-selected');
+      } else {
+        nodeEl.classList.remove('flow-node-selected');
+      }
+      seen.add(node.id);
+    }
+
+    for (const [nodeId, nodeEl] of nodeElements.entries()) {
+      if (!seen.has(nodeId)) {
+        nodeEl.remove();
+        nodeElements.delete(nodeId);
+      }
+    }
+  };
+
+  const render = () => {
+    updateViewportTransform();
+    renderNodes();
+    requestAnimationFrame(renderEdges);
+  };
+
+  const handlePointerMove = (event) => {
+    if (connection) {
+      const startEl = connection.fromPortEl;
+      if (startEl) {
+        const from = getPortCenterInGraph(startEl);
+        const { x, y, zoom } = getViewportTransform();
+        const rect = container.getBoundingClientRect();
+        const screenX = event.clientX - rect.left;
+        const screenY = event.clientY - rect.top;
+        const to = {
+          x: (screenX - x) / zoom,
+          y: (screenY - y) / zoom,
+        };
+        tempEdge.setAttribute('d', drawCurve(from, to));
+      }
+    }
+    if (isPanning && panStart) {
+      const dx = event.clientX - panStart.x;
+      const dy = event.clientY - panStart.y;
+      store.setViewport({
+        x: panStart.viewport.x + dx,
+        y: panStart.viewport.y + dy,
+      });
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (connection) {
+      clearConnection();
+    }
+    isPanning = false;
+    panStart = null;
+  };
+
+  container.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) {
+      return;
+    }
+    if (event.target.closest('.flow-node') || event.target.closest('.flow-port')) {
+      return;
+    }
+    const { x, y } = getViewportTransform();
+    isPanning = true;
+    panStart = {
+      x: event.clientX,
+      y: event.clientY,
+      viewport: { x, y },
+    };
+    store.setSelection({ nodes: [], edges: [] });
+  });
+
+  container.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const { zoom, x, y } = getViewportTransform();
+    const delta = event.deltaY > 0 ? 0.9 : 1.1;
+    const nextZoom = Math.min(2, Math.max(0.4, zoom * delta));
+    const rect = container.getBoundingClientRect();
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
+    const worldX = (pointerX - x) / zoom;
+    const worldY = (pointerY - y) / zoom;
+    const nextX = pointerX - worldX * nextZoom;
+    const nextY = pointerY - worldY * nextZoom;
+    store.setViewport({ x: nextX, y: nextY, zoom: nextZoom });
+  }, { passive: false });
+
+  window.addEventListener('pointermove', handlePointerMove);
+  window.addEventListener('pointerup', handlePointerUp);
+
+  const keyHandler = (event) => {
+    if (event.key !== 'Delete' && event.key !== 'Backspace') {
+      return;
+    }
+    const selection = currentState.selection;
+    selection.nodes.forEach(nodeId => store.removeNode(nodeId));
+    selection.edges.forEach(edgeId => store.removeEdge(edgeId));
+  };
+  window.addEventListener('keydown', keyHandler);
+
+  const unsubscribe = store.subscribe((nextState) => {
+    currentState = nextState;
+    render();
+  });
+
+  render();
+
+  const getViewportCenter = () => {
+    const { x, y, zoom } = getViewportTransform();
+    const rect = container.getBoundingClientRect();
+    return {
+      x: (rect.width / 2 - x) / zoom,
+      y: (rect.height / 2 - y) / zoom,
+    };
+  };
+
+  const destroy = () => {
+    unsubscribe();
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    window.removeEventListener('keydown', keyHandler);
+  };
+
+  return {
+    element: container,
+    getViewportCenter,
+    destroy,
+  };
+}
