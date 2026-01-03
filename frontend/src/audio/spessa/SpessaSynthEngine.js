@@ -77,6 +77,21 @@ function withTimeout(promise, ms, label) {
   ]);
 }
 
+function detectMobileContext() {
+  try {
+    if (navigator?.userAgentData?.mobile !== undefined) {
+      return Boolean(navigator.userAgentData.mobile);
+    }
+  } catch {}
+
+  try {
+    const ua = navigator?.userAgent || '';
+    return /Android|iPhone|iPad|iPod|Mobi/i.test(ua);
+  } catch {
+    return false;
+  }
+}
+
 // --- Preset mapping (copied from Sf2SynthEngine semantics) -------------------
 const GM_NAME_TO_PROGRAM = {
   gm_piano: 0,
@@ -164,7 +179,10 @@ export class SpessaSynthEngine {
 
     // config
     this._sf2Url = (options.sf2Url || DEFAULT_SF2_URL);
-    this._latencyHint = 'interactive';
+    this._isMobile = detectMobileContext();
+    this._latencyHint = (this._isMobile || options.preferStablePlayback)
+      ? 'playback'
+      : 'interactive';
 
     // auto-resume bookkeeping
     this._autoResumeInstalled = false;
