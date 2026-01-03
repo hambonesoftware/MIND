@@ -18,8 +18,17 @@ def test_compile_equation_render_end_to_end():
         'equation(lane="note", grid="1/12", bars="1-16", key="C minor", '
         'harmony="1-4:i", motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")'
     )
+    start_node = NodeInput(id="start", kind="start")
     theory_node = NodeInput(id="eq-1", kind="theory", text=equation_text, enabled=True)
-    base_req = CompileRequest(seed=1, bpm=120.0, barIndex=0, nodes=[theory_node])
+    base_req = CompileRequest(
+        seed=1,
+        bpm=120.0,
+        barIndex=0,
+        nodes=[start_node, theory_node],
+        edges=[
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "eq-1"}},
+        ],
+    )
     base_resp = compile_request(base_req)
 
     render_node = NodeInput(
@@ -32,7 +41,16 @@ def test_compile_equation_render_end_to_end():
         ),
         enabled=True,
     )
-    render_req = CompileRequest(seed=1, bpm=120.0, barIndex=0, nodes=[theory_node, render_node])
+    render_req = CompileRequest(
+        seed=1,
+        bpm=120.0,
+        barIndex=0,
+        nodes=[start_node, theory_node, render_node],
+        edges=[
+            {"from": {"nodeId": "start"}, "to": {"nodeId": "render-1"}},
+            {"from": {"nodeId": "render-1"}, "to": {"nodeId": "eq-1"}},
+        ],
+    )
     render_resp = compile_request(render_req)
 
     assert base_resp.ok is True

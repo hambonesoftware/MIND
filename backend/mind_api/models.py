@@ -83,6 +83,7 @@ class StrumSpec(BaseModel):
 
 class PercSpec(BaseModel):
     enabled: bool = False
+    grid: Optional[str] = None
     hat: str = "."
     kick: str = "."
     snare: str = "."
@@ -97,6 +98,13 @@ class RenderSpec(BaseModel):
 # Compile models
 # ---------------------------
 
+class PortDefinition(BaseModel):
+    id: str
+    direction: Literal["in", "out"] = "in"
+    dataType: Literal["flow", "events"] = "flow"
+    required: bool = True
+
+
 class NodeInput(BaseModel):
     id: str
     kind: Literal["theory", "render", "start"] = "theory"
@@ -109,6 +117,8 @@ class NodeInput(BaseModel):
     # IMPORTANT: this must be a RenderSpec (not a Dict) so apply_render_chain can do render.strum.enabled
     render: Optional[RenderSpec] = None
     childId: Optional[str] = None
+    inputPorts: List["PortDefinition"] = Field(default_factory=list)
+    outputPorts: List["PortDefinition"] = Field(default_factory=list)
 
     @field_validator("kind", mode="before")
     @classmethod
@@ -128,6 +138,15 @@ class NodeInput(BaseModel):
             return value
         if isinstance(value, dict):
             return RenderSpec.model_validate(value)
+        return value
+
+    @field_validator("inputPorts", "outputPorts", mode="before")
+    @classmethod
+    def coerce_ports(cls, value: Any) -> Any:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [PortDefinition.model_validate(item) if isinstance(item, dict) else item for item in value]
         return value
 
 
@@ -241,6 +260,7 @@ class PresetsResponse(BaseModel):
 class EdgeEndpoint(BaseModel):
     nodeId: str
     portId: Optional[str] = None
+    portType: Optional[Literal["flow", "events"]] = None
 
 
 class EdgeInput(BaseModel):
