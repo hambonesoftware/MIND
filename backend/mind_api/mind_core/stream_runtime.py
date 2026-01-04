@@ -535,6 +535,9 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
         process_token(token)
 
     next_state.activeTokens = next_bar_tokens
+    for node in nodes_by_id.values():
+        if node.type == "join" and node.id not in next_state.joins:
+            next_state.joins[node.id] = []
 
     ok = not any(d.level == "error" for d in diagnostics)
     return CompileResponse(

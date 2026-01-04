@@ -11,7 +11,8 @@ import json
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from .models import (
     ParseRequest,
@@ -32,7 +33,10 @@ api_router = APIRouter()
 @api_router.post("/parse", response_model=ParseResponse)
 async def api_parse(req: ParseRequest) -> ParseResponse:
     """Validate a node script and return an AST and diagnostics."""
-    ast, diagnostics = parse_text(req.text)
+    try:
+        ast, diagnostics = parse_text(req.text)
+    except ValueError as exc:
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(exc)})
     ok = not diagnostics
     return ParseResponse(ok=ok, ast=ast, diagnostics=diagnostics)
 

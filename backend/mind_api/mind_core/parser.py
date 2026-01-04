@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from typing import List, Optional, Tuple
 
-from ..models import Diagnostic, ParsedAST, EquationAST
+from ..models import Diagnostic, ParsedAST
 
 
 # beat(note, "9..9..", grid="1/16", bars="1-16", preset="gm:0:0", notes="C4:E4:G4", poly="mono", sequence="C4 E4", motions="...")
@@ -25,11 +25,8 @@ _BEAT_CALL_RE = re.compile(
     re.DOTALL,
 )
 
-# equation(name="...", lane="note", grid="1/12", bars="1-16", preset="...", key="C# minor", harmony="...", motions="...")
-_EQUATION_CALL_RE = re.compile(
-    r"""^\s*equation\s*\(\s*(.*?)\s*\)\s*$""",
-    re.DOTALL,
-)
+# detect deprecated equation calls
+_EQUATION_PREFIX_RE = re.compile(r"\bequation\s*\(", re.DOTALL)
 
 # key="value" style kwargs, with either "..." or bare tokens (bare used for things like 1/16)
 _KWARG_RE = re.compile(
@@ -62,52 +59,7 @@ def _validate_bar_range(bars: str) -> Optional[str]:
         return "bars must be in form 'start-end' (e.g. '1-16')"
 
 
-def _parse_equation(text: str) -> Tuple[Optional[EquationAST], List[Diagnostic]]:
-    diags: List[Diagnostic] = []
-
-    m = _EQUATION_CALL_RE.match(text)
-    if not m:
-        diags.append(Diagnostic(level="error", message="Invalid equation() syntax", line=1, col=1))
-        return None, diags
-
-    inner = m.group(1) or ""
-    kwargs = _parse_kwargs(inner)
-
-    name = kwargs.get("name")
-    lane = kwargs.get("lane") or "note"
-    grid = kwargs.get("grid") or "1/12"
-    bars = kwargs.get("bars") or "1-16"
-    preset = kwargs.get("preset")
-
-    key = kwargs.get("key") or "C major"
-    harmony = kwargs.get("harmony") or "1-16:I"
-    motions = kwargs.get("motions") or "sustain(chord)"
-
-    if grid not in _ALLOWED_GRIDS:
-        diags.append(Diagnostic(level="error", message=f"Invalid grid '{grid}'", line=1, col=1))
-        return None, diags
-
-    bars_err = _validate_bar_range(bars)
-    if bars_err:
-        diags.append(Diagnostic(level="error", message=bars_err, line=1, col=1))
-        return None, diags
-
-    return (
-        EquationAST(
-            name=name,
-            lane=lane,
-            grid=grid,
-            bars=bars,
-            preset=preset,
-            key=key,
-            harmony=harmony,
-            motions=motions,
-        ),
-        diags,
-    )
-
-
-def parse_text(text: str) -> Tuple[Optional[ParsedAST | EquationAST], List[Diagnostic]]:
+def parse_text(text: str) -> Tuple[Optional[ParsedAST], List[Diagnostic]]:
     """
     Parse a single node script string into an AST model.
 
@@ -120,12 +72,12 @@ def parse_text(text: str) -> Tuple[Optional[ParsedAST | EquationAST], List[Diagn
         diagnostics.append(Diagnostic(level="error", message="Empty script", line=1, col=1))
         return None, diagnostics
 
-    # Try equation(...) first (used by render blocks)
-    if text.lstrip().startswith("equation"):
-        eq_ast, eq_diags = _parse_equation(text)
-        if eq_diags:
-            return None, eq_diags
-        return eq_ast, []
+    if _EQUATION_PREFIX_RE.search(text):
+        message = (
+            "equation"
+            "(...) is no longer supported in MINDV9. Use FlowGraph v9 or beat(...)."
+        )
+        raise ValueError(message)
 
     # beat(...)
     m = _BEAT_CALL_RE.match(text)

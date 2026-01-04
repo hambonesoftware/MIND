@@ -15,7 +15,7 @@ different performance textures.
 
 1. The client sends a node graph to `/api/compile`.
 2. The compiler traverses roots (nodes not referenced as children).
-3. Theory nodes compile into events (beat patterns or equation solver output).
+3. Theory nodes compile into events (beat patterns).
 4. Render nodes compile their child first, then apply render transforms.
 
 The result is a deterministic list of events for the current bar.
@@ -30,4 +30,4 @@ The result is a deterministic list of events for the current bar.
 
 - Add new render transforms in `backend/mind_api/mind_core/post/`.
 - Add new theory motions in `backend/mind_api/mind_core/motions/`.
-- Extend equation parsing in `backend/mind_api/mind_core/equation_parser.py`.
+- Build new FlowGraph v9 behaviors in `backend/mind_api/mind_core/stream_runtime.py`.

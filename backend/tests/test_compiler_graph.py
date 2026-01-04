@@ -151,7 +151,7 @@ def test_reachable_node_traversal_honors_start_nodes():
 def test_unreachable_nodes_skip_missing_input_validation():
     start = NodeInput(id="start", kind="start")
     reachable = _simple_theory_node("t1")
-    unreachable = NodeInput(id="render-missing", kind="render", render=RenderSpec())
+    unreachable = NodeInput(id="render-missing", kind="render", childId="missing", render=RenderSpec())
     req = _base_request([start, reachable, unreachable])
     req.startNodeIds = ["start"]
     req.edges = [

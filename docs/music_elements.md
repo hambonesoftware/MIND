@@ -95,13 +95,6 @@ events = generate_events(
 ## Quickstart example file
 A runnable example is provided in `docs/examples/texture_quickstart_v7_3.txt`.
 
-Run it through the reporting tool:
-
-```bash
-PYTHONPATH=backend python -m mind_api.mind_core.reporting.moonlight_report \
-  --equation docs/examples/texture_quickstart_v7_3.txt --json
-```
-
 ## Adding a new texture safely
 Checklist:
 - [ ] Deterministic behavior using stable seeds.
