@@ -837,18 +837,56 @@ async function main() {
     const presetResp = await getPresets();
     const presets = presetResp.presets || [];
     const toast = createToastManager();
-    // Create audio engine
-    let audioEngine;
-    try {
-      audioEngine = await createAudioEngine({ strictSf2: true });
-    } catch (err) {
-      toast.showToast('Audio disabled: failed to initialize the SF2 synth.');
-      const nullEngine = new NullAudioEngine();
-      await nullEngine.init();
-      nullEngine.name = 'Audio Disabled';
-      audioEngine = nullEngine;
-    }
+    const placeholderEngine = new NullAudioEngine();
+    await placeholderEngine.init();
+    placeholderEngine.name = 'Audio not started';
+    const audioEngineRef = { current: placeholderEngine };
+    let audioInitPromise = null;
     const graphStore = createGraphStore();
+    const nodeCards = [];
+
+    const syncPresetsToEngine = (engine) => {
+      if (!engine || typeof engine.setPreset !== 'function') return;
+      nodeCards.forEach((card) => {
+        if (card?.presetSelect) {
+          engine.setPreset(card.lane || card.displayName?.toLowerCase?.() || 'lane', card.presetSelect.value);
+        }
+      });
+    };
+
+    const ensureAudioStarted = async (reason = 'play-click') => {
+      if (audioEngineRef.current !== placeholderEngine && audioEngineRef.current) {
+        return audioEngineRef.current;
+      }
+      if (audioInitPromise) {
+        return audioInitPromise;
+      }
+      audioInitPromise = (async () => {
+        console.log('[AudioGate] ensureAudioStarted begin', reason);
+        try {
+          const engine = await createAudioEngine({ strictSf2: true });
+          audioEngineRef.current = engine;
+          syncPresetsToEngine(engine);
+          console.log('[AudioGate] audio engine ready (gesture-gated)', reason, 'engine=', engine.name);
+          if (typeof updateEngineIndicator === 'function') {
+            updateEngineIndicator();
+          }
+          return engine;
+        } catch (err) {
+          console.error('Failed to initialise audio engine:', err);
+          toast.showToast('Audio disabled: failed to initialize the SF2 synth.');
+          const nullEngine = new NullAudioEngine();
+          await nullEngine.init();
+          nullEngine.name = 'Audio Disabled';
+          audioEngineRef.current = nullEngine;
+          if (typeof updateEngineIndicator === 'function') {
+            updateEngineIndicator();
+          }
+          return nullEngine;
+        }
+      })();
+      return audioInitPromise;
+    };
     const restoredGraph = graphStore.loadFromStorage();
     let syncGraphStoreFromUi = () => {};
     let isRestoringGraph = false;
@@ -886,7 +924,7 @@ async function main() {
     engineIndicator.className = 'engine-indicator';
     const nameSpan = document.createElement('span');
     nameSpan.className = 'engine-name';
-    nameSpan.textContent = ` Engine: ${audioEngine.name}`;
+    nameSpan.textContent = ` Engine: ${audioEngineRef.current.name}`;
     engineIndicator.appendChild(nameSpan);
     const statusSpan = document.createElement('span');
     statusSpan.className = 'engine-status';
@@ -895,13 +933,37 @@ async function main() {
     progressSpan.className = 'engine-progress';
     engineIndicator.appendChild(progressSpan);
     transport.appendChild(engineIndicator);
+    let sf2ProgressListenersBound = false;
+    const bindSf2ProgressListeners = () => {
+      const engine = audioEngineRef.current;
+      if (sf2ProgressListenersBound || engine?.name !== 'SF2 Engine') return;
+      sf2ProgressListenersBound = true;
+      window.addEventListener('sf2-load-progress', (ev) => {
+        const { loaded, total } = ev.detail;
+        if (total > 0) {
+          const pct = Math.floor((loaded / total) * 100);
+          progressSpan.textContent = ` (loading ${pct}%)`;
+        }
+      });
+      window.addEventListener('sf2-load-done', (ev) => {
+        if (ev.detail && ev.detail.success) {
+          progressSpan.textContent = ' (loaded)';
+        } else {
+          progressSpan.textContent = ' (load failed, using samples)';
+        }
+        updateEngineIndicator();
+      });
+    };
+
     // Helper to update the status and program indicator.
     function updateEngineIndicator() {
       // Update status: only meaningful for Sf2Engine which exposes
       // ``status`` property; default engines omit it.
-      const status = audioEngine.status || '';
+      const engine = audioEngineRef.current;
+      nameSpan.textContent = ` Engine: ${engine?.name || 'Audio not started'}`;
+      const status = engine?.status || '';
       let statusText = '';
-      if (audioEngine.name === 'SF2 Engine') {
+      if (engine?.name === 'SF2 Engine') {
         statusText = status === 'Active' ? ' SF2: Active' : ' SF2: Fallback';
       }
       // Determine current program for the melodic lane (note).  We
@@ -910,7 +972,7 @@ async function main() {
       // parsing fails the value is shown verbatim.  Only displayed
       // when using the SF2 Engine.
       let programText = '';
-      if (audioEngine.name === 'SF2 Engine') {
+      if (engine?.name === 'SF2 Engine') {
         const noteCard = nodeCards.find(c => c.lane === 'note');
         if (noteCard) {
           const presetId = noteCard.presetSelect.value;
@@ -939,30 +1001,12 @@ async function main() {
         }
       }
       statusSpan.textContent = `${statusText}${programText}`;
+      bindSf2ProgressListeners();
     }
     // Note: updateEngineIndicator() cannot be called until the
     // NodeCards array has been created.  It will be invoked after
     // NodeCard construction later in this function.
-    // Listen for progress and completion events only when using the SF2
-    // engine.  Progress updates occur during soundfont fetch; upon
-    // completion update the indicator status via updateEngineIndicator.
-    if (audioEngine.name === 'SF2 Engine') {
-      window.addEventListener('sf2-load-progress', (ev) => {
-        const { loaded, total } = ev.detail;
-        if (total > 0) {
-          const pct = Math.floor((loaded / total) * 100);
-          progressSpan.textContent = ` (loading ${pct}%)`;
-        }
-      });
-      window.addEventListener('sf2-load-done', (ev) => {
-        if (ev.detail && ev.detail.success) {
-          progressSpan.textContent = ' (loaded)';
-        } else {
-          progressSpan.textContent = ' (load failed, using samples)';
-        }
-        updateEngineIndicator();
-      });
-    }
+    bindSf2ProgressListeners();
     // Seed input
     const seedLabel = document.createElement('label');
     seedLabel.textContent = ' Seed: ';
@@ -977,7 +1021,6 @@ async function main() {
     latchButton.textContent = 'Latch';
     transport.appendChild(latchButton);
     // Node stack
-    const nodeCards = [];
     const nodeStackEl = document.getElementById('nodeStack');
     if (nodeStackEl) {
       const lanes = [
@@ -1005,13 +1048,15 @@ async function main() {
         nodeCards.push(card);
         nodeStackEl.appendChild(card.element);
         // Set the initial preset on the audio engine based on the default selection
-        if (typeof audioEngine.setPreset === 'function') {
-          audioEngine.setPreset(ln.lane, card.presetSelect.value);
+        const currentEngine = audioEngineRef.current;
+        if (currentEngine !== placeholderEngine && typeof currentEngine?.setPreset === 'function') {
+          currentEngine.setPreset(ln.lane, card.presetSelect.value);
         }
         // When the user changes the preset drop‑down update the audio engine
         card.presetSelect.addEventListener('change', () => {
-          if (typeof audioEngine.setPreset === 'function') {
-            audioEngine.setPreset(ln.lane, card.presetSelect.value);
+          const engine = audioEngineRef.current;
+          if (engine !== placeholderEngine && typeof engine?.setPreset === 'function') {
+            engine.setPreset(ln.lane, card.presetSelect.value);
           }
           // Update the engine indicator when the melodic lane preset changes
           if (typeof updateEngineIndicator === 'function') {
@@ -1192,7 +1237,7 @@ async function main() {
       onStopPlayback: () => stopFlowPlayback(),
     });
     if (flowCanvasMount) {
-      const rivuletLab = createRivuletLab({ store: flowStore, audioEngine });
+      const rivuletLab = createRivuletLab({ store: flowStore, audioEngine: audioEngineRef.current });
       flowCanvasMount.parentElement?.insertBefore(rivuletLab.element, flowCanvasMount);
       flowCanvasMount.appendChild(flowCanvas.element);
     }
@@ -1242,7 +1287,7 @@ async function main() {
       }
     });
     const transportScheduler = createTransportScheduler({
-      audioEngine,
+      audioEngineRef,
       nodeCards,
       graphStore,
       flowStore,
@@ -1253,6 +1298,7 @@ async function main() {
       stopButton,
       latchButton,
       useNodeGraph: USE_NODE_GRAPH,
+      ensureAudioStarted,
     });
     startFlowPlayback = (startNodeId) => transportScheduler.startPlayback({ activeStartNodeId: startNodeId });
     stopFlowPlayback = () => transportScheduler.stopPlayback();

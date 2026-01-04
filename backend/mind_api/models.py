@@ -156,6 +156,7 @@ class Event(BaseModel):
     velocity: int = 100
     durationBeats: float = 0.25
     preset: Optional[str] = None
+    sourceNodeId: Optional[str] = None
 
 
 class CompileRequest(BaseModel):

@@ -308,6 +308,107 @@ def _apply_timing_adjustments(
     return events
 
 
+def _parse_custom_notes(raw: object) -> List[int]:
+    tokens: List[str] = []
+    if raw is None:
+        return tokens
+    if isinstance(raw, str):
+        tokens = [tok for tok in raw.split() if tok]
+    elif isinstance(raw, list):
+        tokens = [str(tok) for tok in raw if tok is not None]
+    values: List[int] = []
+    for tok in tokens:
+        try:
+            values.append(int(tok))
+            continue
+        except (TypeError, ValueError):
+            pass
+        try:
+            values.append(note_name_to_midi(tok))
+            continue
+        except Exception:
+            # Ignore invalid tokens
+            continue
+    return values
+
+
+def _compile_custom_melody_bar(
+    node: FlowGraphNode,
+    *,
+    bar_offset: int,
+    diagnostics: List[Diagnostic],
+) -> List[Event]:
+    params = node.params or {}
+    custom = params.get("customMelody") or {}
+    grid = str(custom.get("grid") or params.get("rhythmGrid") or "1/16")
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    if steps_per_bar <= 0:
+        diagnostics.append(
+            Diagnostic(level="error", message=f"Thought '{node.id}': invalid custom grid '{grid}'", line=1, col=1)
+        )
+        return []
+
+    bars = custom.get("bars") or []
+    if not isinstance(bars, list) or not bars:
+        diagnostics.append(
+            Diagnostic(level="warn", message=f"Thought '{node.id}': missing custom melody bars; skipping.", line=1, col=1)
+        )
+        return []
+
+    entry = bars[bar_offset % len(bars)] if bars else {}
+    rhythm = str(entry.get("rhythm") or "")
+    if not rhythm:
+        diagnostics.append(
+            Diagnostic(level="warn", message=f"Thought '{node.id}': empty rhythm for custom melody; skipping.", line=1, col=1)
+        )
+        return []
+
+    notes = _parse_custom_notes(entry.get("notes"))
+    note_index = 0
+    step_len = 4.0 / steps_per_bar
+    events: List[Event] = []
+
+    for idx, ch in enumerate(rhythm):
+        if ch in {".", "-"}:
+            continue
+
+        hold_steps = 0
+        j = idx + 1
+        while j < len(rhythm) and rhythm[j] == "-":
+            hold_steps += 1
+            j += 1
+
+        duration_beats = (1 + hold_steps) * step_len
+        tbeat = idx * step_len
+
+        if note_index >= len(notes):
+            diagnostics.append(
+                Diagnostic(
+                    level="warn",
+                    message=f"Thought '{node.id}': insufficient notes for custom melody; truncating.",
+                    line=1,
+                    col=1,
+                )
+            )
+            break
+
+        pitches = [notes[note_index]]
+        note_index += 1
+
+        events.append(
+            Event(
+                tBeat=tbeat,
+                lane="note",
+                note=pitches[0],
+                pitches=pitches,
+                velocity=_intensity_to_velocity(ch) if ch and ch.isdigit() else 96,
+                durationBeats=duration_beats,
+            )
+        )
+
+    return events
+
+
 def _compute_pattern_bar_count(pat: str, steps_per_bar: int) -> int:
     if len(pat) <= steps_per_bar:
         return 1
@@ -335,6 +436,14 @@ def _compile_thought_bar(
     seed: int,
 ) -> List[Event]:
     params = node.params or {}
+    melody_mode = (params.get("melodyMode") or "generated").lower()
+    if melody_mode == "custom":
+        events = _compile_custom_melody_bar(node, bar_offset=bar_offset, diagnostics=diagnostics)
+        for event in events:
+            event.sourceNodeId = node.id
+            event.preset = params.get("instrumentPreset") or None
+        return events
+
     grid = str(params.get("rhythmGrid") or "1/12")
     if grid not in ALLOWED_GRIDS:
         diagnostics.append(
@@ -396,6 +505,7 @@ def _compile_thought_bar(
     for event in events:
         event.lane = lane
         event.preset = preset
+        event.sourceNodeId = node.id
     return events
 
 
