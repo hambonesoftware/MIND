@@ -510,12 +510,14 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
     graph = req.flowGraph
     nodes_by_id = {node.id: node for node in graph.nodes}
     outgoing, incoming = _build_adjacency(graph)
+    edge_index = _build_edge_index(graph.edges)
 
     state = req.runtimeState or StreamRuntimeState()
     next_state = StreamRuntimeState(
         barIndex=req.barIndex,
         activeTokens=[],
         activeThoughts={},
+        startQueues={key: list(value) for key, value in state.startQueues.items()},
         counters=dict(state.counters),
         joins={key: list(value) for key, value in state.joins.items()},
         lastSwitchRoutes=dict(state.lastSwitchRoutes),
@@ -530,6 +532,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
         next_state.joins = {}
         next_state.lastSwitchRoutes = {}
         next_state.activeThoughts = {}
+        next_state.startQueues = {}
         for node in nodes_by_id.values():
             if node.type == "counter" and node.params.get("resetOnPlay") is False:
                 if node.id in state.counters:
@@ -540,6 +543,8 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
                 continue
             if start_filter and node.id not in start_filter:
                 continue
+            outgoing_edges = outgoing.get(node.id, [])
+            next_state.startQueues[node.id] = [edge.id for edge in outgoing_edges]
             current_tokens.append(StreamRuntimeToken(nodeId=node.id))
         next_state.started = True
         debug_trace.append("Start: emitted initial tokens.")
@@ -558,6 +563,27 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
         for edge in edges:
             next_bar_tokens.append(_token_from_edge(edge))
         tokens_created += len(edges)
+
+    def enqueue_next_start_edge(via_edge_id: Optional[str]) -> None:
+        if not via_edge_id:
+            return
+        edge = edge_index.get(via_edge_id)
+        if not edge:
+            return
+        start_id = edge.from_.nodeId
+        start_node = nodes_by_id.get(start_id)
+        if not start_node or start_node.type != "start":
+            return
+        queue = list(next_state.startQueues.get(start_id, []))
+        if not queue:
+            return
+        next_edge_id = queue.pop(0)
+        next_edge = edge_index.get(next_edge_id)
+        if not next_edge:
+            return
+        enqueue_deferred([next_edge])
+        next_state.startQueues[start_id] = queue
+        debug_trace.append(f"Start {start_id}: queued next edge {next_edge_id}.")
 
     def process_token(token: StreamRuntimeToken) -> None:
         nonlocal node_firings, tokens_created
@@ -589,20 +615,29 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
             if total_bars <= 1:
                 edges = outgoing.get(node.id, [])
                 enqueue_deferred(edges)
+                enqueue_next_start_edge(token.viaEdgeId)
                 debug_trace.append(f"Thought {node.id}: single-bar, emitted {len(edges)} tokens.")
             else:
                 next_state.activeThoughts[node.id] = StreamRuntimeThoughtState(
                     remainingBars=total_bars - 1,
                     barOffset=1,
+                    viaEdgeId=token.viaEdgeId,
                 )
                 debug_trace.append(f"Thought {node.id}: started ({total_bars} bars).")
             activated_thoughts.add(node.id)
             return
 
         if node.type == "start":
-            edges = outgoing.get(node.id, [])
-            enqueue_immediate(edges)
-            debug_trace.append(f"Start {node.id}: emitted {len(edges)} tokens.")
+            queue = list(next_state.startQueues.get(node.id, []))
+            if not queue:
+                debug_trace.append(f"Start {node.id}: no queued edges.")
+                return
+            next_edge_id = queue.pop(0)
+            next_edge = edge_index.get(next_edge_id)
+            if next_edge:
+                enqueue_immediate([next_edge])
+            next_state.startQueues[node.id] = queue
+            debug_trace.append(f"Start {node.id}: emitted edge {next_edge_id}.")
             return
 
         if node.type == "counter":
@@ -666,11 +701,13 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
         if remaining <= 0:
             edges = outgoing.get(node_id, [])
             enqueue_deferred(edges)
+            enqueue_next_start_edge(thought_state.viaEdgeId)
             debug_trace.append(f"Thought {node_id}: completed, emitted {len(edges)} tokens.")
         else:
             next_state.activeThoughts[node_id] = StreamRuntimeThoughtState(
                 remainingBars=remaining,
                 barOffset=next_offset,
+                viaEdgeId=thought_state.viaEdgeId,
             )
 
     queue = list(current_tokens)
