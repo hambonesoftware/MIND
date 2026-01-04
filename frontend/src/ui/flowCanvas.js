@@ -38,7 +38,6 @@ export function createFlowCanvas({ store, toast } = {}) {
 
   const edgeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   edgeSvg.classList.add('flow-edges');
-  edgeSvg.setAttribute('viewBox', '0 0 1 1');
   const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   edgeGroup.classList.add('flow-edges-group');
   edgeSvg.appendChild(edgeGroup);
