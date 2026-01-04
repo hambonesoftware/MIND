@@ -1,5 +1,6 @@
 import { parseScript, getPresets } from './api/client.js';
 import { createAudioEngine } from './audio/audioEngine.js';
+import { NullAudioEngine } from './audio/nullEngine.js';
 import { createTransportScheduler } from './audio/transport.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { createGraphStore } from './state/graphStore.js';
@@ -835,8 +836,18 @@ async function main() {
     // Fetch preset list from API
     const presetResp = await getPresets();
     const presets = presetResp.presets || [];
+    const toast = createToastManager();
     // Create audio engine
-    const audioEngine = await createAudioEngine();
+    let audioEngine;
+    try {
+      audioEngine = await createAudioEngine({ strictSf2: true });
+    } catch (err) {
+      toast.showToast('Audio disabled: failed to initialize the SF2 synth.');
+      const nullEngine = new NullAudioEngine();
+      await nullEngine.init();
+      nullEngine.name = 'Audio Disabled';
+      audioEngine = nullEngine;
+    }
     const graphStore = createGraphStore();
     const restoredGraph = graphStore.loadFromStorage();
     let syncGraphStoreFromUi = () => {};
@@ -1169,7 +1180,6 @@ async function main() {
 
     const flowStore = createFlowGraphStore();
     flowStore.load();
-    const toast = createToastManager();
     const flowCanvasMount = document.getElementById('flowCanvas');
     const flowPaletteMount = document.getElementById('flowPalette');
     const flowInspectorMount = document.getElementById('flowInspector');
