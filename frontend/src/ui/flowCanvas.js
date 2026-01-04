@@ -1,4 +1,5 @@
 import { getNodeDefinition, validateConnection } from '../state/nodeRegistry.js';
+import { isStartPlayable } from '../state/flowGraph.js';
 
 const EDGE_COLOR = '#3a6ea5';
 const EDGE_COLOR_MUTED = '#c7d7ea';
@@ -10,7 +11,12 @@ function buildPortLabel(port) {
   return port.label || port.id;
 }
 
-export function createFlowCanvas({ store, toast } = {}) {
+export function createFlowCanvas({
+  store,
+  toast,
+  onStartPlayback,
+  onStopPlayback,
+} = {}) {
   const container = document.createElement('div');
   container.className = 'flow-canvas';
 
@@ -433,6 +439,56 @@ export function createFlowCanvas({ store, toast } = {}) {
       const badgeContainer = header?.querySelector('.flow-node-badges');
       if (badgeContainer) {
         badgeContainer.innerHTML = '';
+        if (node.type === 'start') {
+          const startPlayable = isStartPlayable(currentState.nodes, currentState.edges, node.id);
+          const activeStartNodeId = currentState.runtime?.activeStartNodeId || null;
+          const isPlaying = currentState.runtime?.isPlaying && activeStartNodeId === node.id;
+          const isBlocked = currentState.runtime?.isPlaying
+            && activeStartNodeId
+            && activeStartNodeId !== node.id;
+          const playButton = document.createElement('button');
+          playButton.type = 'button';
+          playButton.className = 'flow-node-play';
+          if (isPlaying) {
+            playButton.classList.add('flow-node-play-active');
+          }
+          playButton.disabled = !startPlayable || isBlocked;
+          playButton.textContent = isPlaying ? '■' : '▶';
+          playButton.setAttribute(
+            'aria-label',
+            isPlaying ? 'Stop playback' : 'Start playback',
+          );
+          if (!startPlayable) {
+            playButton.title = 'Connect a Thought to enable playback.';
+          } else if (isPlaying) {
+            playButton.title = 'Stop playback for this Start node.';
+          } else {
+            playButton.title = 'Start playback from this Start node.';
+          }
+          playButton.addEventListener('pointerdown', (event) => {
+            event.stopPropagation();
+          });
+          playButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const canPlay = isStartPlayable(currentState.nodes, currentState.edges, node.id);
+            if (!canPlay) {
+              if (toast?.showToast) {
+                toast.showToast('Connect a Thought before starting playback.', { tone: 'error' });
+              }
+              return;
+            }
+            if (currentState.runtime?.isPlaying && currentState.runtime?.activeStartNodeId === node.id) {
+              if (typeof onStopPlayback === 'function') {
+                onStopPlayback();
+              }
+              return;
+            }
+            if (typeof onStartPlayback === 'function') {
+              onStartPlayback(node.id);
+            }
+          });
+          badgeContainer.appendChild(playButton);
+        }
         if (node.type === 'thought') {
           const preset = node.params?.instrumentPreset || 'preset';
           const rhythm = node.params?.rhythmGrid || '1/12';

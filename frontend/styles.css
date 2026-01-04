@@ -478,6 +478,40 @@ label.mute-label {
   justify-content: flex-end;
 }
 
+.flow-node-play {
+  border: 1px solid #94a3b8;
+  background: #fff;
+  color: #1e3a8a;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.flow-node-play:hover:not(:disabled) {
+  background: #e0e7ff;
+  border-color: #6366f1;
+  color: #1d4ed8;
+}
+
+.flow-node-play:disabled {
+  background: #f1f5f9;
+  border-color: #cbd5f5;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.flow-node-play-active {
+  background: #f97316;
+  border-color: #ea580c;
+  color: #fff;
+}
+
 .flow-inspector-form .flow-branch-add {
   align-self: flex-start;
 }

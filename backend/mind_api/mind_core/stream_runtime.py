@@ -534,9 +534,13 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
             if node.type == "counter" and node.params.get("resetOnPlay") is False:
                 if node.id in state.counters:
                     next_state.counters[node.id] = state.counters[node.id]
+        start_filter = set(req.startNodeIds or [])
         for node in nodes_by_id.values():
-            if node.type == "start":
-                current_tokens.append(StreamRuntimeToken(nodeId=node.id))
+            if node.type != "start":
+                continue
+            if start_filter and node.id not in start_filter:
+                continue
+            current_tokens.append(StreamRuntimeToken(nodeId=node.id))
         next_state.started = True
         debug_trace.append("Start: emitted initial tokens.")
 
