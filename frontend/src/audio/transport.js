@@ -210,6 +210,13 @@ export function createTransportScheduler({
     if (!isPlaying || sessionId !== playbackSession) {
       return;
     }
+
+    // These are the absolute beat boundaries for THIS segment window.
+    // They must be computed here because tickScheduler's windowStartBeat/windowEndBeat
+    // are out of scope inside requestWindow.
+    const windowStartBeat = cycleStartBeat + beatStartInLoop;
+    const windowEndBeat = cycleStartBeat + beatEndInLoop;
+
     const seed = parseInt(seedInput.value || '0', 10);
     const bpm = toNumber(bpmInput.value, 80);
     const graphInputs = buildGraphInputs();
@@ -220,6 +227,7 @@ export function createTransportScheduler({
     const startNodeIds = useNodeGraph
       ? (activeStartNodeId ? [activeStartNodeId] : [])
       : graphInputs.startNodeIds;
+
     try {
       for (let barOffset = barStart; barOffset <= barEnd; barOffset += 1) {
         const barIndex = ((barOffset % loopBars) + loopBars) % loopBars;
@@ -238,15 +246,19 @@ export function createTransportScheduler({
           legacyNodes: graphInputs.legacyNodes,
           useNodeGraph,
         });
+
         const res = await compileSession(req);
+
         if (!isPlaying || sessionId !== playbackSession) {
           return;
         }
+
         const events = Array.isArray(res.events) ? res.events : [];
         const diagnostics = Array.isArray(res.diagnostics) ? res.diagnostics : [];
         if (diagnostics.some(item => item.level === 'error')) {
           console.error('Runtime diagnostics', diagnostics);
         }
+
         lastDebugTrace = Array.isArray(res.debugTrace) ? res.debugTrace : [];
         if (res.runtimeState) {
           runtimeState = res.runtimeState;
@@ -254,6 +266,7 @@ export function createTransportScheduler({
         if (typeof flowStore?.setRuntimeState === 'function') {
           flowStore.setRuntimeState({ runtimeState, debugTrace: lastDebugTrace });
         }
+
         const scheduled = events.map(ev => {
           if (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime)) {
             return ev;
@@ -264,15 +277,22 @@ export function createTransportScheduler({
           }
           return ev;
         });
+
         recordBarEvents(scheduled, beatDur);
         audioEngine.schedule(scheduled, 0);
+
         if (currentBarIndex === barIndex) {
           updateUiForEvents(barEvents.get(currentBarIndex) || []);
         }
+
+        // Update panel using the segment window boundaries computed above.
         updateExecutionsPanel(windowStartBeat, windowEndBeat, diagnostics);
       }
     } catch (err) {
       console.error('Compile error', err);
+      updateExecutionsPanel(windowStartBeat, windowEndBeat, [
+        { level: 'error', message: err?.message ? `Compile error: ${err.message}` : 'Compile error.' },
+      ]);
     }
   };
 
@@ -280,19 +300,23 @@ export function createTransportScheduler({
     if (!isPlaying) {
       return;
     }
+
     const bpm = toNumber(bpmInput.value, 80);
     if (typeof audioEngine.setBpm === 'function') {
       audioEngine.setBpm(bpm);
     }
+
     const beatDur = 60 / bpm;
     const nowSec = getAudioTime(audioEngine);
     const elapsedSec = nowSec - startTimeSec;
     const absoluteBeat = elapsedSec / beatDur;
+
     const windowStartBeat = Math.max(absoluteBeat, scheduledThroughBeat);
     const windowEndBeat = absoluteBeat + LOOKAHEAD_SEC / beatDur;
 
     currentBarIndex = Math.floor(absoluteBeat / BEATS_PER_BAR) % loopBars;
     lastBeat = ((absoluteBeat % BEATS_PER_BAR) + BEATS_PER_BAR) % BEATS_PER_BAR;
+
     const progress = (lastBeat / BEATS_PER_BAR) % 1;
     nodeCards.forEach(c => c.updatePlayhead(progress));
 
@@ -312,6 +336,7 @@ export function createTransportScheduler({
           const segmentEnd = Math.min(windowEndBeat, cycleEndBeat);
           const beatStartInLoop = windowStart - cycleStartBeat;
           const beatEndInLoop = segmentEnd - cycleStartBeat;
+
           await requestWindow({
             beatStartInLoop,
             beatEndInLoop,
@@ -319,10 +344,13 @@ export function createTransportScheduler({
             beatDur,
             sessionId: playbackSession,
           });
+
           windowStart = segmentEnd;
         }
       };
+
       scheduledThroughBeat = windowEndBeat;
+
       compileQueue = compileQueue
         .then(work)
         .catch(err => {
@@ -338,15 +366,19 @@ export function createTransportScheduler({
 
   const startPlayback = ({ activeStartNodeId } = {}) => {
     if (isPlaying) return;
+
     playbackSession += 1;
     isPlaying = true;
+
     currentBarIndex = 0;
     lastBarIndex = 0;
     lastBeat = 0;
+
     barEvents.clear();
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
+
     if (typeof flowStore?.setPlaybackState === 'function') {
       const fallbackStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
       flowStore.setPlaybackState({
@@ -354,39 +386,51 @@ export function createTransportScheduler({
         activeStartNodeId: activeStartNodeId ?? fallbackStartNodeId,
       });
     }
+
     if (typeof flowStore?.setRuntimeState === 'function') {
       flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
     }
+
     audioEngine.start();
     nodeCards.forEach(c => c.latch());
+
     startTimeSec = getAudioTime(audioEngine);
     scheduledThroughBeat = 0;
+
     updateUiForBar(currentBarIndex);
     updateExecutionsPanel(0, 0);
+
     tickHandle = setInterval(tickScheduler, TICK_INTERVAL_MS);
   };
 
   const stopPlayback = () => {
     if (!isPlaying) return;
+
     isPlaying = false;
     playbackSession += 1;
+
     if (tickHandle) {
       clearInterval(tickHandle);
       tickHandle = null;
     }
+
     audioEngine.stop();
     barEvents.clear();
     nodeCards.forEach(c => c.updatePlayhead(0));
+
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
+
     if (typeof flowStore?.setPlaybackState === 'function') {
       const currentStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
       flowStore.setPlaybackState({ isPlaying: false, activeStartNodeId: currentStartNodeId });
     }
+
     if (typeof flowStore?.setRuntimeState === 'function') {
       flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
     }
+
     updateExecutionsPanel(0, 0);
   };
 
