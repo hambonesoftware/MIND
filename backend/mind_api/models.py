@@ -312,12 +312,14 @@ class StreamRuntimeToken(BaseModel):
     nodeId: str
     viaEdgeId: Optional[str] = None
     viaPortId: Optional[str] = None
+    startId: Optional[str] = None
 
 
 class StreamRuntimeThoughtState(BaseModel):
     remainingBars: int = 0
     barOffset: int = 0
     viaEdgeId: Optional[str] = None
+    startId: Optional[str] = None
 
 
 class StreamRuntimeState(BaseModel):
@@ -325,6 +327,8 @@ class StreamRuntimeState(BaseModel):
     activeTokens: List[StreamRuntimeToken] = Field(default_factory=list)
     activeThoughts: Dict[str, StreamRuntimeThoughtState] = Field(default_factory=dict)
     startQueues: Dict[str, List[str]] = Field(default_factory=dict)
+    startEdgePositions: Dict[str, int] = Field(default_factory=dict)
+    startActiveChains: Dict[str, int] = Field(default_factory=dict)
     counters: Dict[str, int] = Field(default_factory=dict)
     joins: Dict[str, List[str]] = Field(default_factory=dict)
     lastSwitchRoutes: Dict[str, str] = Field(default_factory=dict)

@@ -154,3 +154,48 @@ def test_safety_cap_warns() -> None:
     req = CompileRequest(flowGraph=graph, barIndex=0, bpm=120)
     res = run_stream_runtime(req)
     assert any("Safety cap" in diag.message for diag in res.diagnostics)
+
+
+def test_start_edges_run_sequentially() -> None:
+    graph = _graph(
+        [
+            _node("start", "start", ports={"inputs": [], "outputs": [{"id": "out", "type": "flow"}]}),
+            _node(
+                "thought-1",
+                "thought",
+                params={"durationBars": 2, "patternType": "arp-3-up"},
+                ports={"inputs": [{"id": "in", "type": "flow"}], "outputs": []},
+            ),
+            _node(
+                "thought-2",
+                "thought",
+                params={"durationBars": 1, "patternType": "arp-3-down"},
+                ports={"inputs": [{"id": "in", "type": "flow"}], "outputs": []},
+            ),
+        ],
+        [
+            _edge("e1", "start", "out", "thought-1", "in"),
+            _edge("e2", "start", "out", "thought-2", "in"),
+        ],
+    )
+
+    res0 = run_stream_runtime(CompileRequest(flowGraph=graph, barIndex=0, bpm=120))
+    assert res0.runtimeState is not None
+    assert "thought-1" in res0.runtimeState.activeThoughts
+    assert "thought-2" not in res0.runtimeState.activeThoughts
+
+    res1 = run_stream_runtime(
+        CompileRequest(flowGraph=graph, barIndex=1, bpm=120, runtimeState=res0.runtimeState)
+    )
+    assert res1.runtimeState is not None
+    assert "thought-1" not in res1.runtimeState.activeThoughts
+    assert "thought-2" not in res1.runtimeState.activeThoughts
+    assert any(token.nodeId == "thought-2" for token in res1.runtimeState.activeTokens)
+
+    res2 = run_stream_runtime(
+        CompileRequest(flowGraph=graph, barIndex=2, bpm=120, runtimeState=res1.runtimeState)
+    )
+    assert res2.events
+    assert res2.runtimeState is not None
+    assert "thought-1" not in res2.runtimeState.activeThoughts
+    assert "thought-2" not in res2.runtimeState.activeThoughts
