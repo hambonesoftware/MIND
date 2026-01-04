@@ -48,6 +48,17 @@ export function createTransportScheduler({
   let compileQueue = Promise.resolve();
   let playbackSession = 0;
 
+  // ---------------------------------------------------------------------------
+  // CRITICAL FIX:
+  // The V9 runtime advances per compile call (per bar). If we compile the same
+  // bar multiple times during the scheduler lookahead ticks, we effectively
+  // "fast-forward" the runtime and downstream nodes appear to start immediately.
+  //
+  // We prevent this by compiling each *absolute* bar only once per playback
+  // session. Absolute bar = floor(cycleStartBeat / BEATS_PER_BAR) + barOffset.
+  // ---------------------------------------------------------------------------
+  let compiledBars = new Set(); // stores absolute bar numbers already compiled in this session
+
   const describeRenderSinks = () => {
     const noteCard = nodeCards.find(card => card.lane === 'note');
     if (!noteCard || !Array.isArray(noteCard.blocks)) {
@@ -211,9 +222,7 @@ export function createTransportScheduler({
       return;
     }
 
-    // These are the absolute beat boundaries for THIS segment window.
-    // They must be computed here because tickScheduler's windowStartBeat/windowEndBeat
-    // are out of scope inside requestWindow.
+    // Absolute beat boundaries for THIS segment window (for panel display only).
     const windowStartBeat = cycleStartBeat + beatStartInLoop;
     const windowEndBeat = cycleStartBeat + beatEndInLoop;
 
@@ -228,8 +237,22 @@ export function createTransportScheduler({
       ? (activeStartNodeId ? [activeStartNodeId] : [])
       : graphInputs.startNodeIds;
 
+    // Base absolute bar index for this loop cycle.
+    // Example: cycleStartBeat=0 => absoluteBarBase=0
+    //          cycleStartBeat=64 (16 bars) => absoluteBarBase=16
+    const absoluteBarBase = Math.floor(cycleStartBeat / BEATS_PER_BAR);
+
     try {
       for (let barOffset = barStart; barOffset <= barEnd; barOffset += 1) {
+        // Absolute bar number across playback timeline (monotonic, not modulo loopBars).
+        const absoluteBar = absoluteBarBase + barOffset;
+
+        // Prevent compiling the same bar multiple times across tick windows.
+        if (compiledBars.has(absoluteBar)) {
+          continue;
+        }
+        compiledBars.add(absoluteBar);
+
         const barIndex = ((barOffset % loopBars) + loopBars) % loopBars;
         const req = buildCompilePayload({
           seed,
@@ -272,6 +295,8 @@ export function createTransportScheduler({
             return ev;
           }
           if (typeof ev.tBeat === 'number' && Number.isFinite(ev.tBeat)) {
+            // Keep original mapping behavior (barOffset is correct for this segment)
+            // even though we may be skipping some bars due to compiledBars guard.
             const absoluteBeat = cycleStartBeat + barOffset * BEATS_PER_BAR + ev.tBeat;
             return { ...ev, audioTime: startTimeSec + absoluteBeat * beatDur };
           }
@@ -285,7 +310,6 @@ export function createTransportScheduler({
           updateUiForEvents(barEvents.get(currentBarIndex) || []);
         }
 
-        // Update panel using the segment window boundaries computed above.
         updateExecutionsPanel(windowStartBeat, windowEndBeat, diagnostics);
       }
     } catch (err) {
@@ -379,6 +403,9 @@ export function createTransportScheduler({
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
 
+    // Reset compiled bar guard for this playback session.
+    compiledBars = new Set();
+
     if (typeof flowStore?.setPlaybackState === 'function') {
       const fallbackStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
       flowStore.setPlaybackState({
@@ -421,6 +448,9 @@ export function createTransportScheduler({
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
+
+    // Reset compiled bar guard so a new session starts cleanly.
+    compiledBars = new Set();
 
     if (typeof flowStore?.setPlaybackState === 'function') {
       const currentStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
