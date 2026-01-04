@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ---------------------------
@@ -39,25 +39,12 @@ class ParsedAST(BaseModel):
     motions: Optional[str] = None    # kept for safety/compat only
 
 
-class EquationAST(BaseModel):
-    kind: Literal["equation"] = "equation"
-
-    name: Optional[str] = None
-    lane: str = "note"
-    grid: str = "1/12"
-    bars: str = "1-16"
-    preset: Optional[str] = None
-
-    key: Optional[str] = None
-    harmony: Optional[str] = None
-    motions: Optional[str] = None
-
-
 class ParseResponse(BaseModel):
     ok: bool = True
+    error: Optional[str] = None
     diagnostics: List[Diagnostic] = Field(default_factory=list)
 
-    # routes.py returns a ParsedAST or EquationAST instance
+    # routes.py returns a ParsedAST instance
     ast: Optional[Any] = None
 
 
@@ -148,6 +135,14 @@ class NodeInput(BaseModel):
         if isinstance(value, list):
             return [PortDefinition.model_validate(item) if isinstance(item, dict) else item for item in value]
         return value
+
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> "NodeInput":
+        if self.kind == "render" and not self.childId:
+            raise ValueError("Render nodes must include childId.")
+        if self.kind == "theory" and not self.text:
+            raise ValueError("Theory nodes must include text.")
+        return self
 
 
 class Event(BaseModel):

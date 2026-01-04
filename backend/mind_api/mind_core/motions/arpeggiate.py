@@ -49,7 +49,7 @@ def _parse_order(order: Optional[str], chord_len: int) -> List[int]:
         return up + down
 
     # Try to parse an explicit integer list
-    parts = re.split(r"[\s,]+", o)
+    parts = re.split(r"[\s,\-]+", o)
     ints: List[int] = []
     for p in parts:
         p = p.strip()
@@ -71,6 +71,7 @@ def apply_arpeggiate(
     lattice: Lattice,
     chord_by_register: List[List[int]],
     pattern: str = "low-mid-high-mid",
+    mode: Optional[str] = None,
     order: Optional[str] = None,
     start: int = 0,
     chord_by_step: Optional[List[List[int]]] = None,
@@ -84,10 +85,12 @@ def apply_arpeggiate(
     - pattern: token sequence ("low-mid-high-mid" or "0-1-2-1")
       * low/mid/high select register chord (0/1/2)
       * digits select a tone index within the chosen chord
+    - mode: "registers" (default) or "tones"
     - order: optional ordering of tones when token is a register name
     - start: pattern phase offset (shifts which token is used at step 0)
     - chord_by_step: if provided, overrides chord selection per step (tones mode)
     """
+    mode_value = (mode or "registers").strip().lower()
     tokens = _parse_pattern(pattern)
 
     steps_per_bar = getattr(lattice, "steps_per_bar", 0) or 0
@@ -99,7 +102,12 @@ def apply_arpeggiate(
     except Exception:
         start_i = 0
 
-    arp_counter = 0
+    if mode_value == "tones" and chord_by_step is None:
+        if chord_by_register:
+            mid_idx = min(1, len(chord_by_register) - 1)
+            chord_by_step = [chord_by_register[mid_idx] for _ in range(steps_per_bar)]
+
+    arp_counter = start_i if mode_value == "tones" else 0
 
     for step in range(steps_per_bar):
         tok = tokens[(step + start_i) % len(tokens)] if tokens else "mid"
@@ -133,7 +141,17 @@ def apply_arpeggiate(
             idx = int(tok) % len(chord)
             pitch = chord[idx]
         else:
-            tone_order = _parse_order(order, len(chord))
+            if mode_value == "tones":
+                degree_map = {1: 0, 3: 1, 5: 2, 7: 3}
+                tone_order = []
+                for value in _parse_order(order, len(chord)):
+                    if value in degree_map:
+                        idx = degree_map[value]
+                        tone_order.append(idx % len(chord))
+                    else:
+                        tone_order.append(value)
+            else:
+                tone_order = _parse_order(order, len(chord))
             tone_idx = tone_order[arp_counter % len(tone_order)] % len(chord)
             pitch = chord[tone_idx]
 

@@ -8,13 +8,13 @@ from mind_api.mind_core.motions.motion_call import parse_motion_call  # noqa: E4
 
 def test_parse_motion_call_arpeggiate_kwargs():
     name, kwargs = parse_motion_call(
-        "arpeggiate(pattern=low-mid-high,mode=tones,voicing=moonlight,order=5-1-3,start=0)"
+        "arpeggiate(pattern=low-mid-high,mode=tones,voicing=mid,order=5-1-3,start=0)"
     )
     assert name == "arpeggiate"
     assert kwargs == {
         "pattern": "low-mid-high",
         "mode": "tones",
-        "voicing": "moonlight",
+        "voicing": "mid",
         "order": "5-1-3",
         "start": "0",
     }

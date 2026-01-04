@@ -1,6 +1,6 @@
 # MIND Language v0.1
 
-MIND scripts accept a single top-level call. Today there are two forms:
+MIND scripts accept a single top-level call. Today the supported form is:
 
 ## `beat(...)`
 
@@ -24,19 +24,7 @@ Example:
 beat(note, "9...", grid="1/4", bars="1-16", preset="gm_piano", notes="C4:E4:G4")
 ```
 
-## `equation(...)`
+## `equation` (removed)
 
-```
-equation(
-  lane="note",
-  grid="1/12",
-  bars="1-16",
-  preset="gm:0:0",
-  key="C# minor",
-  harmony="1-2:i;3-4:V;5-14:VI;15-16:i",
-  motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)"
-)
-```
-
-`equation(...)` is intent-only: it describes a harmony plan and motion
-instructions. The solver turns it into events during compilation.
+`equation` was removed in MIND V9. Use FlowGraph v9 for runtime graphs or
+`beat(...)` for legacy scripting.

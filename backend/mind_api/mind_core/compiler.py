@@ -15,7 +15,6 @@ from ..models import (
     RenderSpec,
 )
 from .post.chain import apply_render_chain
-from .solver import solve_equation_bar
 from .parser import parse_text
 from .notes import parse_notes_spec, parse_sequence_spec
 
@@ -116,21 +115,19 @@ def _compile_theory_node(
 ) -> List[Event]:
 
     node_text = (node.text or "").strip()
-    ast, parse_diags = parse_text(node_text)
+    try:
+        ast, parse_diags = parse_text(node_text)
+    except ValueError as exc:
+        diagnostics.append(
+            Diagnostic(level="error", message=f"Node {node.id}: {exc}", line=1, col=1)
+        )
+        return []
     if parse_diags:
         for d in parse_diags:
             diagnostics.append(
                 Diagnostic(level=d.level, message=f"Node {node.id}: {d.message}", line=d.line, col=d.col)
             )
         return []
-
-    # --- EQUATION NODES ---
-    if getattr(ast, "kind", "beat") == "equation":
-        bar_range = ast.bars or "1-16"
-        start_bar, end_bar = map(int, bar_range.split("-"))
-        if not (start_bar <= bar_idx + 1 <= end_bar):
-            return []
-        return solve_equation_bar(ast, bar_idx, bpm)
 
     # --- BEAT NODES ---
     bar_range = ast.bars or "1-16"

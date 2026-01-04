@@ -3,8 +3,7 @@
 Mapping rules:
     * MusicXML `duration` values are expressed in divisions per quarter note.
       We first convert them to beats (quarter note == 1 beat).
-    * Solver timing uses a fixed grid, matching the equation grid used in
-      docs/examples/moonlight_v7_1.txt ("1/12").
+    * Solver timing uses a fixed grid (default "1/12").
     * The grid is interpreted as steps per bar. With the default 4/4 time
       signature (4 beats per bar), grid "1/12" yields 12 steps per bar, or
       1/3 beat per step.
