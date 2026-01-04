@@ -144,6 +144,8 @@ textarea.script-input {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: scroll;
+  scrollbar-gutter: stable both-edges;
 }
 
 .workspace-hint {
