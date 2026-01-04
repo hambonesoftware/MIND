@@ -46,6 +46,7 @@ export function createTransportScheduler({
   let runtimeState = null;
   let lastDebugTrace = [];
   let compileQueue = Promise.resolve();
+  let playbackSession = 0;
 
   const describeRenderSinks = () => {
     const noteCard = nodeCards.find(card => card.lane === 'note');
@@ -204,7 +205,11 @@ export function createTransportScheduler({
     beatEndInLoop,
     cycleStartBeat,
     beatDur,
+    sessionId,
   }) => {
+    if (!isPlaying || sessionId !== playbackSession) {
+      return;
+    }
     const seed = parseInt(seedInput.value || '0', 10);
     const bpm = toNumber(bpmInput.value, 80);
     const graphInputs = buildGraphInputs();
@@ -234,6 +239,9 @@ export function createTransportScheduler({
           useNodeGraph,
         });
         const res = await compileSession(req);
+        if (!isPlaying || sessionId !== playbackSession) {
+          return;
+        }
         const events = Array.isArray(res.events) ? res.events : [];
         const diagnostics = Array.isArray(res.diagnostics) ? res.diagnostics : [];
         if (diagnostics.some(item => item.level === 'error')) {
@@ -309,6 +317,7 @@ export function createTransportScheduler({
             beatEndInLoop,
             cycleStartBeat,
             beatDur,
+            sessionId: playbackSession,
           });
           windowStart = segmentEnd;
         }
@@ -329,6 +338,7 @@ export function createTransportScheduler({
 
   const startPlayback = ({ activeStartNodeId } = {}) => {
     if (isPlaying) return;
+    playbackSession += 1;
     isPlaying = true;
     currentBarIndex = 0;
     lastBarIndex = 0;
@@ -359,6 +369,7 @@ export function createTransportScheduler({
   const stopPlayback = () => {
     if (!isPlaying) return;
     isPlaying = false;
+    playbackSession += 1;
     if (tickHandle) {
       clearInterval(tickHandle);
       tickHandle = null;
