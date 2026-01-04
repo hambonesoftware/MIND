@@ -828,122 +828,6 @@ function buildDefaultScript(lane, defaultPattern, defaultPreset) {
   return `beat(${lane}, "${defaultPattern}", grid="1/4", bars="1-16", preset="${defaultPreset}")`;
 }
 
-function buildDemoWorkspaces(presetId) {
-  return [
-    {
-      id: 'moonlight',
-      label: 'Moonlight (Theory + Render)',
-      workspace: {
-        blocks: [
-          {
-            id: 'theory-1',
-            kind: 'theory',
-            title: 'Moonlight Theory',
-            enabled: true,
-            latchedText: (
-              'equation(lane="note", grid="1/12", bars="1-16", '
-              + `preset="${presetId}", key="C# minor", `
-              + 'harmony="1-2:C#m/G#;3-4:V;5-14:VI;15-16:i", '
-              + 'motions="arpeggiate(pattern=low-mid-high,mode=tones,voicing=moonlight,order=5-1-3,start=0)")'
-            ),
-            lastParsedGrid: '1/12',
-          },
-          {
-            id: 'render-2',
-            kind: 'render',
-            title: 'Moonlight Render',
-            enabled: true,
-            childId: 'theory-1',
-            render: {
-              strumEnabled: false,
-              spreadMs: 20,
-              direction: 'DUDUDUDU',
-              percEnabled: false,
-              hatPattern: '........',
-              kickPattern: '........',
-              snarePattern: '........',
-            },
-          },
-        ],
-      },
-    },
-    {
-      id: 'wonderwall-oasis',
-      label: 'Wonderwall (Oasis Render)',
-      workspace: {
-        blocks: [
-          {
-            id: 'theory-1',
-            kind: 'theory',
-            title: 'Wonderwall Theory',
-            enabled: true,
-            latchedText: (
-              'equation(lane="note", grid="1/8", bars="1-16", '
-              + `preset="${presetId}", key="F# minor", `
-              + 'harmony="1-4:i;5-8:V;9-12:VI;13-16:III", '
-              + 'motions="sustain(chord)")'
-            ),
-            lastParsedGrid: '1/8',
-          },
-          {
-            id: 'render-2',
-            kind: 'render',
-            title: 'Oasis Render',
-            enabled: true,
-            childId: 'theory-1',
-            render: {
-              strumEnabled: true,
-              spreadMs: 40,
-              direction: 'DUDUDU',
-              percEnabled: true,
-              hatPattern: 'x.x.x.x.',
-              kickPattern: 'x...x...',
-              snarePattern: '..x...x.',
-            },
-          },
-        ],
-      },
-    },
-    {
-      id: 'wonderwall-ryan',
-      label: 'Wonderwall (Ryan Render)',
-      workspace: {
-        blocks: [
-          {
-            id: 'theory-1',
-            kind: 'theory',
-            title: 'Wonderwall Theory',
-            enabled: true,
-            latchedText: (
-              'equation(lane="note", grid="1/12", bars="1-16", '
-              + `preset="${presetId}", key="F# minor", `
-              + 'harmony="1-4:i;5-8:V;9-12:VI;13-16:III", '
-              + 'motions="sustain(chord); arpeggiate(grid=1/12, pattern=low-mid-high-mid)")'
-            ),
-            lastParsedGrid: '1/12',
-          },
-          {
-            id: 'render-2',
-            kind: 'render',
-            title: 'Ryan Render',
-            enabled: true,
-            childId: 'theory-1',
-            render: {
-              strumEnabled: true,
-              spreadMs: 20,
-              direction: 'DUDUDU',
-              percEnabled: false,
-              hatPattern: '........',
-              kickPattern: '........',
-              snarePattern: '........',
-            },
-          },
-        ],
-      },
-    },
-  ];
-}
-
 /**
  * Entry point: build the UI and wire up the runtime.
  */
@@ -966,11 +850,6 @@ async function main() {
     const stopButton = document.createElement('button');
     stopButton.textContent = 'Stop';
     transport.appendChild(stopButton);
-    const demoSelect = document.createElement('select');
-    const demoButton = document.createElement('button');
-    demoButton.textContent = 'Load Demo Workspace';
-    transport.appendChild(demoSelect);
-    transport.appendChild(demoButton);
     const v9DemoSelect = document.createElement('select');
     const v9DemoButton = document.createElement('button');
     v9DemoButton.textContent = 'Load V9 Demo';
@@ -1087,46 +966,48 @@ async function main() {
     latchButton.textContent = 'Latch';
     transport.appendChild(latchButton);
     // Node stack
-    const nodeStackEl = document.getElementById('nodeStack');
-    const lanes = [
-      { lane: 'kick', displayName: 'Kick' },
-      { lane: 'snare', displayName: 'Snare' },
-      { lane: 'hat', displayName: 'Hat' },
-      // Add a melodic lane for pitched sequences.  The backend maps the
-      // 'note' lane to MIDI note 60 by default; users can specify
-      // different note numbers in the script.
-      { lane: 'note', displayName: 'Piano' },
-    ];
     const nodeCards = [];
-    for (const ln of lanes) {
-      const card = ln.lane === 'note'
-        ? new NoteWorkspaceCard({
-          displayName: ln.displayName,
-          presets,
-          onGraphChange: () => syncGraphStoreFromUi(),
-        })
-        : new NodeCard({
-          lane: ln.lane,
-          displayName: ln.displayName,
-          presets,
-          onGraphChange: () => syncGraphStoreFromUi(),
-        });
-      nodeCards.push(card);
-      nodeStackEl.appendChild(card.element);
-      // Set the initial preset on the audio engine based on the default selection
-      if (typeof audioEngine.setPreset === 'function') {
-        audioEngine.setPreset(ln.lane, card.presetSelect.value);
-      }
-      // When the user changes the preset drop‑down update the audio engine
-      card.presetSelect.addEventListener('change', () => {
+    const nodeStackEl = document.getElementById('nodeStack');
+    if (nodeStackEl) {
+      const lanes = [
+        { lane: 'kick', displayName: 'Kick' },
+        { lane: 'snare', displayName: 'Snare' },
+        { lane: 'hat', displayName: 'Hat' },
+        // Add a melodic lane for pitched sequences.  The backend maps the
+        // 'note' lane to MIDI note 60 by default; users can specify
+        // different note numbers in the script.
+        { lane: 'note', displayName: 'Piano' },
+      ];
+      for (const ln of lanes) {
+        const card = ln.lane === 'note'
+          ? new NoteWorkspaceCard({
+            displayName: ln.displayName,
+            presets,
+            onGraphChange: () => syncGraphStoreFromUi(),
+          })
+          : new NodeCard({
+            lane: ln.lane,
+            displayName: ln.displayName,
+            presets,
+            onGraphChange: () => syncGraphStoreFromUi(),
+          });
+        nodeCards.push(card);
+        nodeStackEl.appendChild(card.element);
+        // Set the initial preset on the audio engine based on the default selection
         if (typeof audioEngine.setPreset === 'function') {
           audioEngine.setPreset(ln.lane, card.presetSelect.value);
         }
-        // Update the engine indicator when the melodic lane preset changes
-        if (typeof updateEngineIndicator === 'function') {
-          updateEngineIndicator();
-        }
-      });
+        // When the user changes the preset drop‑down update the audio engine
+        card.presetSelect.addEventListener('change', () => {
+          if (typeof audioEngine.setPreset === 'function') {
+            audioEngine.setPreset(ln.lane, card.presetSelect.value);
+          }
+          // Update the engine indicator when the melodic lane preset changes
+          if (typeof updateEngineIndicator === 'function') {
+            updateEngineIndicator();
+          }
+        });
+      }
     }
     // After creating all node cards update the engine indicator to
     // reflect the initial program on the melodic lane.
@@ -1310,27 +1191,6 @@ async function main() {
     if (flowInspectorMount) {
       flowInspectorMount.appendChild(flowInspector.element);
     }
-    const demoWorkspaces = buildDemoWorkspaces(
-      nodeCards.find(card => card.lane === 'note')?.presetSelect.value || '',
-    );
-    demoSelect.innerHTML = '';
-    for (const demo of demoWorkspaces) {
-      const opt = document.createElement('option');
-      opt.value = demo.id;
-      opt.textContent = demo.label;
-      demoSelect.appendChild(opt);
-    }
-    demoButton.addEventListener('click', () => {
-      const noteCard = nodeCards.find(card => card.lane === 'note');
-      if (!noteCard || typeof noteCard.loadWorkspace !== 'function') {
-        return;
-      }
-      const selected = demoWorkspaces.find(demo => demo.id === demoSelect.value);
-      if (selected) {
-        noteCard.loadWorkspace(selected.workspace);
-      }
-    });
-
     const v9Demos = [
       { id: 'moonlight', label: 'Moonlight Opening Loop', url: '/docs/demos/v9/moonlight_loop_v9.json' },
       { id: 'parallel', label: 'Parallel Fan-out', url: '/docs/demos/v9/parallel_fanout_v9.json' },
