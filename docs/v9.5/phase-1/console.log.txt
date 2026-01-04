@@ -1,0 +1,6 @@
+log: [AudioGate] ensureAudioStarted begin play-click
+log: [SpessaSynthEngine 2026-01-04T22:43:40.213Z] constructed. sf2Url= /assets/soundfonts/General-GS.sf2 libUrl= /assets/vendor/spessasynth/index.js
+log: [SpessaSynthEngine 2026-01-04T22:43:40.214Z] init(): begin
+log: [SpessaSynthEngine 2026-01-04T22:43:40.235Z] init(): AudioContext created. state= suspended
+log: [SpessaSynthEngine 2026-01-04T22:43:40.236Z] init(): importing library /assets/vendor/spessasynth/index.js
+log: [SpessaSynthEngine 2026-01-04T22:43:45.318Z] _ensureContextRunning: autoResume state= suspended

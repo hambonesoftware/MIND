@@ -133,6 +133,11 @@ function buildThoughtParams(node) {
     registerMax: node.params?.registerMax ?? 84,
     instrumentSoundfont: node.params?.instrumentSoundfont || '/assets/soundfonts/General-GS.sf2',
     instrumentPreset: node.params?.instrumentPreset || 'gm:0:0',
+    melodyMode: node.params?.melodyMode || 'generated',
+    customMelody: {
+      grid: node.params?.customMelody?.grid || '1/16',
+      bars: Array.isArray(node.params?.customMelody?.bars) ? node.params.customMelody.bars : [],
+    },
     thoughtStatus: node.params?.thoughtStatus || 'draft',
     thoughtVersion: node.params?.thoughtVersion ?? 1,
     legacyParams: node.params || {},

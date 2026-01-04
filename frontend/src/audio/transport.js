@@ -10,18 +10,8 @@ function toNumber(value, fallback) {
   return Number.isFinite(num) ? num : fallback;
 }
 
-function getAudioTime(audioEngine) {
-  if (typeof audioEngine.getCurrentTime === 'function') {
-    return audioEngine.getCurrentTime();
-  }
-  if (typeof audioEngine.currentTime === 'number') {
-    return audioEngine.currentTime;
-  }
-  return 0;
-}
-
 export function createTransportScheduler({
-  audioEngine,
+  audioEngineRef,
   nodeCards,
   graphStore,
   flowStore,
@@ -32,6 +22,7 @@ export function createTransportScheduler({
   stopButton,
   latchButton,
   useNodeGraph,
+  ensureAudioStarted,
   loopBars = 16,
 }) {
   const loopBeats = loopBars * BEATS_PER_BAR;
@@ -47,6 +38,20 @@ export function createTransportScheduler({
   let lastDebugTrace = [];
   let compileQueue = Promise.resolve();
   let playbackSession = 0;
+
+  const getAudioEngine = () => audioEngineRef?.current || null;
+
+  const getAudioTime = () => {
+    const engine = getAudioEngine();
+    if (!engine) return 0;
+    if (typeof engine.getCurrentTime === 'function') {
+      return engine.getCurrentTime();
+    }
+    if (typeof engine.currentTime === 'number') {
+      return engine.currentTime;
+    }
+    return 0;
+  };
 
   // ---------------------------------------------------------------------------
   // CRITICAL FIX:
@@ -93,9 +98,11 @@ export function createTransportScheduler({
     windowEndBeat = 0,
     diagnostics = [],
   ) => {
+    const engine = getAudioEngine();
+    const engineLabel = engine?.name || 'Audio not started';
     const transportState = isPlaying
-      ? `Playing (${audioEngine.name})`
-      : `Stopped (${audioEngine.name})`;
+      ? `Playing (${engineLabel})`
+      : `Stopped (${engineLabel})`;
     const barBeat = isPlaying
       ? `Bar ${currentBarIndex + 1} • Beat ${lastBeat.toFixed(2)}`
       : 'Idle';
@@ -304,7 +311,10 @@ export function createTransportScheduler({
         });
 
         recordBarEvents(scheduled, beatDur);
-        audioEngine.schedule(scheduled, 0);
+        const engine = getAudioEngine();
+        if (engine && typeof engine.schedule === 'function') {
+          engine.schedule(scheduled, 0);
+        }
 
         if (currentBarIndex === barIndex) {
           updateUiForEvents(barEvents.get(currentBarIndex) || []);
@@ -326,12 +336,13 @@ export function createTransportScheduler({
     }
 
     const bpm = toNumber(bpmInput.value, 80);
-    if (typeof audioEngine.setBpm === 'function') {
-      audioEngine.setBpm(bpm);
+    const engine = getAudioEngine();
+    if (engine && typeof engine.setBpm === 'function') {
+      engine.setBpm(bpm);
     }
 
     const beatDur = 60 / bpm;
-    const nowSec = getAudioTime(audioEngine);
+    const nowSec = getAudioTime();
     const elapsedSec = nowSec - startTimeSec;
     const absoluteBeat = elapsedSec / beatDur;
 
@@ -388,8 +399,17 @@ export function createTransportScheduler({
     }
   };
 
-  const startPlayback = ({ activeStartNodeId } = {}) => {
+  const startPlayback = async ({ activeStartNodeId } = {}) => {
     if (isPlaying) return;
+
+    if (typeof ensureAudioStarted === 'function') {
+      try {
+        await ensureAudioStarted('play-click');
+      } catch (err) {
+        console.error('Failed to start audio engine:', err);
+        return;
+      }
+    }
 
     playbackSession += 1;
     isPlaying = true;
@@ -418,10 +438,17 @@ export function createTransportScheduler({
       flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
     }
 
-    audioEngine.start();
+    const engine = getAudioEngine();
+    if (!engine) {
+      console.warn('No audio engine available; aborting startPlayback.');
+      isPlaying = false;
+      return;
+    }
+
+    engine.start();
     nodeCards.forEach(c => c.latch());
 
-    startTimeSec = getAudioTime(audioEngine);
+    startTimeSec = getAudioTime();
     scheduledThroughBeat = 0;
 
     updateUiForBar(currentBarIndex);
@@ -441,7 +468,10 @@ export function createTransportScheduler({
       tickHandle = null;
     }
 
-    audioEngine.stop();
+    const engine = getAudioEngine();
+    if (engine) {
+      engine.stop();
+    }
     barEvents.clear();
     nodeCards.forEach(c => c.updatePlayhead(0));
 
@@ -464,7 +494,7 @@ export function createTransportScheduler({
     updateExecutionsPanel(0, 0);
   };
 
-  playButton.addEventListener('click', startPlayback);
+  playButton.addEventListener('click', () => { startPlayback(); });
   stopButton.addEventListener('click', stopPlayback);
   latchButton.addEventListener('click', () => {
     nodeCards.forEach(c => c.latch());
