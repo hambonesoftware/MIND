@@ -9,7 +9,6 @@ import { createFlowCanvas } from './ui/flowCanvas.js';
 import { createFlowInspector } from './ui/flowInspector.js';
 import { createFlowPalette } from './ui/flowPalette.js';
 import { createToastManager } from './ui/toast.js';
-import { createRivuletLab } from './ui/rivuletLab.js';
 
 /**
  * Represents a single node/lane in the UI.  Each node manages its
@@ -1294,8 +1293,6 @@ async function main() {
     const flowInspectorMount = document.getElementById('flowInspector');
     const flowCanvas = createFlowCanvas({ store: flowStore, toast });
     if (flowCanvasMount) {
-      const rivuletLab = createRivuletLab({ store: flowStore, audioEngine });
-      flowCanvasMount.parentElement?.insertBefore(rivuletLab.element, flowCanvasMount);
       flowCanvasMount.appendChild(flowCanvas.element);
     }
     const addNodeAtCenter = (type) => {
