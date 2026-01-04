@@ -1,5 +1,29 @@
 import { getNodeDefinition } from '../state/nodeRegistry.js';
 
+const SOUND_FONTS = [
+  { value: '/assets/soundfonts/General-GS.sf2', label: 'General GS' },
+];
+
+let presetCache = null;
+let presetCachePromise = null;
+
+async function loadPresets() {
+  if (presetCachePromise) {
+    return presetCachePromise;
+  }
+  presetCachePromise = fetch('/api/presets')
+    .then(res => (res.ok ? res.json() : Promise.reject(new Error('Preset load failed'))))
+    .then(data => {
+      presetCache = Array.isArray(data?.presets) ? data.presets : [];
+      return presetCache;
+    })
+    .catch(() => {
+      presetCache = [];
+      return presetCache;
+    });
+  return presetCachePromise;
+}
+
 function buildField({ label, type, value, onChange }) {
   const wrapper = document.createElement('label');
   wrapper.className = 'flow-field';
@@ -18,6 +42,48 @@ function buildField({ label, type, value, onChange }) {
   });
   wrapper.appendChild(title);
   wrapper.appendChild(input);
+  return wrapper;
+}
+
+function buildSelect({ label, value, options, onChange }) {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'flow-field';
+  const title = document.createElement('span');
+  title.className = 'flow-field-label';
+  title.textContent = label;
+  const select = document.createElement('select');
+  select.className = 'flow-field-input';
+  options.forEach((option) => {
+    const opt = document.createElement('option');
+    opt.value = option.value;
+    opt.textContent = option.label ?? option.value;
+    if (option.value === value) {
+      opt.selected = true;
+    }
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', () => {
+    onChange(select.value);
+  });
+  wrapper.appendChild(title);
+  wrapper.appendChild(select);
+  return wrapper;
+}
+
+function buildCheckbox({ label, checked, onChange }) {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'flow-field flow-field-row';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = Boolean(checked);
+  input.addEventListener('change', () => {
+    onChange(input.checked);
+  });
+  const title = document.createElement('span');
+  title.className = 'flow-field-label';
+  title.textContent = label;
+  wrapper.appendChild(input);
+  wrapper.appendChild(title);
   return wrapper;
 }
 
@@ -42,7 +108,480 @@ export function createFlowInspector({ store } = {}) {
     content.appendChild(empty);
   };
 
-  const renderNode = (node) => {
+  const renderSwitchEditor = (node, state) => {
+    const params = node.params || {};
+    const branches = Array.isArray(params.branches) ? params.branches : [];
+    const defaultBranch = params.defaultBranch || 'default';
+    const updateParams = (next) => {
+      store.updateNode(node.id, {
+        params: {
+          ...params,
+          ...next,
+        },
+      });
+    };
+
+    const form = document.createElement('div');
+    form.className = 'flow-inspector-form';
+    form.appendChild(buildField({
+      label: 'label',
+      type: 'string',
+      value: params.label,
+      onChange: value => updateParams({ label: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'mode',
+      value: params.mode || 'first',
+      options: [
+        { value: 'first', label: 'First match' },
+        { value: 'all', label: 'All matches' },
+      ],
+      onChange: value => updateParams({ mode: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'manualSelection',
+      type: 'string',
+      value: params.manualSelection || '',
+      onChange: value => updateParams({ manualSelection: value }),
+    }));
+    const branchOptions = [
+      { value: 'default', label: 'Default' },
+      ...branches.map(branch => ({
+        value: branch.id,
+        label: branch.label || branch.id,
+      })),
+    ];
+    form.appendChild(buildSelect({
+      label: 'defaultBranch',
+      value: defaultBranch,
+      options: branchOptions,
+      onChange: value => updateParams({ defaultBranch: value }),
+    }));
+
+    const table = document.createElement('div');
+    table.className = 'flow-branch-table';
+    branches.forEach((branch, index) => {
+      const row = document.createElement('div');
+      row.className = 'flow-branch-row';
+      const rowHeader = document.createElement('div');
+      rowHeader.className = 'flow-branch-header';
+      rowHeader.textContent = branch.id;
+      row.appendChild(rowHeader);
+
+      const labelField = buildField({
+        label: 'label',
+        type: 'string',
+        value: branch.label || '',
+        onChange: (value) => {
+          const nextBranches = branches.map((item, idx) => (
+            idx === index ? { ...item, label: value } : item
+          ));
+          updateParams({ branches: nextBranches });
+        },
+      });
+      row.appendChild(labelField);
+
+      const condition = branch.condition || { type: 'always', value: true };
+      row.appendChild(buildSelect({
+        label: 'condition',
+        value: condition.type || 'always',
+        options: [
+          { value: 'always', label: 'Always' },
+          { value: 'counter', label: 'Counter' },
+          { value: 'barIndex', label: 'Bar Index' },
+          { value: 'manual', label: 'Manual' },
+          { value: 'random', label: 'Random' },
+        ],
+        onChange: (value) => {
+          const nextBranches = branches.map((item, idx) => (
+            idx === index
+              ? { ...item, condition: { type: value, value: condition.value ?? 0 } }
+              : item
+          ));
+          updateParams({ branches: nextBranches });
+        },
+      }));
+
+      if (condition.type === 'counter') {
+        row.appendChild(buildField({
+          label: 'counterId',
+          type: 'string',
+          value: condition.counterId || '',
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, counterId: value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+        row.appendChild(buildSelect({
+          label: 'operator',
+          value: condition.op || '>=',
+          options: ['==', '!=', '>=', '<=', '>', '<'].map(op => ({ value: op, label: op })),
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, op: value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+        row.appendChild(buildField({
+          label: 'value',
+          type: 'number',
+          value: condition.value ?? 0,
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+      } else if (condition.type === 'barIndex') {
+        row.appendChild(buildSelect({
+          label: 'operator',
+          value: condition.op || '>=',
+          options: ['==', '!=', '>=', '<=', '>', '<'].map(op => ({ value: op, label: op })),
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, op: value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+        row.appendChild(buildField({
+          label: 'value',
+          type: 'number',
+          value: condition.value ?? 0,
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+      } else if (condition.type === 'manual') {
+        row.appendChild(buildField({
+          label: 'value',
+          type: 'string',
+          value: condition.value || '',
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+      } else if (condition.type === 'random') {
+        row.appendChild(buildField({
+          label: 'threshold',
+          type: 'number',
+          value: condition.threshold ?? 0.5,
+          onChange: (value) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, threshold: value } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+      } else if (condition.type === 'always') {
+        row.appendChild(buildCheckbox({
+          label: 'value',
+          checked: condition.value !== false,
+          onChange: (checked) => {
+            const nextBranches = branches.map((item, idx) => (
+              idx === index
+                ? { ...item, condition: { ...condition, value: checked } }
+                : item
+            ));
+            updateParams({ branches: nextBranches });
+          },
+        }));
+      }
+
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'flow-branch-remove';
+      removeButton.textContent = 'Remove';
+      removeButton.addEventListener('click', () => {
+        const nextBranches = branches.filter((_, idx) => idx !== index);
+        const nextDefault = nextBranches.some(b => b.id === defaultBranch) ? defaultBranch : 'default';
+        updateParams({ branches: nextBranches, defaultBranch: nextDefault });
+      });
+      row.appendChild(removeButton);
+
+      table.appendChild(row);
+    });
+
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'flow-branch-add';
+    addButton.textContent = 'Add branch';
+    addButton.addEventListener('click', () => {
+      const index = branches.length + 1;
+      const nextBranch = {
+        id: `branch-${index}`,
+        label: `Branch ${index}`,
+        condition: { type: 'always', value: true },
+      };
+      updateParams({ branches: [...branches, nextBranch] });
+    });
+
+    const layout = document.createElement('div');
+    layout.className = 'flow-inspector-stack';
+    layout.appendChild(form);
+    layout.appendChild(table);
+    layout.appendChild(addButton);
+    return layout;
+  };
+
+  const renderCounterEditor = (node) => {
+    const params = node.params || {};
+    const updateParams = (next) => {
+      store.updateNode(node.id, {
+        params: {
+          ...params,
+          ...next,
+        },
+      });
+    };
+    const form = document.createElement('div');
+    form.className = 'flow-inspector-form';
+    form.appendChild(buildField({
+      label: 'label',
+      type: 'string',
+      value: params.label,
+      onChange: value => updateParams({ label: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'start',
+      type: 'number',
+      value: params.start ?? 0,
+      onChange: value => updateParams({ start: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'step',
+      type: 'number',
+      value: params.step ?? 1,
+      onChange: value => updateParams({ step: value }),
+    }));
+    form.appendChild(buildCheckbox({
+      label: 'reset on play',
+      checked: params.resetOnPlay !== false,
+      onChange: checked => updateParams({ resetOnPlay: checked }),
+    }));
+    return form;
+  };
+
+  const renderJoinEditor = (node, state) => {
+    const params = node.params || {};
+    const updateParams = (next) => {
+      store.updateNode(node.id, {
+        params: {
+          ...params,
+          ...next,
+        },
+      });
+    };
+    const incoming = (state.edges || []).filter(edge => edge.to?.nodeId === node.id);
+    const form = document.createElement('div');
+    form.className = 'flow-inspector-form';
+    form.appendChild(buildField({
+      label: 'label',
+      type: 'string',
+      value: params.label,
+      onChange: value => updateParams({ label: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'quantize',
+      value: params.quantize || 'next-bar',
+      options: [
+        { value: 'next-bar', label: 'Next bar' },
+        { value: 'immediate', label: 'Immediate' },
+      ],
+      onChange: value => updateParams({ quantize: value }),
+    }));
+    const summary = document.createElement('div');
+    summary.className = 'flow-inspector-meta';
+    summary.textContent = `Incoming connections: ${incoming.length}`;
+    form.appendChild(summary);
+    return form;
+  };
+
+  const renderThoughtEditor = (node) => {
+    const params = node.params || {};
+    const updateParams = (next) => {
+      store.updateNode(node.id, {
+        params: {
+          ...params,
+          ...next,
+        },
+      });
+    };
+
+    const form = document.createElement('div');
+    form.className = 'flow-inspector-form';
+    form.appendChild(buildField({
+      label: 'label',
+      type: 'string',
+      value: params.label,
+      onChange: value => updateParams({ label: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'durationBars',
+      type: 'number',
+      value: params.durationBars ?? 1,
+      onChange: value => updateParams({ durationBars: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'key',
+      type: 'string',
+      value: params.key || 'C# minor',
+      onChange: value => updateParams({ key: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'chordRoot',
+      type: 'string',
+      value: params.chordRoot || '',
+      onChange: value => updateParams({ chordRoot: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'chordQuality',
+      value: params.chordQuality || 'minor',
+      options: [
+        { value: 'major', label: 'Major' },
+        { value: 'minor', label: 'Minor' },
+        { value: 'diminished', label: 'Diminished' },
+        { value: 'augmented', label: 'Augmented' },
+      ],
+      onChange: value => updateParams({ chordQuality: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'chordNotes',
+      type: 'string',
+      value: params.chordNotes || '',
+      onChange: value => updateParams({ chordNotes: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'patternType',
+      value: params.patternType || 'arp-3-up',
+      options: [
+        { value: 'arp-3-up', label: 'Arpeggio 3 Up' },
+        { value: 'arp-3-down', label: 'Arpeggio 3 Down' },
+        { value: 'arp-3-skip', label: 'Arpeggio 3 Skip' },
+      ],
+      onChange: value => updateParams({ patternType: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'rhythmGrid',
+      value: params.rhythmGrid || '1/12',
+      options: [
+        { value: '1/4', label: 'Quarter (1/4)' },
+        { value: '1/8', label: 'Eighth (1/8)' },
+        { value: '1/12', label: 'Triplet (1/12)' },
+        { value: '1/16', label: 'Sixteenth (1/16)' },
+        { value: '1/24', label: '1/24' },
+      ],
+      onChange: value => updateParams({ rhythmGrid: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'syncopation',
+      value: params.syncopation || 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'offbeat', label: 'Offbeat' },
+        { value: 'anticipation', label: 'Anticipation' },
+      ],
+      onChange: value => updateParams({ syncopation: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'timingWarp',
+      value: params.timingWarp || 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'swing', label: 'Swing' },
+        { value: 'shuffle', label: 'Shuffle' },
+      ],
+      onChange: value => updateParams({ timingWarp: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'timingIntensity',
+      type: 'number',
+      value: params.timingIntensity ?? 0,
+      onChange: value => updateParams({ timingIntensity: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'registerMin',
+      type: 'number',
+      value: params.registerMin ?? 48,
+      onChange: value => updateParams({ registerMin: value }),
+    }));
+    form.appendChild(buildField({
+      label: 'registerMax',
+      type: 'number',
+      value: params.registerMax ?? 84,
+      onChange: value => updateParams({ registerMax: value }),
+    }));
+    form.appendChild(buildSelect({
+      label: 'instrumentSoundfont',
+      value: params.instrumentSoundfont || SOUND_FONTS[0].value,
+      options: SOUND_FONTS,
+      onChange: value => updateParams({ instrumentSoundfont: value }),
+    }));
+
+    const presets = presetCache || [];
+    if (presets.length > 0) {
+      form.appendChild(buildSelect({
+        label: 'instrumentPreset',
+        value: params.instrumentPreset || presets[0].id,
+        options: presets.map(preset => ({ value: preset.id, label: preset.name })),
+        onChange: value => updateParams({ instrumentPreset: value }),
+      }));
+    } else {
+      form.appendChild(buildField({
+        label: 'instrumentPreset',
+        type: 'string',
+        value: params.instrumentPreset || '',
+        onChange: value => updateParams({ instrumentPreset: value }),
+      }));
+    }
+
+    const moonlightButton = document.createElement('button');
+    moonlightButton.type = 'button';
+    moonlightButton.className = 'flow-branch-add';
+    moonlightButton.textContent = 'Apply Moonlight Opening Arp';
+    moonlightButton.addEventListener('click', () => {
+      updateParams({
+        key: 'C# minor',
+        chordRoot: 'C#',
+        chordQuality: 'minor',
+        patternType: 'arp-3-up',
+        rhythmGrid: '1/12',
+        syncopation: 'none',
+        timingWarp: 'none',
+        timingIntensity: 0,
+        durationBars: 1,
+        instrumentPreset: 'gm_piano',
+      });
+    });
+    form.appendChild(moonlightButton);
+    return form;
+  };
+
+  const renderNode = (node, state) => {
     content.innerHTML = '';
     const definition = getNodeDefinition(node.type);
     const title = document.createElement('div');
@@ -55,6 +594,15 @@ export function createFlowInspector({ store } = {}) {
     meta.textContent = `ID: ${node.id}`;
     content.appendChild(meta);
 
+    if (node.type === 'switch') {
+      content.appendChild(renderSwitchEditor(node, state));
+    } else if (node.type === 'counter') {
+      content.appendChild(renderCounterEditor(node));
+    } else if (node.type === 'join') {
+      content.appendChild(renderJoinEditor(node, state));
+    } else if (node.type === 'thought') {
+      content.appendChild(renderThoughtEditor(node));
+    } else {
     const schema = definition?.paramSchema || {};
     const params = node.params || {};
     const fields = Object.keys(schema);
@@ -83,6 +631,7 @@ export function createFlowInspector({ store } = {}) {
         form.appendChild(field);
       });
       content.appendChild(form);
+    }
     }
 
     const deleteButton = document.createElement('button');
@@ -122,7 +671,7 @@ export function createFlowInspector({ store } = {}) {
     if (selection.nodes.length > 0) {
       const node = state.nodes.find(item => item.id === selection.nodes[0]);
       if (node) {
-        renderNode(node);
+        renderNode(node, state);
         return;
       }
     }
@@ -137,6 +686,9 @@ export function createFlowInspector({ store } = {}) {
     renderEmpty();
   };
 
+  loadPresets().finally(() => {
+    update(store.getState());
+  });
   update(store.getState());
   const unsubscribe = store.subscribe(update);
 

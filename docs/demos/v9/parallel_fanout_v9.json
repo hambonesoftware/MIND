@@ -1,0 +1,89 @@
+{
+  "graphVersion": 9,
+  "description": "Parallel fan-out from Start into two Thoughts that run together.",
+  "expectedBehavior": "Thought A and Thought B play in the same bar in parallel.",
+  "successCriteria": [
+    "Both Thoughts fire on bar 1",
+    "No join required; both complete independently"
+  ],
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "params": { "label": "Start" },
+      "ui": { "x": 40, "y": 80 },
+      "ports": {
+        "inputs": [],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-a",
+      "type": "thought",
+      "params": {
+        "label": "Parallel A",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-up",
+        "rhythmGrid": "1/16",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_piano",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 240, "y": 40 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-b",
+      "type": "thought",
+      "params": {
+        "label": "Parallel B",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-down",
+        "rhythmGrid": "1/16",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_strings",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 240, "y": 140 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-start-a",
+      "from": { "nodeId": "start-1", "portId": "out" },
+      "to": { "nodeId": "thought-a", "portId": "in" }
+    },
+    {
+      "id": "edge-start-b",
+      "from": { "nodeId": "start-1", "portId": "out" },
+      "to": { "nodeId": "thought-b", "portId": "in" }
+    }
+  ],
+  "selection": { "nodes": [], "edges": [] },
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}

@@ -23,6 +23,7 @@ from .models import (
 )
 from .mind_core.parser import parse_text
 from .mind_core.compiler import compile_request
+from .mind_core.stream_runtime import run_stream_runtime
 
 
 api_router = APIRouter()
@@ -39,6 +40,8 @@ async def api_parse(req: ParseRequest) -> ParseResponse:
 @api_router.post("/compile", response_model=CompileResponse)
 async def api_compile(req: CompileRequest) -> CompileResponse:
     """Compile latched nodes into a list of events for the current bar."""
+    if req.flowGraph and req.flowGraph.graphVersion == 9:
+        return run_stream_runtime(req)
     return compile_request(req)
 
 

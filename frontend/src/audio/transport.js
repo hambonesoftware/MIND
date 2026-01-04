@@ -43,6 +43,9 @@ export function createTransportScheduler({
   let currentBarIndex = 0;
   let lastBarIndex = 0;
   const barEvents = new Map();
+  let runtimeState = null;
+  let lastDebugTrace = [];
+  let compileQueue = Promise.resolve();
 
   const describeRenderSinks = () => {
     const noteCard = nodeCards.find(card => card.lane === 'note');
@@ -73,7 +76,11 @@ export function createTransportScheduler({
     return `Beats ${windowStartBeat.toFixed(2)}–${windowEndBeat.toFixed(2)}`;
   };
 
-  const updateExecutionsPanel = (windowStartBeat = 0, windowEndBeat = 0) => {
+  const updateExecutionsPanel = (
+    windowStartBeat = 0,
+    windowEndBeat = 0,
+    diagnostics = [],
+  ) => {
     const transportState = isPlaying
       ? `Playing (${audioEngine.name})`
       : `Stopped (${audioEngine.name})`;
@@ -85,6 +92,8 @@ export function createTransportScheduler({
       barBeat,
       renderSinks: describeRenderSinks(),
       scheduleWindow: formatScheduleWindow(windowStartBeat, windowEndBeat),
+      debugTrace: lastDebugTrace,
+      diagnostics,
     });
   };
 
@@ -199,39 +208,56 @@ export function createTransportScheduler({
     const seed = parseInt(seedInput.value || '0', 10);
     const bpm = toNumber(bpmInput.value, 80);
     const graphInputs = buildGraphInputs();
-    const barIndex = Math.floor(beatStartInLoop / BEATS_PER_BAR) % loopBars;
+    const barStart = Math.floor(beatStartInLoop / BEATS_PER_BAR);
+    const barEnd = Math.max(barStart, Math.floor((beatEndInLoop - 0.001) / BEATS_PER_BAR));
     const flowGraph = flowStore.getState();
-    const req = buildCompilePayload({
-      seed,
-      bpm,
-      barIndex,
-      beatStart: beatStartInLoop,
-      beatEnd: beatEndInLoop,
-      flowGraph,
-      laneNodes: graphInputs.laneNodes,
-      noteNodes: graphInputs.noteNodes,
-      edges: graphInputs.edges,
-      startNodeIds: graphInputs.startNodeIds,
-      legacyNodes: graphInputs.legacyNodes,
-      useNodeGraph,
-    });
     try {
-      const res = await compileSession(req);
-      const events = Array.isArray(res.events) ? res.events : [];
-      const scheduled = events.map(ev => {
-        if (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime)) {
+      for (let barOffset = barStart; barOffset <= barEnd; barOffset += 1) {
+        const barIndex = ((barOffset % loopBars) + loopBars) % loopBars;
+        const req = buildCompilePayload({
+          seed,
+          bpm,
+          barIndex,
+          beatStart: beatStartInLoop,
+          beatEnd: beatEndInLoop,
+          flowGraph,
+          runtimeState,
+          laneNodes: graphInputs.laneNodes,
+          noteNodes: graphInputs.noteNodes,
+          edges: graphInputs.edges,
+          startNodeIds: graphInputs.startNodeIds,
+          legacyNodes: graphInputs.legacyNodes,
+          useNodeGraph,
+        });
+        const res = await compileSession(req);
+        const events = Array.isArray(res.events) ? res.events : [];
+        const diagnostics = Array.isArray(res.diagnostics) ? res.diagnostics : [];
+        if (diagnostics.some(item => item.level === 'error')) {
+          console.error('Runtime diagnostics', diagnostics);
+        }
+        lastDebugTrace = Array.isArray(res.debugTrace) ? res.debugTrace : [];
+        if (res.runtimeState) {
+          runtimeState = res.runtimeState;
+        }
+        if (typeof flowStore?.setRuntimeState === 'function') {
+          flowStore.setRuntimeState({ runtimeState, debugTrace: lastDebugTrace });
+        }
+        const scheduled = events.map(ev => {
+          if (typeof ev.audioTime === 'number' && Number.isFinite(ev.audioTime)) {
+            return ev;
+          }
+          if (typeof ev.tBeat === 'number' && Number.isFinite(ev.tBeat)) {
+            const absoluteBeat = cycleStartBeat + barOffset * BEATS_PER_BAR + ev.tBeat;
+            return { ...ev, audioTime: startTimeSec + absoluteBeat * beatDur };
+          }
           return ev;
+        });
+        recordBarEvents(scheduled, beatDur);
+        audioEngine.schedule(scheduled, 0);
+        if (currentBarIndex === barIndex) {
+          updateUiForEvents(barEvents.get(currentBarIndex) || []);
         }
-        if (typeof ev.tBeat === 'number' && Number.isFinite(ev.tBeat)) {
-          const absoluteBeat = cycleStartBeat + ev.tBeat;
-          return { ...ev, audioTime: startTimeSec + absoluteBeat * beatDur };
-        }
-        return ev;
-      });
-      recordBarEvents(scheduled, beatDur);
-      audioEngine.schedule(scheduled, 0);
-      if (currentBarIndex === barIndex) {
-        updateUiForEvents(barEvents.get(currentBarIndex) || []);
+        updateExecutionsPanel(windowStartBeat, windowEndBeat, diagnostics);
       }
     } catch (err) {
       console.error('Compile error', err);
@@ -266,28 +292,32 @@ export function createTransportScheduler({
     }
 
     if (windowEndBeat > windowStartBeat) {
-      const requests = [];
       let windowStart = windowStartBeat;
-      while (windowStart < windowEndBeat) {
-        const cycleStartBeat = Math.floor(windowStart / loopBeats) * loopBeats;
-        const cycleEndBeat = cycleStartBeat + loopBeats;
-        const segmentEnd = Math.min(windowEndBeat, cycleEndBeat);
-        const beatStartInLoop = windowStart - cycleStartBeat;
-        const beatEndInLoop = segmentEnd - cycleStartBeat;
-        requests.push(
-          requestWindow({
+      const work = async () => {
+        while (windowStart < windowEndBeat) {
+          const cycleStartBeat = Math.floor(windowStart / loopBeats) * loopBeats;
+          const cycleEndBeat = cycleStartBeat + loopBeats;
+          const segmentEnd = Math.min(windowEndBeat, cycleEndBeat);
+          const beatStartInLoop = windowStart - cycleStartBeat;
+          const beatEndInLoop = segmentEnd - cycleStartBeat;
+          await requestWindow({
             beatStartInLoop,
             beatEndInLoop,
             cycleStartBeat,
             beatDur,
-          }),
-        );
-        windowStart = segmentEnd;
-      }
+          });
+          windowStart = segmentEnd;
+        }
+      };
       scheduledThroughBeat = windowEndBeat;
-      Promise.all(requests).finally(() => {
-        updateExecutionsPanel(windowStartBeat, windowEndBeat);
-      });
+      compileQueue = compileQueue
+        .then(work)
+        .catch(err => {
+          console.error('Compile error', err);
+          updateExecutionsPanel(windowStartBeat, windowEndBeat, [
+            { level: 'error', message: 'Compile request failed.' },
+          ]);
+        });
     } else {
       updateExecutionsPanel(windowStartBeat, windowEndBeat);
     }
@@ -300,6 +330,12 @@ export function createTransportScheduler({
     lastBarIndex = 0;
     lastBeat = 0;
     barEvents.clear();
+    runtimeState = null;
+    lastDebugTrace = [];
+    compileQueue = Promise.resolve();
+    if (typeof flowStore?.setRuntimeState === 'function') {
+      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
+    }
     audioEngine.start();
     nodeCards.forEach(c => c.latch());
     startTimeSec = getAudioTime(audioEngine);
@@ -319,6 +355,12 @@ export function createTransportScheduler({
     audioEngine.stop();
     barEvents.clear();
     nodeCards.forEach(c => c.updatePlayhead(0));
+    runtimeState = null;
+    lastDebugTrace = [];
+    compileQueue = Promise.resolve();
+    if (typeof flowStore?.setRuntimeState === 'function') {
+      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
+    }
     updateExecutionsPanel(0, 0);
   };
 

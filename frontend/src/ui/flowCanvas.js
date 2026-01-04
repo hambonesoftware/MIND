@@ -99,9 +99,18 @@ export function createFlowCanvas({ store, toast } = {}) {
   };
 
   const addEdgePath = (edge) => {
-    let path = edgeElements.get(edge.id);
-    if (!path) {
-      path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    let entry = edgeElements.get(edge.id);
+    if (!entry) {
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      hit.classList.add('flow-edge-hit');
+      hit.setAttribute('fill', 'none');
+      hit.setAttribute('stroke-width', '10');
+      hit.dataset.edgeId = edge.id;
+      hit.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        store.setSelection({ nodes: [], edges: [edge.id] });
+      });
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.classList.add('flow-edge');
       path.setAttribute('fill', 'none');
       path.setAttribute('stroke-width', '2');
@@ -110,20 +119,27 @@ export function createFlowCanvas({ store, toast } = {}) {
         event.stopPropagation();
         store.setSelection({ nodes: [], edges: [edge.id] });
       });
-      edgeElements.set(edge.id, path);
+      edgeElements.set(edge.id, { path, hit });
+      edgeGroup.appendChild(hit);
       edgeGroup.appendChild(path);
     }
+    const { path, hit } = edgeElements.get(edge.id);
     path.setAttribute('stroke', EDGE_COLOR);
     if (currentState.selection.edges.includes(edge.id)) {
       path.classList.add('flow-edge-selected');
     } else {
       path.classList.remove('flow-edge-selected');
     }
-    return path;
+    return { path, hit };
   };
 
   const renderEdges = () => {
     const edges = currentState.edges || [];
+    const activeEdgeIds = new Set(
+      (currentState.runtime?.state?.activeTokens || [])
+        .map(token => token.viaEdgeId)
+        .filter(Boolean),
+    );
     const portLookup = new Map();
     for (const nodeEl of nodeLayer.querySelectorAll('[data-port-id]')) {
       const key = `${nodeEl.dataset.nodeId}:${nodeEl.dataset.portId}:${nodeEl.dataset.portDirection}`;
@@ -141,13 +157,21 @@ export function createFlowCanvas({ store, toast } = {}) {
       }
       const source = getPortCenterInGraph(sourceEl);
       const target = getPortCenterInGraph(targetEl);
-      const path = addEdgePath(edge);
-      path.setAttribute('d', drawCurve(source, target));
+      const { path, hit } = addEdgePath(edge);
+      const d = drawCurve(source, target);
+      path.setAttribute('d', d);
+      hit.setAttribute('d', d);
+      if (activeEdgeIds.has(edge.id)) {
+        path.classList.add('flow-edge-active');
+      } else {
+        path.classList.remove('flow-edge-active');
+      }
       seen.add(edge.id);
     }
     for (const [edgeId, path] of edgeElements.entries()) {
       if (!seen.has(edgeId)) {
-        path.remove();
+        path.hit.remove();
+        path.path.remove();
         edgeElements.delete(edgeId);
       }
     }
@@ -156,6 +180,105 @@ export function createFlowCanvas({ store, toast } = {}) {
   const renderNodes = () => {
     const nodes = currentState.nodes || [];
     const seen = new Set();
+    const runtimeState = currentState.runtime?.state || {};
+    const debugTrace = currentState.runtime?.debugTrace || [];
+    const activeNodeIds = new Set();
+    debugTrace.forEach((line) => {
+      const match = /^(Start|Thought|Counter|Switch|Join)\\s+([^:]+)/.exec(line);
+      if (match) {
+        activeNodeIds.add(match[2]);
+      }
+    });
+
+    const buildPort = (node, port, direction) => {
+      const portEl = document.createElement('div');
+      portEl.className = `flow-port flow-port-${direction}`;
+      portEl.dataset.nodeId = node.id;
+      portEl.dataset.portId = port.id;
+      portEl.dataset.portDirection = direction;
+      const dot = document.createElement('span');
+      dot.className = 'flow-port-dot';
+      const label = document.createElement('span');
+      label.className = 'flow-port-label';
+      label.textContent = buildPortLabel(port);
+      if (direction === 'input') {
+        portEl.appendChild(dot);
+        portEl.appendChild(label);
+      } else {
+        portEl.appendChild(label);
+        portEl.appendChild(dot);
+      }
+
+      if (direction === 'output') {
+        portEl.addEventListener('pointerdown', (event) => {
+          event.stopPropagation();
+          connection = {
+            fromNodeId: node.id,
+            fromPortId: port.id,
+            fromType: node.type,
+            fromPortEl: portEl,
+          };
+          portEl.classList.add('flow-port-connecting');
+          tempEdge.setAttribute('d', '');
+        });
+      } else {
+        portEl.addEventListener('pointerenter', () => {
+          if (!connection) {
+            return;
+          }
+          const result = validateConnection({
+            fromType: connection.fromType,
+            fromPortId: connection.fromPortId,
+            toType: node.type,
+            toPortId: port.id,
+          });
+          if (result.ok) {
+            portEl.classList.add('flow-port-valid');
+            portEl.classList.remove('flow-port-invalid');
+            setInlineError(null);
+          } else {
+            portEl.classList.add('flow-port-invalid');
+            portEl.classList.remove('flow-port-valid');
+            setInlineError(result.reason);
+          }
+        });
+        portEl.addEventListener('pointerleave', () => {
+          portEl.classList.remove('flow-port-valid', 'flow-port-invalid');
+          setInlineError(null);
+        });
+        portEl.addEventListener('pointerup', (event) => {
+          if (!connection) {
+            return;
+          }
+          event.stopPropagation();
+          const result = validateConnection({
+            fromType: connection.fromType,
+            fromPortId: connection.fromPortId,
+            toType: node.type,
+            toPortId: port.id,
+          });
+          if (!result.ok) {
+            if (toast?.showToast) {
+              toast.showToast(result.reason, { tone: 'error' });
+            }
+            clearConnection();
+            return;
+          }
+          try {
+            store.addEdge({
+              from: { nodeId: connection.fromNodeId, portId: connection.fromPortId },
+              to: { nodeId: node.id, portId: port.id },
+            });
+          } catch (error) {
+            if (toast?.showToast) {
+              toast.showToast(error.message, { tone: 'error' });
+            }
+          }
+          clearConnection();
+        });
+      }
+      return portEl;
+    };
 
     for (const node of nodes) {
       let nodeEl = nodeElements.get(node.id);
@@ -167,7 +290,20 @@ export function createFlowCanvas({ store, toast } = {}) {
 
         const header = document.createElement('div');
         header.className = 'flow-node-header';
-        header.textContent = node.params?.label || definition?.label || node.type;
+        const title = document.createElement('span');
+        title.className = 'flow-node-title';
+        const icon = {
+          start: '▶',
+          counter: '#',
+          switch: '⇄',
+          join: '⨂',
+        }[node.type];
+        const labelText = node.params?.label || definition?.label || node.type;
+        title.textContent = icon ? `${icon} ${labelText}` : labelText;
+        const badges = document.createElement('div');
+        badges.className = 'flow-node-badges';
+        header.appendChild(title);
+        header.appendChild(badges);
         header.addEventListener('pointerdown', (event) => {
           if (event.button !== 0) {
             return;
@@ -195,6 +331,12 @@ export function createFlowCanvas({ store, toast } = {}) {
           window.addEventListener('pointermove', onMove);
           window.addEventListener('pointerup', onUp);
         });
+        header.addEventListener('dblclick', (event) => {
+          event.stopPropagation();
+          store.updateNode(node.id, {
+            ui: { ...node.ui, collapsed: !node.ui?.collapsed },
+          });
+        });
 
         const body = document.createElement('div');
         body.className = 'flow-node-body';
@@ -204,100 +346,10 @@ export function createFlowCanvas({ store, toast } = {}) {
         const outputs = document.createElement('div');
         outputs.className = 'flow-node-ports flow-node-outputs';
 
-        const buildPort = (port, direction) => {
-          const portEl = document.createElement('div');
-          portEl.className = `flow-port flow-port-${direction}`;
-          portEl.dataset.nodeId = node.id;
-          portEl.dataset.portId = port.id;
-          portEl.dataset.portDirection = direction;
-          const dot = document.createElement('span');
-          dot.className = 'flow-port-dot';
-          const label = document.createElement('span');
-          label.className = 'flow-port-label';
-          label.textContent = buildPortLabel(port);
-          if (direction === 'input') {
-            portEl.appendChild(dot);
-            portEl.appendChild(label);
-          } else {
-            portEl.appendChild(label);
-            portEl.appendChild(dot);
-          }
-
-          if (direction === 'output') {
-            portEl.addEventListener('pointerdown', (event) => {
-              event.stopPropagation();
-              connection = {
-                fromNodeId: node.id,
-                fromPortId: port.id,
-                fromType: node.type,
-                fromPortEl: portEl,
-              };
-              portEl.classList.add('flow-port-connecting');
-              tempEdge.setAttribute('d', '');
-            });
-          } else {
-            portEl.addEventListener('pointerenter', () => {
-              if (!connection) {
-                return;
-              }
-              const result = validateConnection({
-                fromType: connection.fromType,
-                fromPortId: connection.fromPortId,
-                toType: node.type,
-                toPortId: port.id,
-              });
-              if (result.ok) {
-                portEl.classList.add('flow-port-valid');
-                portEl.classList.remove('flow-port-invalid');
-                setInlineError(null);
-              } else {
-                portEl.classList.add('flow-port-invalid');
-                portEl.classList.remove('flow-port-valid');
-                setInlineError(result.reason);
-              }
-            });
-            portEl.addEventListener('pointerleave', () => {
-              portEl.classList.remove('flow-port-valid', 'flow-port-invalid');
-              setInlineError(null);
-            });
-            portEl.addEventListener('pointerup', (event) => {
-              if (!connection) {
-                return;
-              }
-              event.stopPropagation();
-              const result = validateConnection({
-                fromType: connection.fromType,
-                fromPortId: connection.fromPortId,
-                toType: node.type,
-                toPortId: port.id,
-              });
-              if (!result.ok) {
-                if (toast?.showToast) {
-                  toast.showToast(result.reason, { tone: 'error' });
-                }
-                clearConnection();
-                return;
-              }
-              try {
-                store.addEdge({
-                  from: { nodeId: connection.fromNodeId, portId: connection.fromPortId },
-                  to: { nodeId: node.id, portId: port.id },
-                });
-              } catch (error) {
-                if (toast?.showToast) {
-                  toast.showToast(error.message, { tone: 'error' });
-                }
-              }
-              clearConnection();
-            });
-          }
-          return portEl;
-        };
-
         const inputPorts = node.ports?.inputs || [];
         const outputPorts = node.ports?.outputs || [];
-        inputPorts.forEach(port => inputs.appendChild(buildPort(port, 'input')));
-        outputPorts.forEach(port => outputs.appendChild(buildPort(port, 'output')));
+        inputPorts.forEach(port => inputs.appendChild(buildPort(node, port, 'input')));
+        outputPorts.forEach(port => outputs.appendChild(buildPort(node, port, 'output')));
 
         body.appendChild(inputs);
         body.appendChild(outputs);
@@ -313,7 +365,83 @@ export function createFlowCanvas({ store, toast } = {}) {
         const header = nodeEl.querySelector('.flow-node-header');
         if (header) {
           const definition = getNodeDefinition(node.type);
-          header.textContent = node.params?.label || definition?.label || node.type;
+          const title = header.querySelector('.flow-node-title');
+          if (title) {
+            const icon = {
+              start: '▶',
+              counter: '#',
+              switch: '⇄',
+              join: '⨂',
+            }[node.type];
+            const labelText = node.params?.label || definition?.label || node.type;
+            title.textContent = icon ? `${icon} ${labelText}` : labelText;
+          }
+        }
+      }
+      const body = nodeEl.querySelector('.flow-node-body');
+      const inputs = nodeEl.querySelector('.flow-node-inputs');
+      const outputs = nodeEl.querySelector('.flow-node-outputs');
+      if (inputs && outputs) {
+        inputs.innerHTML = '';
+        outputs.innerHTML = '';
+        const inputPorts = node.ports?.inputs || [];
+        const outputPorts = node.ports?.outputs || [];
+        inputPorts.forEach(port => inputs.appendChild(buildPort(node, port, 'input')));
+        outputPorts.forEach(port => outputs.appendChild(buildPort(node, port, 'output')));
+      }
+
+      const header = nodeEl.querySelector('.flow-node-header');
+      const badgeContainer = header?.querySelector('.flow-node-badges');
+      if (badgeContainer) {
+        badgeContainer.innerHTML = '';
+        if (node.type === 'thought') {
+          const preset = node.params?.instrumentPreset || 'preset';
+          const rhythm = node.params?.rhythmGrid || '1/12';
+          const pattern = node.params?.patternType || 'arp';
+          const presetBadge = document.createElement('span');
+          presetBadge.className = 'flow-node-badge';
+          presetBadge.textContent = preset;
+          const rhythmBadge = document.createElement('span');
+          rhythmBadge.className = 'flow-node-badge';
+          rhythmBadge.textContent = `${pattern} • ${rhythm}`;
+          badgeContainer.appendChild(presetBadge);
+          badgeContainer.appendChild(rhythmBadge);
+        }
+        if (node.type === 'counter') {
+          const value = runtimeState.counters?.[node.id];
+          if (value !== undefined) {
+            const badge = document.createElement('span');
+            badge.className = 'flow-node-badge flow-node-badge-accent';
+            badge.textContent = `Value ${value}`;
+            badgeContainer.appendChild(badge);
+          }
+        }
+        if (node.type === 'join') {
+          const arrived = runtimeState.joins?.[node.id];
+          const total = node.ports?.inputs?.length || 0;
+          if (Array.isArray(arrived) && total > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'flow-node-badge flow-node-badge-warn';
+            badge.textContent = `Waiting ${arrived.length}/${total}`;
+            badgeContainer.appendChild(badge);
+          }
+        }
+      }
+
+      if (node.type === 'switch') {
+        const lastRoute = runtimeState.lastSwitchRoutes?.[node.id];
+        if (lastRoute) {
+          const portEls = nodeEl.querySelectorAll('.flow-port-output');
+          portEls.forEach((portEl) => {
+            if (portEl.dataset.portId === lastRoute) {
+              portEl.classList.add('flow-port-active');
+            } else {
+              portEl.classList.remove('flow-port-active');
+            }
+          });
+        } else {
+          const portEls = nodeEl.querySelectorAll('.flow-port-output');
+          portEls.forEach(portEl => portEl.classList.remove('flow-port-active'));
         }
       }
       nodeEl.style.left = `${node.ui?.x || 0}px`;
@@ -322,6 +450,16 @@ export function createFlowCanvas({ store, toast } = {}) {
         nodeEl.classList.add('flow-node-selected');
       } else {
         nodeEl.classList.remove('flow-node-selected');
+      }
+      if (activeNodeIds.has(node.id)) {
+        nodeEl.classList.add('flow-node-active');
+      } else {
+        nodeEl.classList.remove('flow-node-active');
+      }
+      if (node.ui?.collapsed) {
+        nodeEl.classList.add('flow-node-collapsed');
+      } else {
+        nodeEl.classList.remove('flow-node-collapsed');
       }
       seen.add(node.id);
     }
@@ -411,6 +549,22 @@ export function createFlowCanvas({ store, toast } = {}) {
 
   const keyHandler = (event) => {
     if (event.key !== 'Delete' && event.key !== 'Backspace') {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        const selection = currentState.selection;
+        const nodeId = selection.nodes[0];
+        const node = currentState.nodes.find(item => item.id === nodeId);
+        if (node) {
+          store.addNode(node.type, {
+            params: { ...node.params },
+            ui: {
+              ...(node.ui || { x: 0, y: 0 }),
+              x: (node.ui?.x || 0) + 24,
+              y: (node.ui?.y || 0) + 24,
+              collapsed: node.ui?.collapsed,
+            },
+          });
+        }
+      }
       return;
     }
     const selection = currentState.selection;
