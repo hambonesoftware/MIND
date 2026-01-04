@@ -1,3 +1,5 @@
+// frontend/src/state/nodeRegistry.js
+
 const PORT_TYPES = {
   FLOW: 'flow',
   EVENTS: 'events',
@@ -156,11 +158,69 @@ const nodeRegistry = {
   },
 };
 
+/**
+ * structuredClone() cannot clone functions. Some node definitions include
+ * functions (e.g., portBuilder on switch/join). If we structuredClone those
+ * definitions, Chrome will throw DataCloneError.
+ *
+ * This clone() tries structuredClone first for speed, then falls back to a
+ * safe deep clone that preserves function references.
+ */
+function isPlainObject(value) {
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function safeClonePreserveFunctions(value, seen = new Map()) {
+  // Primitives + null
+  if (value === null) return value;
+
+  const t = typeof value;
+
+  // Preserve functions by reference
+  if (t === 'function') return value;
+
+  // Primitives
+  if (t !== 'object') return value;
+
+  // Cycles
+  if (seen.has(value)) return seen.get(value);
+
+  // Arrays
+  if (Array.isArray(value)) {
+    const arr = new Array(value.length);
+    seen.set(value, arr);
+    for (let i = 0; i < value.length; i += 1) {
+      arr[i] = safeClonePreserveFunctions(value[i], seen);
+    }
+    return arr;
+  }
+
+  // Plain objects
+  if (isPlainObject(value)) {
+    const obj = {};
+    seen.set(value, obj);
+    for (const key of Object.keys(value)) {
+      obj[key] = safeClonePreserveFunctions(value[key], seen);
+    }
+    return obj;
+  }
+
+  // Other objects (Map/Set/Date/class instances) are not expected in the registry.
+  // Preserve reference rather than guessing how to clone.
+  return value;
+}
+
 function clone(value) {
   if (typeof structuredClone === 'function') {
-    return structuredClone(value);
+    try {
+      return structuredClone(value);
+    } catch (err) {
+      // Fall through to safe clone
+    }
   }
-  return JSON.parse(JSON.stringify(value));
+  return safeClonePreserveFunctions(value);
 }
 
 function generateId(prefix) {
@@ -234,7 +294,7 @@ function validateConnection({ fromType, fromPortId, toType, toPortId, fromParams
 }
 
 function validateRequiredInputs(nodes, edges) {
-  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const edgesByTarget = new Map();
   for (const edge of edges) {
     const target = edge.to?.nodeId;
@@ -249,9 +309,11 @@ function validateRequiredInputs(nodes, edges) {
   const missing = [];
   for (const node of nodes) {
     const ports = buildPortsForNode(node.type, node.params);
-    const requiredInputs = (ports.inputs || []).filter(port => port.required);
+    const requiredInputs = (ports.inputs || []).filter((port) => port.required);
     for (const input of requiredInputs) {
-      const connected = (edgesByTarget.get(node.id) || []).some(edge => edge.to?.portId === input.id);
+      const connected = (edgesByTarget.get(node.id) || []).some(
+        (edge) => edge.to?.portId === input.id
+      );
       if (!connected) {
         missing.push({ nodeId: node.id, portId: input.id, nodeType: node.type });
       }
