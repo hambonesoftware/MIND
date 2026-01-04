@@ -350,8 +350,19 @@ export class SpessaSynthEngine {
       );
 
       this._engineLabel = 'SpessaSynth: Creating worker synth…';
-      const synth = new WorkerSynthesizer(this._audioContext, worker.postMessage.bind(worker));
-      worker.onmessage = (e) => synth.handleWorkerMessage(e.data ?? e);
+      // WorkerSynthesizerCore can post isReady immediately after construction.
+      // Attach a handler first and buffer any early messages to avoid losing them.
+      const pendingWorkerMessages = [];
+      let synth = null;
+      worker.onmessage = (e) => {
+        if (!synth) {
+          pendingWorkerMessages.push(e);
+          return;
+        }
+        synth.handleWorkerMessage(e.data ?? e);
+      };
+      synth = new WorkerSynthesizer(this._audioContext, worker.postMessage.bind(worker));
+      pendingWorkerMessages.splice(0).forEach((e) => synth.handleWorkerMessage(e.data ?? e));
 
       this._engineLabel = 'SpessaSynth: Waiting ready…';
       await withTimeout(
