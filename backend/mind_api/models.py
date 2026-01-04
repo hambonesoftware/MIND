@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -170,6 +170,8 @@ class CompileRequest(BaseModel):
     nodes: List[NodeInput] = Field(default_factory=list)
     edges: List["EdgeInput"] = Field(default_factory=list)
     startNodeIds: List[str] = Field(default_factory=list)
+    flowGraph: Optional["FlowGraph"] = None
+    runtimeState: Optional["StreamRuntimeState"] = None
     debug: bool = False
 
     @field_validator("seed", mode="before")
@@ -230,6 +232,17 @@ class CompileRequest(BaseModel):
             return [str(item) for item in value if item]
         return value
 
+    @field_validator("runtimeState", mode="before")
+    @classmethod
+    def coerce_runtime_state(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, StreamRuntimeState):
+            return value
+        if isinstance(value, dict):
+            return StreamRuntimeState.model_validate(value)
+        return value
+
 
 class CompileResponse(BaseModel):
     ok: bool = True
@@ -238,6 +251,8 @@ class CompileResponse(BaseModel):
     loopBars: int = 16
     events: List[Event] = Field(default_factory=list)
     debugText: Optional[str] = None
+    debugTrace: List[str] = Field(default_factory=list)
+    runtimeState: Optional["StreamRuntimeState"] = None
 
 
 # ---------------------------
@@ -256,6 +271,67 @@ class PresetsResponse(BaseModel):
 # ---------------------------
 # Graph edge models
 # ---------------------------
+
+class FlowGraphPort(BaseModel):
+    id: str
+    label: Optional[str] = None
+    type: Optional[str] = None
+    required: Optional[bool] = None
+
+
+class FlowGraphPorts(BaseModel):
+    inputs: List[FlowGraphPort] = Field(default_factory=list)
+    outputs: List[FlowGraphPort] = Field(default_factory=list)
+
+
+class FlowGraphNode(BaseModel):
+    id: str
+    type: str
+    params: Dict[str, Any] = Field(default_factory=dict)
+    ui: Dict[str, Any] = Field(default_factory=dict)
+    ports: Optional[FlowGraphPorts] = None
+
+
+class FlowGraphEdgeEndpoint(BaseModel):
+    nodeId: str
+    portId: Optional[str] = None
+
+
+class FlowGraphEdge(BaseModel):
+    id: str
+    from_: FlowGraphEdgeEndpoint = Field(alias="from")
+    to: FlowGraphEdgeEndpoint
+
+    model_config = {"populate_by_name": True}
+
+
+class FlowGraph(BaseModel):
+    graphVersion: Optional[int] = None
+    nodes: List[FlowGraphNode] = Field(default_factory=list)
+    edges: List[FlowGraphEdge] = Field(default_factory=list)
+    selection: Optional[Dict[str, Any]] = None
+    viewport: Optional[Dict[str, Any]] = None
+
+
+class StreamRuntimeToken(BaseModel):
+    nodeId: str
+    viaEdgeId: Optional[str] = None
+    viaPortId: Optional[str] = None
+
+
+class StreamRuntimeThoughtState(BaseModel):
+    remainingBars: int = 0
+    barOffset: int = 0
+
+
+class StreamRuntimeState(BaseModel):
+    barIndex: int = 0
+    activeTokens: List[StreamRuntimeToken] = Field(default_factory=list)
+    activeThoughts: Dict[str, StreamRuntimeThoughtState] = Field(default_factory=dict)
+    counters: Dict[str, int] = Field(default_factory=dict)
+    joins: Dict[str, List[str]] = Field(default_factory=dict)
+    lastSwitchRoutes: Dict[str, str] = Field(default_factory=dict)
+    started: bool = False
 
 class EdgeEndpoint(BaseModel):
     nodeId: str

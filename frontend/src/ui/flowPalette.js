@@ -36,8 +36,12 @@ export function createFlowPalette({ store, onAddNode } = {}) {
     list.innerHTML = '';
     const types = listNodeTypes();
     const grouped = groupByCategory(types);
+    const order = {
+      'Musical Thoughts': 0,
+      'Logic Thoughts': 1,
+    };
     Object.keys(grouped)
-      .sort()
+      .sort((a, b) => (order[a] ?? 99) - (order[b] ?? 99) || a.localeCompare(b))
       .forEach((category) => {
         const section = document.createElement('div');
         section.className = 'flow-palette-section';

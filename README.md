@@ -1,4 +1,4 @@
-# MIND (Musical Interface Node Design)
+# MIND (Musical Interface Node Design) — V9.0
 
 This repository contains a minimal yet functional implementation of the
 MIND Studio (v0.3).  It consists of a FastAPI backend that exposes
@@ -11,6 +11,12 @@ The application attempts to load
 soundfont engine and falls back to a small set of sample recordings
 when necessary.  Progress and status of the audio engine are visible
 in the transport bar at the top of the page.
+
+## V9 features at a glance
+- **Stream graph execution**: token-based runtime that supports loops, fan-out, OR merges, and explicit Join barriers.
+- **Musical Thoughts**: author rhythm, pattern, register, and SoundFont instrument per Thought.
+- **Rivulet Lab**: preview a selected Thought without wiring it into the full Stream.
+- **V9 demos**: load acceptance graphs from the transport bar using **Load V9 Demo**.
 
 ## Run locally
 

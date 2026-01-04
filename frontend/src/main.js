@@ -3,12 +3,13 @@ import { createAudioEngine } from './audio/audioEngine.js';
 import { createTransportScheduler } from './audio/transport.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { createGraphStore } from './state/graphStore.js';
-import { createFlowGraphStore } from './state/flowGraph.js';
+import { createFlowGraphStore, DEFAULT_STATE } from './state/flowGraph.js';
 import { createExecutionsPanel } from './ui/executionsPanel.js';
 import { createFlowCanvas } from './ui/flowCanvas.js';
 import { createFlowInspector } from './ui/flowInspector.js';
 import { createFlowPalette } from './ui/flowPalette.js';
 import { createToastManager } from './ui/toast.js';
+import { createRivuletLab } from './ui/rivuletLab.js';
 
 /**
  * Represents a single node/lane in the UI.  Each node manages its
@@ -970,6 +971,11 @@ async function main() {
     demoButton.textContent = 'Load Demo Workspace';
     transport.appendChild(demoSelect);
     transport.appendChild(demoButton);
+    const v9DemoSelect = document.createElement('select');
+    const v9DemoButton = document.createElement('button');
+    v9DemoButton.textContent = 'Load V9 Demo';
+    transport.appendChild(v9DemoSelect);
+    transport.appendChild(v9DemoButton);
     // BPM input
     const bpmLabel = document.createElement('label');
     bpmLabel.textContent = ' BPM: ';
@@ -1288,6 +1294,8 @@ async function main() {
     const flowInspectorMount = document.getElementById('flowInspector');
     const flowCanvas = createFlowCanvas({ store: flowStore, toast });
     if (flowCanvasMount) {
+      const rivuletLab = createRivuletLab({ store: flowStore, audioEngine });
+      flowCanvasMount.parentElement?.insertBefore(rivuletLab.element, flowCanvasMount);
       flowCanvasMount.appendChild(flowCanvas.element);
     }
     const addNodeAtCenter = (type) => {
@@ -1320,6 +1328,39 @@ async function main() {
       const selected = demoWorkspaces.find(demo => demo.id === demoSelect.value);
       if (selected) {
         noteCard.loadWorkspace(selected.workspace);
+      }
+    });
+
+    const v9Demos = [
+      { id: 'moonlight', label: 'Moonlight Opening Loop', url: '/docs/demos/v9/moonlight_loop_v9.json' },
+      { id: 'parallel', label: 'Parallel Fan-out', url: '/docs/demos/v9/parallel_fanout_v9.json' },
+      { id: 'join', label: 'Join Barrier', url: '/docs/demos/v9/join_barrier_v9.json' },
+    ];
+    v9DemoSelect.innerHTML = '';
+    for (const demo of v9Demos) {
+      const opt = document.createElement('option');
+      opt.value = demo.id;
+      opt.textContent = demo.label;
+      v9DemoSelect.appendChild(opt);
+    }
+    v9DemoButton.addEventListener('click', async () => {
+      const selected = v9Demos.find(demo => demo.id === v9DemoSelect.value);
+      if (!selected) {
+        return;
+      }
+      try {
+        const response = await fetch(selected.url);
+        if (!response.ok) {
+          return;
+        }
+        const demoGraph = await response.json();
+        flowStore.setState({
+          ...DEFAULT_STATE,
+          ...demoGraph,
+          selection: { nodes: [], edges: [] },
+        });
+      } catch (error) {
+        console.error('Failed to load demo', error);
       }
     });
     createTransportScheduler({

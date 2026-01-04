@@ -30,12 +30,16 @@ export function createExecutionsPanel() {
   const barBeatValue = buildField('Bar / Beat');
   const sinksValue = buildField('Active Render Sinks');
   const scheduleValue = buildField('Schedule Window');
+  const traceValue = buildField('Runtime Trace');
+  const diagnosticsValue = buildField('Diagnostics');
 
   const update = ({
     transportState,
     barBeat,
     renderSinks,
     scheduleWindow,
+    debugTrace,
+    diagnostics,
   } = {}) => {
     transportValue.textContent = transportState || '--';
     barBeatValue.textContent = barBeat || '--';
@@ -44,6 +48,14 @@ export function createExecutionsPanel() {
       : 'None';
     sinksValue.textContent = sinksText;
     scheduleValue.textContent = scheduleWindow || '--';
+    const traceText = Array.isArray(debugTrace) && debugTrace.length > 0
+      ? debugTrace.join(' | ')
+      : 'None';
+    traceValue.textContent = traceText;
+    const diagnosticsText = Array.isArray(diagnostics) && diagnostics.length > 0
+      ? diagnostics.map(item => `${item.level || 'info'}: ${item.message}`).join(' | ')
+      : 'None';
+    diagnosticsValue.textContent = diagnosticsText;
   };
 
   return { element: panel, update };

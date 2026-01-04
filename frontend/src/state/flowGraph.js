@@ -1,18 +1,24 @@
 import {
   createNode,
-  getPortDefinition,
+  buildPortsForNode,
   validateConnection,
   validateRequiredInputs,
 } from './nodeRegistry.js';
 
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 9;
+const GRAPH_VERSION = 9;
 const DEFAULT_SELECTION = { nodes: [], edges: [] };
 const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 1 };
 const DEFAULT_STATE = {
+  graphVersion: GRAPH_VERSION,
   nodes: [],
   edges: [],
   selection: DEFAULT_SELECTION,
   viewport: DEFAULT_VIEWPORT,
+  runtime: {
+    state: null,
+    debugTrace: [],
+  },
 };
 
 function clone(value) {
@@ -29,12 +35,112 @@ function generateId(prefix) {
 function serializeGraphState(state) {
   return JSON.stringify({
     version: STORAGE_VERSION,
+    graphVersion: GRAPH_VERSION,
     data: {
+      graphVersion: GRAPH_VERSION,
       nodes: state.nodes,
       edges: state.edges,
       selection: state.selection,
       viewport: state.viewport,
     },
+  });
+}
+
+function normalizeGraphState(data) {
+  return {
+    graphVersion: data.graphVersion || GRAPH_VERSION,
+    nodes: Array.isArray(data.nodes) ? data.nodes : [],
+    edges: Array.isArray(data.edges) ? data.edges : [],
+    selection: data.selection || DEFAULT_SELECTION,
+    viewport: data.viewport || DEFAULT_VIEWPORT,
+    runtime: {
+      state: null,
+      debugTrace: [],
+    },
+  };
+}
+
+function buildThoughtParams(node) {
+  return {
+    label: node.params?.label || node.type || 'Thought',
+    durationBars: node.params?.durationBars ?? 1,
+    key: node.params?.key || 'C# minor',
+    chordRoot: node.params?.chordRoot || 'C#',
+    chordQuality: node.params?.chordQuality || 'minor',
+    chordNotes: node.params?.chordNotes || '',
+    patternType: node.params?.patternType || 'arp-3-up',
+    rhythmGrid: node.params?.rhythmGrid || '1/12',
+    syncopation: node.params?.syncopation || 'none',
+    timingWarp: node.params?.timingWarp || 'none',
+    timingIntensity: node.params?.timingIntensity ?? 0,
+    registerMin: node.params?.registerMin ?? 48,
+    registerMax: node.params?.registerMax ?? 84,
+    instrumentSoundfont: node.params?.instrumentSoundfont || '/assets/soundfonts/General-GS.sf2',
+    instrumentPreset: node.params?.instrumentPreset || 'gm:0:0',
+    thoughtStatus: node.params?.thoughtStatus || 'draft',
+    thoughtVersion: node.params?.thoughtVersion ?? 1,
+    legacyParams: node.params || {},
+  };
+}
+
+function migrateV8GraphState(data) {
+  const typeMap = {
+    Start: 'start',
+    Beat: 'thought',
+    Transform: 'thought',
+    Gate: 'thought',
+    Counter: 'counter',
+    Switch: 'switch',
+    Render: 'thought',
+  };
+
+  const nodes = (data.nodes || []).map((node) => {
+    const type = typeMap[node.type] || 'thought';
+    let params = node.params || {};
+    if (type === 'thought') {
+      params = buildThoughtParams(node);
+    } else if (type === 'counter') {
+      params = {
+        label: node.params?.label || 'Counter',
+        start: node.params?.start ?? 0,
+        step: node.params?.step ?? 1,
+      };
+    } else if (type === 'switch') {
+      params = {
+        label: node.params?.label || 'Switch',
+        defaultBranch: 'default',
+        branchCount: 2,
+      };
+    } else if (type === 'start') {
+      params = { label: node.params?.label || 'Start' };
+    }
+    return createNode(type, {
+      id: node.id,
+      params,
+      ui: node.ui || { x: 0, y: 0 },
+    });
+  });
+
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+
+  const edges = (data.edges || []).map((edge) => {
+    const fromNode = nodeMap.get(edge.from?.nodeId);
+    const toNode = nodeMap.get(edge.to?.nodeId);
+    const fromPortId = edge.from?.portId || fromNode?.ports?.outputs?.[0]?.id || null;
+    const toPortId = edge.to?.portId || toNode?.ports?.inputs?.[0]?.id || null;
+    return {
+      id: edge.id || generateId('edge'),
+      from: { nodeId: edge.from?.nodeId, portId: fromPortId },
+      to: { nodeId: edge.to?.nodeId, portId: toPortId },
+    };
+  });
+
+  return normalizeGraphState({
+    graphVersion: GRAPH_VERSION,
+    nodes,
+    edges,
+    selection: data.selection || DEFAULT_SELECTION,
+    viewport: data.viewport || DEFAULT_VIEWPORT,
   });
 }
 
@@ -47,16 +153,14 @@ function deserializeGraphState(serialized) {
     if (!parsed || typeof parsed !== 'object') {
       return null;
     }
-    if (parsed.version !== STORAGE_VERSION) {
-      return null;
+    if (parsed.version === STORAGE_VERSION || parsed.graphVersion === GRAPH_VERSION) {
+      const data = parsed.data || parsed.graph || parsed;
+      return normalizeGraphState(data);
     }
-    const data = parsed.data || {};
-    return {
-      nodes: Array.isArray(data.nodes) ? data.nodes : [],
-      edges: Array.isArray(data.edges) ? data.edges : [],
-      selection: data.selection || DEFAULT_SELECTION,
-      viewport: data.viewport || DEFAULT_VIEWPORT,
-    };
+    if (parsed.version === 1) {
+      return migrateV8GraphState(parsed.data || {});
+    }
+    return null;
   } catch (error) {
     return null;
   }
@@ -68,16 +172,25 @@ function validateEdge(edge, nodes) {
   if (!fromNode || !toNode) {
     return { ok: false, reason: 'Missing node for edge.' };
   }
+  if (!edge.from?.portId || !edge.to?.portId) {
+    return { ok: false, reason: 'Edge is missing port information.' };
+  }
   return validateConnection({
     fromType: fromNode.type,
     fromPortId: edge.from?.portId,
     toType: toNode.type,
     toPortId: edge.to?.portId,
+    fromParams: fromNode.params,
+    toParams: toNode.params,
   });
 }
 
 function validateGraph(state) {
   const issues = [];
+  const hasStart = state.nodes.some(node => node.type === 'start');
+  if (!hasStart) {
+    issues.push({ type: 'start', reason: 'Missing Start node.' });
+  }
   for (const edge of state.edges) {
     const result = validateEdge(edge, state.nodes);
     if (!result.ok) {
@@ -93,6 +206,18 @@ function validateGraph(state) {
         portId: missing.portId,
         reason: 'Missing required input.',
       });
+    }
+  }
+  for (const node of state.nodes) {
+    if (node.type === 'switch') {
+      const branchPorts = (node.ports?.outputs || []).filter(port => port.id !== 'default');
+      if (branchPorts.length === 0) {
+        issues.push({
+          type: 'switch',
+          nodeId: node.id,
+          reason: 'Switch node has no branches.',
+        });
+      }
     }
   }
   return { ok: issues.length === 0, issues };
@@ -149,6 +274,7 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     const restored = restore();
     if (restored) {
       state = clone({ ...DEFAULT_STATE, ...restored });
+      persist();
       notify();
     }
     return state;
@@ -171,7 +297,16 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
           return node;
         }
         const updated = typeof updater === 'function' ? updater(node) : updater;
-        return { ...node, ...updated };
+        const nextParams = { ...node.params, ...(updated.params || {}) };
+        const nextNode = { ...node, ...updated, params: nextParams };
+        if (updated.params && node.type) {
+          const ports = buildPortsForNode(node.type, nextParams);
+          nextNode.ports = {
+            inputs: ports.inputs || [],
+            outputs: ports.outputs || [],
+          };
+        }
+        return nextNode;
       }),
     });
   };
@@ -230,6 +365,16 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     }, { recordHistory: false });
   };
 
+  const setRuntimeState = ({ runtimeState, debugTrace } = {}) => {
+    applyState({
+      ...state,
+      runtime: {
+        state: runtimeState || null,
+        debugTrace: Array.isArray(debugTrace) ? debugTrace : [],
+      },
+    }, { recordHistory: false });
+  };
+
   const undo = () => {
     if (past.length === 0) {
       return false;
@@ -273,15 +418,12 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     removeEdge,
     setSelection,
     setViewport,
+    setRuntimeState,
     undo,
     redo,
     canUndo: () => past.length > 0,
     canRedo: () => future.length > 0,
   };
-}
-
-function getPort(node, portId, direction) {
-  return getPortDefinition(node.type, portId, direction);
 }
 
 export {
@@ -292,5 +434,4 @@ export {
   validateEdge,
   createEdge,
   createFlowGraphStore,
-  getPort,
 };

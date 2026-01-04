@@ -1,0 +1,144 @@
+{
+  "graphVersion": 9,
+  "description": "Parallel fan-out joins at a barrier before continuing.",
+  "expectedBehavior": "Thought A and B start together, Join waits for both, then Thought C plays.",
+  "successCriteria": [
+    "Join waits for both incoming tokens",
+    "Thought C plays after Join fires"
+  ],
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "params": { "label": "Start" },
+      "ui": { "x": 40, "y": 80 },
+      "ports": {
+        "inputs": [],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-a",
+      "type": "thought",
+      "params": {
+        "label": "Join A",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-up",
+        "rhythmGrid": "1/16",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_piano",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 240, "y": 40 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-b",
+      "type": "thought",
+      "params": {
+        "label": "Join B",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-down",
+        "rhythmGrid": "1/16",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_strings",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 240, "y": 140 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "join-1",
+      "type": "join",
+      "params": { "label": "Join", "inputCount": 2, "quantize": "next-bar" },
+      "ui": { "x": 460, "y": 90 },
+      "ports": {
+        "inputs": [
+          { "id": "in-1", "label": "In 1", "type": "flow", "required": true },
+          { "id": "in-2", "label": "In 2", "type": "flow", "required": true }
+        ],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-c",
+      "type": "thought",
+      "params": {
+        "label": "Join C",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-up",
+        "rhythmGrid": "1/16",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_piano",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 660, "y": 90 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-start-a",
+      "from": { "nodeId": "start-1", "portId": "out" },
+      "to": { "nodeId": "thought-a", "portId": "in" }
+    },
+    {
+      "id": "edge-start-b",
+      "from": { "nodeId": "start-1", "portId": "out" },
+      "to": { "nodeId": "thought-b", "portId": "in" }
+    },
+    {
+      "id": "edge-a-join",
+      "from": { "nodeId": "thought-a", "portId": "out" },
+      "to": { "nodeId": "join-1", "portId": "in-1" }
+    },
+    {
+      "id": "edge-b-join",
+      "from": { "nodeId": "thought-b", "portId": "out" },
+      "to": { "nodeId": "join-1", "portId": "in-2" }
+    },
+    {
+      "id": "edge-join-c",
+      "from": { "nodeId": "join-1", "portId": "out" },
+      "to": { "nodeId": "thought-c", "portId": "in" }
+    }
+  ],
+  "selection": { "nodes": [], "edges": [] },
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}

@@ -5,6 +5,7 @@ export function buildCompilePayload({
   beatStart,
   beatEnd,
   flowGraph,
+  runtimeState,
   laneNodes = [],
   noteNodes = [],
   legacyNodes = [],
@@ -20,6 +21,7 @@ export function buildCompilePayload({
       beatStart,
       beatEnd,
       flowGraph,
+      runtimeState,
       nodes: legacyNodes,
     };
   }
@@ -33,6 +35,7 @@ export function buildCompilePayload({
     beatStart,
     beatEnd,
     flowGraph,
+    runtimeState,
     nodes,
     edges,
     startNodeIds: uniqueStartNodeIds,
