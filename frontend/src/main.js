@@ -1214,10 +1214,11 @@ async function main() {
           return;
         }
         const demoGraph = await response.json();
+        const thoughtNode = (demoGraph.nodes || []).find(node => node.type === 'thought');
         flowStore.setState({
           ...DEFAULT_STATE,
           ...demoGraph,
-          selection: { nodes: [], edges: [] },
+          selection: thoughtNode ? { nodes: [thoughtNode.id], edges: [] } : { nodes: [], edges: [] },
         });
       } catch (error) {
         console.error('Failed to load demo', error);
