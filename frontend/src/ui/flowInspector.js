@@ -1,4 +1,9 @@
 import { getNodeDefinition } from '../state/nodeRegistry.js';
+import {
+  buildProgressionPreview,
+  getProgressionPresetById,
+  getProgressionPresets,
+} from '../music/progressions.js';
 
 const SOUND_FONTS = [
   { value: '/assets/soundfonts/General-GS.sf2', label: 'General GS' },
@@ -24,7 +29,7 @@ async function loadPresets() {
   return presetCachePromise;
 }
 
-function buildField({ label, type, value, onChange }) {
+function buildField({ label, type, value, onChange, placeholder, helper }) {
   const wrapper = document.createElement('label');
   wrapper.className = 'flow-field';
   const title = document.createElement('span');
@@ -34,6 +39,9 @@ function buildField({ label, type, value, onChange }) {
   input.className = 'flow-field-input';
   input.type = type === 'number' ? 'number' : 'text';
   input.value = value ?? '';
+  if (placeholder) {
+    input.placeholder = placeholder;
+  }
   input.addEventListener('input', () => {
     const nextValue = type === 'number'
       ? Number(input.value)
@@ -42,6 +50,12 @@ function buildField({ label, type, value, onChange }) {
   });
   wrapper.appendChild(title);
   wrapper.appendChild(input);
+  if (helper) {
+    const help = document.createElement('span');
+    help.className = 'flow-field-help';
+    help.textContent = helper;
+    wrapper.appendChild(help);
+  }
   return wrapper;
 }
 
@@ -67,6 +81,32 @@ function buildSelect({ label, value, options, onChange }) {
   });
   wrapper.appendChild(title);
   wrapper.appendChild(select);
+  return wrapper;
+}
+
+function buildTextarea({ label, value, onChange, placeholder, helper }) {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'flow-field';
+  const title = document.createElement('span');
+  title.className = 'flow-field-label';
+  title.textContent = label;
+  const input = document.createElement('textarea');
+  input.className = 'flow-field-input flow-field-textarea';
+  input.value = value ?? '';
+  if (placeholder) {
+    input.placeholder = placeholder;
+  }
+  input.addEventListener('input', () => {
+    onChange(input.value);
+  });
+  wrapper.appendChild(title);
+  wrapper.appendChild(input);
+  if (helper) {
+    const help = document.createElement('span');
+    help.className = 'flow-field-help';
+    help.textContent = helper;
+    wrapper.appendChild(help);
+  }
   return wrapper;
 }
 
@@ -452,29 +492,163 @@ export function createFlowInspector({ store } = {}) {
       value: params.key || 'C# minor',
       onChange: value => updateParams({ key: value }),
     }));
-    form.appendChild(buildField({
-      label: 'chordRoot',
-      type: 'string',
-      value: params.chordRoot || '',
-      onChange: value => updateParams({ chordRoot: value }),
-    }));
     form.appendChild(buildSelect({
-      label: 'chordQuality',
-      value: params.chordQuality || 'minor',
+      label: 'harmonyMode',
+      value: params.harmonyMode || 'single',
       options: [
-        { value: 'major', label: 'Major' },
-        { value: 'minor', label: 'Minor' },
-        { value: 'diminished', label: 'Diminished' },
-        { value: 'augmented', label: 'Augmented' },
+        { value: 'single', label: 'Single Chord' },
+        { value: 'progression_preset', label: 'Progression (Preset)' },
+        { value: 'progression_custom', label: 'Progression (Custom)' },
       ],
-      onChange: value => updateParams({ chordQuality: value }),
+      onChange: value => updateParams({ harmonyMode: value }),
     }));
-    form.appendChild(buildField({
-      label: 'chordNotes',
-      type: 'string',
-      value: params.chordNotes || '',
-      onChange: value => updateParams({ chordNotes: value }),
-    }));
+
+    const harmonyMode = params.harmonyMode || 'single';
+    if (harmonyMode === 'single') {
+      form.appendChild(buildField({
+        label: 'chordRoot',
+        type: 'string',
+        value: params.chordRoot || '',
+        onChange: value => updateParams({ chordRoot: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'chordQuality',
+        value: params.chordQuality || 'minor',
+        options: [
+          { value: 'major', label: 'Major' },
+          { value: 'minor', label: 'Minor' },
+          { value: 'diminished', label: 'Diminished' },
+          { value: 'augmented', label: 'Augmented' },
+        ],
+        onChange: value => updateParams({ chordQuality: value }),
+      }));
+      form.appendChild(buildField({
+        label: 'Chord Notes Override',
+        type: 'string',
+        value: params.chordNotes || '',
+        placeholder: 'C#4:E4:G#4',
+        helper: 'Optional. One chord only. Colon-separated notes (with octave) or MIDI numbers (e.g., 61:64:68). Overrides Chord Root/Quality.',
+        onChange: value => updateParams({ chordNotes: value }),
+      }));
+    }
+
+    if (harmonyMode === 'progression_preset') {
+      const presets = getProgressionPresets();
+      const presetOptions = presets.map(preset => ({ value: preset.id, label: preset.name }));
+      const activePreset = getProgressionPresetById(params.progressionPresetId) || presets[0];
+      const presetId = params.progressionPresetId || activePreset?.id || '';
+      const variantOptions = (activePreset?.variants || []).map(variant => ({
+        value: variant.id,
+        label: variant.label,
+      }));
+      form.appendChild(buildSelect({
+        label: 'progressionPresetId',
+        value: presetId,
+        options: presetOptions,
+        onChange: value => updateParams({ progressionPresetId: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'progressionVariantId',
+        value: params.progressionVariantId || activePreset?.variants?.[0]?.id || 'triads',
+        options: variantOptions,
+        onChange: value => updateParams({ progressionVariantId: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'chordsPerBar',
+        value: params.chordsPerBar || '1',
+        options: [
+          { value: '1', label: '1 chord per bar' },
+          { value: '2', label: '2 chords per bar' },
+          { value: '0.5', label: '1 chord per 2 bars' },
+        ],
+        onChange: value => updateParams({ chordsPerBar: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'fillBehavior',
+        value: params.fillBehavior || 'repeat',
+        options: [
+          { value: 'repeat', label: 'Repeat' },
+          { value: 'hold_last', label: 'Hold last' },
+          { value: 'rest', label: 'Rest' },
+        ],
+        onChange: value => updateParams({ fillBehavior: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'progressionLength',
+        value: params.progressionLength ?? 'preset',
+        options: [
+          { value: 'preset', label: 'Preset length' },
+          { value: '2', label: '2 bars' },
+          { value: '4', label: '4 bars' },
+          { value: '8', label: '8 bars' },
+          { value: '16', label: '16 bars' },
+        ],
+        onChange: value => updateParams({ progressionLength: value }),
+      }));
+    }
+
+    if (harmonyMode === 'progression_custom') {
+      form.appendChild(buildTextarea({
+        label: 'progressionCustom',
+        value: params.progressionCustom || '',
+        placeholder: 'i VII VI VII',
+        helper: 'Enter roman numerals separated by spaces.',
+        onChange: value => updateParams({ progressionCustom: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'progressionCustomVariantStyle',
+        value: params.progressionCustomVariantStyle || 'triads',
+        options: [
+          { value: 'triads', label: 'Triads' },
+          { value: '7ths', label: '7ths' },
+          { value: '9ths_soft', label: '9ths (soft)' },
+        ],
+        onChange: value => updateParams({ progressionCustomVariantStyle: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'chordsPerBar',
+        value: params.chordsPerBar || '1',
+        options: [
+          { value: '1', label: '1 chord per bar' },
+          { value: '2', label: '2 chords per bar' },
+          { value: '0.5', label: '1 chord per 2 bars' },
+        ],
+        onChange: value => updateParams({ chordsPerBar: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'fillBehavior',
+        value: params.fillBehavior || 'repeat',
+        options: [
+          { value: 'repeat', label: 'Repeat' },
+          { value: 'hold_last', label: 'Hold last' },
+          { value: 'rest', label: 'Rest' },
+        ],
+        onChange: value => updateParams({ fillBehavior: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'progressionLength',
+        value: params.progressionLength ?? 'preset',
+        options: [
+          { value: 'preset', label: 'Custom length' },
+          { value: '2', label: '2 bars' },
+          { value: '4', label: '4 bars' },
+          { value: '8', label: '8 bars' },
+          { value: '16', label: '16 bars' },
+        ],
+        onChange: value => updateParams({ progressionLength: value }),
+      }));
+    }
+
+    if (harmonyMode !== 'single') {
+      const preview = buildProgressionPreview({
+        ...params,
+        harmonyMode,
+        progressionPresetId: params.progressionPresetId || getProgressionPresets()[0]?.id,
+      });
+      if (preview) {
+        form.appendChild(buildProgressionPreviewStrip(preview));
+      }
+    }
     form.appendChild(buildSelect({
       label: 'patternType',
       value: params.patternType || 'arp-3-up',
@@ -579,6 +753,43 @@ export function createFlowInspector({ store } = {}) {
     });
     form.appendChild(moonlightButton);
     return form;
+  };
+
+  const buildProgressionPreviewStrip = (preview) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'flow-progression-preview';
+
+    const header = document.createElement('div');
+    header.className = 'flow-progression-preview-title';
+    header.textContent = 'Progression Preview';
+    wrapper.appendChild(header);
+
+    const rows = [
+      { label: 'Bars', getter: bar => String(bar.index) },
+      { label: 'Roman', getter: bar => bar.romans.join(' • ') },
+      { label: 'Chords', getter: bar => bar.chords.join(' • ') },
+    ];
+
+    rows.forEach((row) => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'flow-progression-preview-row';
+      const label = document.createElement('div');
+      label.className = 'flow-progression-preview-label';
+      label.textContent = row.label;
+      rowEl.appendChild(label);
+      const cells = document.createElement('div');
+      cells.className = 'flow-progression-preview-cells';
+      preview.bars.forEach((bar) => {
+        const cell = document.createElement('div');
+        cell.className = 'flow-progression-preview-cell';
+        cell.textContent = row.getter(bar);
+        cells.appendChild(cell);
+      });
+      rowEl.appendChild(cells);
+      wrapper.appendChild(rowEl);
+    });
+
+    return wrapper;
   };
 
   const renderNode = (node, state) => {

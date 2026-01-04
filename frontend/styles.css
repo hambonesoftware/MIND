@@ -567,6 +567,61 @@ label.mute-label {
   border-radius: 6px;
 }
 
+.flow-field-help {
+  font-size: 0.7rem;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+.flow-field-textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.flow-progression-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.flow-progression-preview-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.flow-progression-preview-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.flow-progression-preview-label {
+  min-width: 60px;
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.flow-progression-preview-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flow-progression-preview-cell {
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  font-size: 0.72rem;
+  color: #1f2937;
+}
+
 .flow-danger {
   padding: 6px 8px;
   border-radius: 6px;
