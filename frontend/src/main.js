@@ -1183,7 +1183,14 @@ async function main() {
     const flowCanvasMount = document.getElementById('flowCanvas');
     const flowPaletteMount = document.getElementById('flowPalette');
     const flowInspectorMount = document.getElementById('flowInspector');
-    const flowCanvas = createFlowCanvas({ store: flowStore, toast });
+    let startFlowPlayback = () => {};
+    let stopFlowPlayback = () => {};
+    const flowCanvas = createFlowCanvas({
+      store: flowStore,
+      toast,
+      onStartPlayback: (startNodeId) => startFlowPlayback(startNodeId),
+      onStopPlayback: () => stopFlowPlayback(),
+    });
     if (flowCanvasMount) {
       const rivuletLab = createRivuletLab({ store: flowStore, audioEngine });
       flowCanvasMount.parentElement?.insertBefore(rivuletLab.element, flowCanvasMount);
@@ -1234,7 +1241,7 @@ async function main() {
         console.error('Failed to load demo', error);
       }
     });
-    createTransportScheduler({
+    const transportScheduler = createTransportScheduler({
       audioEngine,
       nodeCards,
       graphStore,
@@ -1247,6 +1254,8 @@ async function main() {
       latchButton,
       useNodeGraph: USE_NODE_GRAPH,
     });
+    startFlowPlayback = (startNodeId) => transportScheduler.startPlayback({ activeStartNodeId: startNodeId });
+    stopFlowPlayback = () => transportScheduler.stopPlayback();
 }
 
 main().catch(err => {

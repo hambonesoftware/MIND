@@ -211,6 +211,10 @@ export function createTransportScheduler({
     const barStart = Math.floor(beatStartInLoop / BEATS_PER_BAR);
     const barEnd = Math.max(barStart, Math.floor((beatEndInLoop - 0.001) / BEATS_PER_BAR));
     const flowGraph = flowStore.getState();
+    const activeStartNodeId = flowGraph.runtime?.activeStartNodeId || null;
+    const startNodeIds = useNodeGraph
+      ? (activeStartNodeId ? [activeStartNodeId] : [])
+      : graphInputs.startNodeIds;
     try {
       for (let barOffset = barStart; barOffset <= barEnd; barOffset += 1) {
         const barIndex = ((barOffset % loopBars) + loopBars) % loopBars;
@@ -225,7 +229,7 @@ export function createTransportScheduler({
           laneNodes: graphInputs.laneNodes,
           noteNodes: graphInputs.noteNodes,
           edges: graphInputs.edges,
-          startNodeIds: graphInputs.startNodeIds,
+          startNodeIds,
           legacyNodes: graphInputs.legacyNodes,
           useNodeGraph,
         });
@@ -323,7 +327,7 @@ export function createTransportScheduler({
     }
   };
 
-  const startPlayback = () => {
+  const startPlayback = ({ activeStartNodeId } = {}) => {
     if (isPlaying) return;
     isPlaying = true;
     currentBarIndex = 0;
@@ -333,6 +337,13 @@ export function createTransportScheduler({
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
+    if (typeof flowStore?.setPlaybackState === 'function') {
+      const fallbackStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
+      flowStore.setPlaybackState({
+        isPlaying: true,
+        activeStartNodeId: activeStartNodeId ?? fallbackStartNodeId,
+      });
+    }
     if (typeof flowStore?.setRuntimeState === 'function') {
       flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
     }
@@ -358,6 +369,10 @@ export function createTransportScheduler({
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
+    if (typeof flowStore?.setPlaybackState === 'function') {
+      const currentStartNodeId = flowStore.getState?.().runtime?.activeStartNodeId || null;
+      flowStore.setPlaybackState({ isPlaying: false, activeStartNodeId: currentStartNodeId });
+    }
     if (typeof flowStore?.setRuntimeState === 'function') {
       flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
     }

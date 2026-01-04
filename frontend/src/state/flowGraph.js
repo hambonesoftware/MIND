@@ -18,6 +18,8 @@ const DEFAULT_STATE = {
   runtime: {
     state: null,
     debugTrace: [],
+    activeStartNodeId: null,
+    isPlaying: false,
   },
 };
 
@@ -56,8 +58,54 @@ function normalizeGraphState(data) {
     runtime: {
       state: null,
       debugTrace: [],
+      activeStartNodeId: null,
+      isPlaying: false,
     },
   };
+}
+
+function isStartPlayable(nodes, edges, startNodeId) {
+  if (!startNodeId) {
+    return false;
+  }
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  const startNode = nodeMap.get(startNodeId);
+  if (!startNode || startNode.type !== 'start') {
+    return false;
+  }
+  const adjacency = new Map();
+  for (const edge of edges || []) {
+    const fromId = edge.from?.nodeId;
+    const toId = edge.to?.nodeId;
+    if (!fromId || !toId) {
+      continue;
+    }
+    if (!adjacency.has(fromId)) {
+      adjacency.set(fromId, []);
+    }
+    adjacency.get(fromId).push(toId);
+  }
+  const visited = new Set([startNodeId]);
+  const queue = [startNodeId];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const targets = adjacency.get(current) || [];
+    for (const targetId of targets) {
+      if (visited.has(targetId)) {
+        continue;
+      }
+      visited.add(targetId);
+      const targetNode = nodeMap.get(targetId);
+      if (!targetNode) {
+        continue;
+      }
+      if (targetNode.type === 'thought') {
+        return true;
+      }
+      queue.push(targetId);
+    }
+  }
+  return false;
 }
 
 function buildThoughtParams(node) {
@@ -377,8 +425,20 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     applyState({
       ...state,
       runtime: {
+        ...state.runtime,
         state: runtimeState || null,
         debugTrace: Array.isArray(debugTrace) ? debugTrace : [],
+      },
+    }, { recordHistory: false });
+  };
+
+  const setPlaybackState = ({ activeStartNodeId, isPlaying } = {}) => {
+    applyState({
+      ...state,
+      runtime: {
+        ...state.runtime,
+        activeStartNodeId: activeStartNodeId ?? state.runtime?.activeStartNodeId ?? null,
+        isPlaying: typeof isPlaying === 'boolean' ? isPlaying : state.runtime?.isPlaying ?? false,
       },
     }, { recordHistory: false });
   };
@@ -427,6 +487,7 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     setSelection,
     setViewport,
     setRuntimeState,
+    setPlaybackState,
     undo,
     redo,
     canUndo: () => past.length > 0,
@@ -441,5 +502,6 @@ export {
   validateGraph,
   validateEdge,
   createEdge,
+  isStartPlayable,
   createFlowGraphStore,
 };
