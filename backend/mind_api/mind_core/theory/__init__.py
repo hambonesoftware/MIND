@@ -3,7 +3,7 @@
 from .chord_symbols import parse_chord_symbol
 from .harmony_plan import HarmonyPlan
 from .key import Key, parse_key
-from .roman import resolve_roman
+from .roman import resolve_roman, resolve_roman_chord
 from .voicing import voice_chord
 
 __all__ = [
@@ -12,5 +12,6 @@ __all__ = [
     "parse_chord_symbol",
     "parse_key",
     "resolve_roman",
+    "resolve_roman_chord",
     "voice_chord",
 ]

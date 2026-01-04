@@ -18,11 +18,13 @@ from ..models import (
     StreamRuntimeToken,
     StreamRuntimeThoughtState,
 )
-from .music_elements.harmony_plan import HarmonyPlan
+from .music_elements.harmony_plan import HarmonyPlan, HarmonyStep
 from .music_elements.phrase_plan import PhrasePlan
 from .music_elements.texture_engine import generate_events
 from .music_elements.texture_recipe import TextureRecipe
 from .notes import note_name_to_midi, parse_notes_spec
+from .progression_presets import get_progression_preset
+from .theory import parse_key, resolve_roman_chord
 
 
 LANE_TO_MIDI_NOTE = {
@@ -131,6 +133,140 @@ def _build_chord_pitches(params: dict) -> List[int]:
     return [root_midi + interval for interval in intervals]
 
 
+def _normalize_harmony_mode(params: dict) -> str:
+    return (params.get("harmonyMode") or "single").strip().lower()
+
+
+def _coerce_chords_per_bar(value: str | None) -> float:
+    if value == "2":
+        return 2.0
+    if value == "0.5":
+        return 0.5
+    return 1.0
+
+
+def _parse_roman_sequence(raw: str | None) -> List[str]:
+    if not raw:
+        return []
+    tokens = [tok.strip() for tok in str(raw).replace(",", " ").split() if tok.strip()]
+    return tokens
+
+
+def _resolve_progression_length(
+    params: dict,
+    *,
+    preset_length: int | None,
+    romans: List[str],
+) -> int:
+    raw = params.get("progressionLength", "preset")
+    if raw == "preset" or raw is None:
+        return preset_length or max(1, len(romans) or 1)
+    try:
+        numeric = int(raw)
+    except (TypeError, ValueError):
+        return preset_length or max(1, len(romans) or 1)
+    return max(1, numeric)
+
+
+def _pitch_classes_to_midi(pitch_classes: List[int], register_min: int, register_max: int) -> List[int]:
+    if not pitch_classes:
+        return []
+    if register_min > register_max:
+        register_min, register_max = register_max, register_min
+    base = register_min
+    voiced: List[int] = []
+    for pc in pitch_classes:
+        midi = base + ((pc - base) % 12)
+        while midi < register_min:
+            midi += 12
+        while midi > register_max:
+            midi -= 12
+        voiced.append(max(0, min(127, midi)))
+    return voiced
+
+
+def _resolve_progression_harmony(params: dict, duration_bars: int, grid: str) -> HarmonyPlan:
+    chords_per_bar = _coerce_chords_per_bar(params.get("chordsPerBar"))
+    fill_behavior = params.get("fillBehavior") or "repeat"
+    harmony_mode = _normalize_harmony_mode(params)
+    romans: List[str] = []
+    preset_length: int | None = None
+    variant_style = "triads"
+
+    if harmony_mode == "progression_preset":
+        preset = get_progression_preset(params.get("progressionPresetId"))
+        if preset:
+            romans = preset.romans
+            preset_length = preset.default_length
+            variant_style = params.get("progressionVariantId") or "triads"
+    elif harmony_mode == "progression_custom":
+        romans = _parse_roman_sequence(params.get("progressionCustom"))
+        variant_style = params.get("progressionCustomVariantStyle") or "triads"
+
+    if not romans:
+        chord = _build_chord_pitches(params)
+        return HarmonyPlan.from_chords([chord] * duration_bars, steps_per_bar=_steps_per_bar_for_grid(grid))
+
+    progression_length = _resolve_progression_length(
+        params,
+        preset_length=preset_length,
+        romans=romans,
+    )
+    slots_per_progression = max(1, int((progression_length * chords_per_bar) + 0.999))
+    total_slots = max(1, int((duration_bars * chords_per_bar) + 0.999))
+
+    slot_romans: List[str] = []
+    for slot in range(slots_per_progression):
+        slot_romans.append(romans[slot % len(romans)])
+
+    try:
+        key = parse_key(params.get("key") or "C major")
+    except Exception:
+        key = parse_key("C major")
+
+    register_min = _coerce_number(params.get("registerMin"), 48)
+    register_max = _coerce_number(params.get("registerMax"), 84)
+
+    slot_chords: List[List[int]] = []
+    for slot_index in range(total_slots):
+        roman = None
+        if slot_index < slots_per_progression:
+            roman = slot_romans[slot_index]
+        elif fill_behavior == "repeat":
+            roman = slot_romans[slot_index % slots_per_progression]
+        elif fill_behavior == "hold_last":
+            roman = slot_romans[-1]
+        elif fill_behavior == "rest":
+            roman = None
+        if not roman:
+            slot_chords.append([])
+            continue
+        pcs = resolve_roman_chord(key, roman, variant_style)
+        chord = _pitch_classes_to_midi(pcs, register_min, register_max)
+        slot_chords.append(_apply_register(chord, register_min=register_min, register_max=register_max))
+
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    if chords_per_bar == 2.0:
+        steps: List[HarmonyStep] = []
+        half_step = max(1, steps_per_bar // 2)
+        for bar_index in range(duration_bars):
+            first = slot_chords[bar_index * 2] if (bar_index * 2) < len(slot_chords) else []
+            second = slot_chords[bar_index * 2 + 1] if (bar_index * 2 + 1) < len(slot_chords) else []
+            steps.append(HarmonyStep(bar_index=bar_index, step=0, chord=first, pedal=False))
+            steps.append(HarmonyStep(bar_index=bar_index, step=half_step, chord=second, pedal=False))
+        return HarmonyPlan(steps_per_bar=steps_per_bar, steps=steps)
+
+    chords_by_bar: List[List[int]] = []
+    for bar_index in range(duration_bars):
+        if chords_per_bar == 0.5:
+            slot_index = bar_index // 2
+        else:
+            slot_index = bar_index
+        chord = slot_chords[slot_index] if slot_index < len(slot_chords) else []
+        chords_by_bar.append(chord)
+    return HarmonyPlan.from_chords(chords_by_bar, steps_per_bar=steps_per_bar)
+
+
 def _apply_register(pitches: List[int], *, register_min: int, register_max: int) -> List[int]:
     if not pitches:
         return []
@@ -207,10 +343,8 @@ def _compile_thought_bar(
         return []
 
     duration_bars = max(1, _coerce_number(params.get("durationBars"), 1))
-    chord = _build_chord_pitches(params)
     register_min = _coerce_number(params.get("registerMin"), 48)
     register_max = _coerce_number(params.get("registerMax"), 84)
-    chord = _apply_register(chord, register_min=register_min, register_max=register_max)
 
     pattern_type = params.get("patternType") or "arp-3-up"
     pattern_family = {
@@ -219,7 +353,12 @@ def _compile_thought_bar(
         "arp-3-skip": ("low-high-mid",),
     }.get(pattern_type, ("low-mid-high",))
 
-    harmony = HarmonyPlan.from_chords([chord] * duration_bars, steps_per_bar=_steps_per_bar_for_grid(grid))
+    if _normalize_harmony_mode(params) == "single":
+        chord = _build_chord_pitches(params)
+        chord = _apply_register(chord, register_min=register_min, register_max=register_max)
+        harmony = HarmonyPlan.from_chords([chord] * duration_bars, steps_per_bar=_steps_per_bar_for_grid(grid))
+    else:
+        harmony = _resolve_progression_harmony(params, duration_bars, grid)
     texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
     phrase = PhrasePlan(density_curve=(1.0,))
     generated = generate_events(
