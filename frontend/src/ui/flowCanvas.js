@@ -14,6 +14,25 @@ export function createFlowCanvas({ store, toast } = {}) {
   const container = document.createElement('div');
   container.className = 'flow-canvas';
 
+  const zoomControls = document.createElement('div');
+  zoomControls.className = 'flow-zoom-controls';
+
+  const zoomOutButton = document.createElement('button');
+  zoomOutButton.type = 'button';
+  zoomOutButton.className = 'flow-zoom-button';
+  zoomOutButton.textContent = '−';
+  zoomOutButton.setAttribute('aria-label', 'Zoom out');
+
+  const zoomInButton = document.createElement('button');
+  zoomInButton.type = 'button';
+  zoomInButton.className = 'flow-zoom-button';
+  zoomInButton.textContent = '+';
+  zoomInButton.setAttribute('aria-label', 'Zoom in');
+
+  zoomControls.appendChild(zoomInButton);
+  zoomControls.appendChild(zoomOutButton);
+  container.appendChild(zoomControls);
+
   const viewportLayer = document.createElement('div');
   viewportLayer.className = 'flow-viewport';
 
@@ -49,6 +68,8 @@ export function createFlowCanvas({ store, toast } = {}) {
   let connection = null;
   let isPanning = false;
   let panStart = null;
+  const ZOOM_MIN = 0.4;
+  const ZOOM_MAX = 2;
 
   const setInlineError = (message) => {
     if (message) {
@@ -80,6 +101,25 @@ export function createFlowCanvas({ store, toast } = {}) {
     const { x, y, zoom } = getViewportTransform();
     nodeLayer.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
     edgeGroup.setAttribute('transform', `translate(${x} ${y}) scale(${zoom})`);
+  };
+
+  const zoomAtCenter = (nextZoom) => {
+    const { zoom, x, y } = getViewportTransform();
+    const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextZoom));
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const worldX = (centerX - x) / zoom;
+    const worldY = (centerY - y) / zoom;
+    const nextX = centerX - worldX * clampedZoom;
+    const nextY = centerY - worldY * clampedZoom;
+    store.setViewport({ x: nextX, y: nextY, zoom: clampedZoom });
+  };
+
+  const handleZoomClick = (direction) => {
+    const { zoom } = getViewportTransform();
+    const delta = direction === 'in' ? 1.1 : 0.9;
+    zoomAtCenter(zoom * delta);
   };
 
   const drawCurve = (from, to) => {
@@ -529,20 +569,14 @@ export function createFlowCanvas({ store, toast } = {}) {
     store.setSelection({ nodes: [], edges: [] });
   });
 
-  container.addEventListener('wheel', (event) => {
-    event.preventDefault();
-    const { zoom, x, y } = getViewportTransform();
-    const delta = event.deltaY > 0 ? 0.9 : 1.1;
-    const nextZoom = Math.min(2, Math.max(0.4, zoom * delta));
-    const rect = container.getBoundingClientRect();
-    const pointerX = event.clientX - rect.left;
-    const pointerY = event.clientY - rect.top;
-    const worldX = (pointerX - x) / zoom;
-    const worldY = (pointerY - y) / zoom;
-    const nextX = pointerX - worldX * nextZoom;
-    const nextY = pointerY - worldY * nextZoom;
-    store.setViewport({ x: nextX, y: nextY, zoom: nextZoom });
-  }, { passive: false });
+  const stopZoomPropagation = (event) => {
+    event.stopPropagation();
+  };
+
+  zoomInButton.addEventListener('pointerdown', stopZoomPropagation);
+  zoomOutButton.addEventListener('pointerdown', stopZoomPropagation);
+  zoomInButton.addEventListener('click', () => handleZoomClick('in'));
+  zoomOutButton.addEventListener('click', () => handleZoomClick('out'));
 
   window.addEventListener('pointermove', handlePointerMove);
   window.addEventListener('pointerup', handlePointerUp);
