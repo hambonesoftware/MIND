@@ -12,6 +12,9 @@ import { Sf2SynthEngine } from './sf2/Sf2SynthEngine.js';
 /**
  * Factory function that creates an appropriate audio engine.
  *
+ * @param {Object} options
+ * @param {boolean} options.strictSf2 - When true, throws after SpessaSynth failure.
+ *
  * Policy:
  *   1) Try SpessaSynth first (spessasynth_lib + AudioWorklet)
  *   2) If that fails, try legacy FluidSynth SF2 engine
@@ -21,7 +24,7 @@ import { Sf2SynthEngine } from './sf2/Sf2SynthEngine.js';
  * The rest of the app should treat the returned engine as the single
  * audio backend (same scheduling/play/stop behavior).
  */
-export async function createAudioEngine() {
+export async function createAudioEngine({ strictSf2 = false } = {}) {
   // 1) Preferred: SpessaSynth
   try {
     const spessa = new SpessaSynthEngine();
@@ -29,6 +32,10 @@ export async function createAudioEngine() {
     console.log('[Audio] SF2 Synth active (SpessaSynth lib + AudioWorklet)');
     return spessa;
   } catch (err) {
+    if (strictSf2) {
+      console.error('[Audio] Failed to initialise SpessaSynthEngine; audio disabled.', err);
+      throw err;
+    }
     console.warn('[Audio] Failed to initialise SpessaSynthEngine; trying legacy Sf2SynthEngine.', err);
   }
 
