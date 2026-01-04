@@ -384,6 +384,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
     )
 
     current_tokens = list(state.activeTokens)
+    next_bar_tokens: List[StreamRuntimeToken] = []
 
     if not state.started:
         next_state.counters = {}
@@ -402,6 +403,18 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
 
     node_firings = 0
     tokens_created = 0
+
+    def enqueue_immediate(edges: List[FlowGraphEdge]) -> None:
+        nonlocal tokens_created
+        for edge in edges:
+            queue.append(_token_from_edge(edge))
+        tokens_created += len(edges)
+
+    def enqueue_deferred(edges: List[FlowGraphEdge]) -> None:
+        nonlocal tokens_created
+        for edge in edges:
+            next_bar_tokens.append(_token_from_edge(edge))
+        tokens_created += len(edges)
 
     def process_token(token: StreamRuntimeToken) -> None:
         nonlocal node_firings, tokens_created
@@ -431,10 +444,9 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
             total_bars = max(1, _thought_total_bars(node))
             events.extend(_compile_thought_bar(node, 0, req.bpm, diagnostics, req.seed))
             if total_bars <= 1:
-                for edge in outgoing.get(node.id, []):
-                    next_state.activeTokens.append(_token_from_edge(edge))
-                tokens_created += len(outgoing.get(node.id, []))
-                debug_trace.append(f"Thought {node.id}: single-bar, emitted {len(outgoing.get(node.id, []))} tokens.")
+                edges = outgoing.get(node.id, [])
+                enqueue_deferred(edges)
+                debug_trace.append(f"Thought {node.id}: single-bar, emitted {len(edges)} tokens.")
             else:
                 next_state.activeThoughts[node.id] = StreamRuntimeThoughtState(
                     remainingBars=total_bars - 1,
@@ -446,9 +458,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
 
         if node.type == "start":
             edges = outgoing.get(node.id, [])
-            for edge in edges:
-                next_state.activeTokens.append(_token_from_edge(edge))
-            tokens_created += len(edges)
+            enqueue_immediate(edges)
             debug_trace.append(f"Start {node.id}: emitted {len(edges)} tokens.")
             return
 
@@ -460,9 +470,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
             current += step
             next_state.counters[node.id] = current
             edges = outgoing.get(node.id, [])
-            for edge in edges:
-                next_state.activeTokens.append(_token_from_edge(edge))
-            tokens_created += len(edges)
+            enqueue_immediate(edges)
             debug_trace.append(f"Counter {node.id}: value {current}, emitted {len(edges)} tokens.")
             return
 
@@ -477,9 +485,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
                         col=1,
                     )
                 )
-            for edge in edges:
-                next_state.activeTokens.append(_token_from_edge(edge))
-            tokens_created += len(edges)
+            enqueue_immediate(edges)
             if branches:
                 next_state.lastSwitchRoutes[node.id] = branches[-1]
             debug_trace.append(f"Switch {node.id}: branch {', '.join(branches)}, emitted {len(edges)} tokens.")
@@ -492,9 +498,7 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
                 arrived.add(token.viaPortId)
             if required_inputs and all(req_id in arrived for req_id in required_inputs):
                 edges = outgoing.get(node.id, [])
-                for edge in edges:
-                    next_state.activeTokens.append(_token_from_edge(edge))
-                tokens_created += len(edges)
+                enqueue_immediate(edges)
                 next_state.joins[node.id] = []
                 debug_trace.append(f"Join {node.id}: released, emitted {len(edges)} tokens.")
             else:
@@ -517,9 +521,9 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
         remaining = thought_state.remainingBars - 1
         next_offset = thought_state.barOffset + 1
         if remaining <= 0:
-            for edge in outgoing.get(node_id, []):
-                next_state.activeTokens.append(_token_from_edge(edge))
-            debug_trace.append(f"Thought {node_id}: completed, emitted {len(outgoing.get(node_id, []))} tokens.")
+            edges = outgoing.get(node_id, [])
+            enqueue_deferred(edges)
+            debug_trace.append(f"Thought {node_id}: completed, emitted {len(edges)} tokens.")
         else:
             next_state.activeThoughts[node_id] = StreamRuntimeThoughtState(
                 remainingBars=remaining,
@@ -529,9 +533,8 @@ def run_stream_runtime(req: CompileRequest) -> CompileResponse:
     queue = list(current_tokens)
     for token in queue:
         process_token(token)
-        while next_state.activeTokens:
-            next_token = next_state.activeTokens.pop(0)
-            queue.append(next_token)
+
+    next_state.activeTokens = next_bar_tokens
 
     ok = not any(d.level == "error" for d in diagnostics)
     return CompileResponse(
