@@ -1,0 +1,1381 @@
+{
+  "linear_chain": {
+    "ok": true,
+    "diagnostics": [],
+    "barIndex": 0,
+    "loopBars": 16,
+    "events": [
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      }
+    ],
+    "debugText": null,
+    "debugTrace": [
+      "Start: emitted initial tokens.",
+      "Start start: emitted 1 tokens.",
+      "Thought A: single-bar, emitted 1 tokens.",
+      "Thought B: single-bar, emitted 0 tokens."
+    ],
+    "runtimeState": {
+      "barIndex": 0,
+      "activeTokens": [],
+      "activeThoughts": {},
+      "counters": {},
+      "joins": {},
+      "lastSwitchRoutes": {},
+      "started": true
+    }
+  },
+  "fan_out": {
+    "ok": true,
+    "diagnostics": [],
+    "barIndex": 0,
+    "loopBars": 16,
+    "events": [
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      }
+    ],
+    "debugText": null,
+    "debugTrace": [
+      "Start: emitted initial tokens.",
+      "Start start: emitted 2 tokens.",
+      "Thought A: single-bar, emitted 0 tokens.",
+      "Thought B: single-bar, emitted 0 tokens."
+    ],
+    "runtimeState": {
+      "barIndex": 0,
+      "activeTokens": [],
+      "activeThoughts": {},
+      "counters": {},
+      "joins": {},
+      "lastSwitchRoutes": {},
+      "started": true
+    }
+  },
+  "loop_switch": {
+    "ok": true,
+    "diagnostics": [
+      {
+        "level": "warn",
+        "message": "Safety cap reached; runtime halted for this bar.",
+        "line": 1,
+        "col": 1
+      }
+    ],
+    "barIndex": 0,
+    "loopBars": 16,
+    "events": [],
+    "debugText": null,
+    "debugTrace": [
+      "Start: emitted initial tokens.",
+      "Start start: emitted 1 tokens.",
+      "Counter counter: value 1, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 2, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 3, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 4, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 5, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 6, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 7, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 8, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 9, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 10, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 11, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 12, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 13, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 14, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 15, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 16, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 17, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 18, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 19, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 20, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 21, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 22, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 23, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 24, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 25, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 26, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 27, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 28, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 29, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 30, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 31, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 32, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 33, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 34, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 35, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 36, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 37, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 38, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 39, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 40, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 41, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 42, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 43, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 44, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 45, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 46, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 47, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 48, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 49, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 50, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 51, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 52, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 53, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 54, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 55, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 56, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 57, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 58, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 59, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 60, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 61, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 62, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 63, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 64, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 65, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 66, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 67, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 68, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 69, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 70, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 71, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 72, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 73, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 74, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 75, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 76, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 77, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 78, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 79, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 80, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 81, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 82, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 83, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 84, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 85, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 86, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 87, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 88, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 89, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 90, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 91, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 92, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 93, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 94, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 95, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 96, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 97, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 98, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 99, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 100, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 101, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 102, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 103, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 104, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 105, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 106, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 107, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 108, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 109, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 110, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 111, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 112, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 113, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 114, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 115, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 116, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 117, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 118, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 119, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 120, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 121, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 122, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 123, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 124, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 125, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 126, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 127, emitted 1 tokens.",
+      "Switch switch: branch loop, emitted 1 tokens.",
+      "Counter counter: value 128, emitted 1 tokens."
+    ],
+    "runtimeState": {
+      "barIndex": 0,
+      "activeTokens": [],
+      "activeThoughts": {},
+      "counters": {
+        "counter": 128
+      },
+      "joins": {},
+      "lastSwitchRoutes": {
+        "switch": "loop"
+      },
+      "started": true
+    }
+  },
+  "join_barrier": {
+    "ok": true,
+    "diagnostics": [],
+    "barIndex": 0,
+    "loopBars": 16,
+    "events": [
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61,
+          64,
+          68
+        ],
+        "velocity": 90,
+        "durationBeats": 4.0,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 0.6666666666666666,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.3333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 1.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 2.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.0,
+        "lane": "note",
+        "note": 61,
+        "pitches": [
+          61
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.333333333333333,
+        "lane": "note",
+        "note": 64,
+        "pitches": [
+          64
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      },
+      {
+        "tBeat": 3.6666666666666665,
+        "lane": "note",
+        "note": 68,
+        "pitches": [
+          68
+        ],
+        "velocity": 96,
+        "durationBeats": 0.3333333333333333,
+        "preset": "gm_piano"
+      }
+    ],
+    "debugText": null,
+    "debugTrace": [
+      "Start: emitted initial tokens.",
+      "Start start: emitted 2 tokens.",
+      "Thought A: single-bar, emitted 1 tokens.",
+      "Thought B: single-bar, emitted 1 tokens.",
+      "Join join: waiting (1/2) [in-1].",
+      "Join join: released, emitted 1 tokens.",
+      "Thought C: single-bar, emitted 0 tokens."
+    ],
+    "runtimeState": {
+      "barIndex": 0,
+      "activeTokens": [],
+      "activeThoughts": {},
+      "counters": {},
+      "joins": {
+        "join": []
+      },
+      "lastSwitchRoutes": {},
+      "started": true
+    }
+  }
+}
