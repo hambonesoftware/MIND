@@ -12,13 +12,34 @@ function groupByCategory(types) {
   }, {});
 }
 
-export function createFlowPalette({ store, onAddNode } = {}) {
+export function createFlowPalette({ store, onAddNode, onClearWorkspace } = {}) {
   const panel = document.createElement('section');
   panel.className = 'flow-panel flow-palette';
 
   const header = document.createElement('div');
   header.className = 'flow-panel-header';
   header.textContent = 'Node Palette';
+
+  const actions = document.createElement('div');
+  actions.className = 'flow-panel-actions';
+  const clearButton = document.createElement('button');
+  clearButton.type = 'button';
+  clearButton.className = 'flow-panel-action';
+  clearButton.textContent = 'Clear Workspace';
+  clearButton.title = 'Remove all nodes and edges from the stream workspace.';
+  clearButton.addEventListener('click', () => {
+    const confirmClear = window.confirm('Clear all nodes and edges from this workspace?');
+    if (!confirmClear) {
+      return;
+    }
+    if (typeof onClearWorkspace === 'function') {
+      onClearWorkspace();
+    } else if (store?.clear) {
+      store.clear();
+    }
+  });
+  actions.appendChild(clearButton);
+  header.appendChild(actions);
   panel.appendChild(header);
 
   const search = document.createElement('input');

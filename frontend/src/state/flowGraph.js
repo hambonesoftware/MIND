@@ -486,6 +486,14 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
 
   const getState = () => clone(state);
 
+  const clear = () => {
+    past = [];
+    future = [];
+    state = clone(DEFAULT_STATE);
+    persist();
+    notify();
+  };
+
   return {
     getState,
     subscribe,
@@ -504,6 +512,7 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     redo,
     canUndo: () => past.length > 0,
     canRedo: () => future.length > 0,
+    clear,
   };
 }
 
