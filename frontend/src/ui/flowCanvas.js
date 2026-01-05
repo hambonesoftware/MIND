@@ -1,8 +1,17 @@
 import { getNodeDefinition, validateConnection } from '../state/nodeRegistry.js';
 import { isStartPlayable } from '../state/flowGraph.js';
 
-const EDGE_COLOR = '#3a6ea5';
-const EDGE_COLOR_MUTED = '#c7d7ea';
+const EDGE_COLOR = '#7dd3fc';
+const EDGE_COLOR_MUTED = '#334155';
+
+const applyNodeTypeClass = (nodeEl, type) => {
+  const previousType = nodeEl.dataset.nodeType;
+  if (previousType && previousType !== type) {
+    nodeEl.classList.remove(`flow-node-${previousType}`);
+  }
+  nodeEl.dataset.nodeType = type;
+  nodeEl.classList.add(`flow-node-${type}`);
+};
 
 function buildPortLabel(port) {
   if (!port) {
@@ -333,6 +342,7 @@ export function createFlowCanvas({
         nodeEl = document.createElement('div');
         nodeEl.className = 'flow-node';
         nodeEl.dataset.nodeId = node.id;
+        applyNodeTypeClass(nodeEl, node.type);
 
         const header = document.createElement('div');
         header.className = 'flow-node-header';
@@ -408,6 +418,7 @@ export function createFlowCanvas({
         nodeElements.set(node.id, nodeEl);
         nodeLayer.appendChild(nodeEl);
       } else {
+        applyNodeTypeClass(nodeEl, node.type);
         const header = nodeEl.querySelector('.flow-node-header');
         if (header) {
           const definition = getNodeDefinition(node.type);
