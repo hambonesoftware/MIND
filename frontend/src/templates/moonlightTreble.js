@@ -1,4 +1,19 @@
-import { buildPresetRhythmA, getStepsPerBar, normalizeBars, syncNotesToRhythm } from '../ui/customMelodyModel.js';
+import { getStepsPerBar, normalizeBar, normalizeBars } from '../ui/customMelodyModel.js';
+
+const TREBLE_MELODY_BARS = [
+  { rhythm: '............9--.', notes: 'G#4' },
+  { rhythm: '9----------.9--.', notes: 'G#4 G#4' },
+  { rhythm: '9-------9-------', notes: 'G#4 A4' },
+  { rhythm: '9-------9---9---', notes: 'G#4 F#4 B4' },
+  { rhythm: '9---............', notes: 'E4' },
+  { rhythm: '............9--.', notes: 'G4' },
+  { rhythm: '9----------.9--.', notes: 'G4 G4' },
+  { rhythm: '9-----------9---', notes: 'G4 F#4' },
+  { rhythm: '9-------9---9---', notes: 'F#4 G4 E4' },
+  { rhythm: '9---------------', notes: 'F#4' },
+  { rhythm: '............9---', notes: 'B4' },
+  { rhythm: '9-----------9---', notes: 'C5 Bb4' },
+];
 
 function generateUniqueId(base, existingIds) {
   let candidate = base;
@@ -20,13 +35,8 @@ function ensureStartNode(store, state) {
 
 function buildCustomBars(durationBars, grid) {
   const steps = getStepsPerBar(grid);
-  const base = normalizeBars([], durationBars, steps);
-  if (base.length > 0) {
-    const rhythm = buildPresetRhythmA(steps);
-    const notes = syncNotesToRhythm('C#5 E5 G#5 E5', rhythm);
-    base[0] = { rhythm, notes };
-  }
-  return base;
+  const seeded = TREBLE_MELODY_BARS.map(bar => normalizeBar(bar, steps));
+  return normalizeBars(seeded, durationBars, steps);
 }
 
 function createThought(store, state, baseId, params, ui) {
