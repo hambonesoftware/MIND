@@ -1241,6 +1241,16 @@ async function main() {
     const flowInspectorMount = document.getElementById('flowInspector');
     let startFlowPlayback = () => {};
     let stopFlowPlayback = () => {};
+    const handleClearWorkspace = () => {
+      if (typeof stopFlowPlayback === 'function') {
+        stopFlowPlayback();
+      }
+      flowStore.clear();
+      updatePlayButtonState(flowStore.getState());
+      if (toast?.showToast) {
+        toast.showToast('Stream workspace cleared.');
+      }
+    };
     const flowCanvas = createFlowCanvas({
       store: flowStore,
       toast,
@@ -1256,7 +1266,11 @@ async function main() {
       const center = flowCanvas.getViewportCenter();
       flowStore.addNode(type, { ui: center });
     };
-    const flowPalette = createFlowPalette({ store: flowStore, onAddNode: addNodeAtCenter });
+    const flowPalette = createFlowPalette({
+      store: flowStore,
+      onAddNode: addNodeAtCenter,
+      onClearWorkspace: handleClearWorkspace,
+    });
     if (flowPaletteMount) {
       flowPaletteMount.appendChild(flowPalette.element);
     }

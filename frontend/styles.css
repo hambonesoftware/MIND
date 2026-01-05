@@ -340,9 +340,33 @@ label.mute-label {
 }
 
 .flow-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-weight: bold;
   font-size: 0.95rem;
   color: #e5e7eb;
+}
+
+.flow-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flow-panel-action {
+  padding: 4px 8px;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #0b1628;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.flow-panel-action:hover {
+  background: #0d1d35;
+  border-color: #0ea5e9;
 }
 
 .flow-search {
