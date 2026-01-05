@@ -227,6 +227,7 @@ export function createFlowCanvas({
     const seen = new Set();
     const runtimeState = currentState.runtime?.state || {};
     const debugTrace = currentState.runtime?.debugTrace || [];
+    const playingNodeIds = new Set(currentState.runtime?.playingNodeIds || []);
     const activeNodeIds = new Set();
     debugTrace.forEach((line) => {
       const match = /^(Start|Thought|Counter|Switch|Join)\\s+([^:]+)/.exec(line);
@@ -550,6 +551,11 @@ export function createFlowCanvas({
         nodeEl.classList.add('flow-node-active');
       } else {
         nodeEl.classList.remove('flow-node-active');
+      }
+      if (playingNodeIds.has(node.id)) {
+        nodeEl.classList.add('flow-node-playing');
+      } else {
+        nodeEl.classList.remove('flow-node-playing');
       }
       if (node.ui?.collapsed) {
         nodeEl.classList.add('flow-node-collapsed');

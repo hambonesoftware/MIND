@@ -20,6 +20,7 @@ const DEFAULT_STATE = {
     debugTrace: [],
     activeStartNodeId: null,
     isPlaying: false,
+    playingNodeIds: [],
   },
 };
 
@@ -60,6 +61,7 @@ function normalizeGraphState(data) {
       debugTrace: [],
       activeStartNodeId: null,
       isPlaying: false,
+      playingNodeIds: [],
     },
   };
 }
@@ -426,13 +428,18 @@ function createFlowGraphStore({ storageKey = 'mind.flowGraph' } = {}) {
     }, { recordHistory: false });
   };
 
-  const setRuntimeState = ({ runtimeState, debugTrace } = {}) => {
+  const setRuntimeState = ({ runtimeState, debugTrace, playingNodeIds } = {}) => {
     applyState({
       ...state,
       runtime: {
         ...state.runtime,
-        state: runtimeState || null,
-        debugTrace: Array.isArray(debugTrace) ? debugTrace : [],
+        state: runtimeState !== undefined ? runtimeState || null : state.runtime?.state || null,
+        debugTrace: debugTrace !== undefined
+          ? (Array.isArray(debugTrace) ? debugTrace : [])
+          : state.runtime?.debugTrace || [],
+        playingNodeIds: playingNodeIds !== undefined
+          ? (Array.isArray(playingNodeIds) ? playingNodeIds : [])
+          : state.runtime?.playingNodeIds || [],
       },
     }, { recordHistory: false });
   };
