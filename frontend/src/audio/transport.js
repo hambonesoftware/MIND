@@ -54,6 +54,7 @@ export function createTransportScheduler({
   let currentBarIndex = 0;
   let lastBarIndex = 0;
   const barEvents = new Map();
+  const barPlayingNodes = new Map();
   let runtimeState = null;
   let lastDebugTrace = [];
   let compileQueue = Promise.resolve();
@@ -158,6 +159,9 @@ export function createTransportScheduler({
 
   const updateUiForBar = (targetBar) => {
     updateUiForEvents(barEvents.get(targetBar) || []);
+    if (typeof flowStore?.setRuntimeState === 'function') {
+      flowStore.setRuntimeState({ playingNodeIds: Array.from(barPlayingNodes.get(targetBar) || []) });
+    }
   };
 
   const buildGraphInputs = () => {
@@ -244,6 +248,12 @@ export function createTransportScheduler({
         barEvents.set(bar, []);
       }
       barEvents.get(bar).push(entry);
+      if (ev.sourceNodeId) {
+        if (!barPlayingNodes.has(bar)) {
+          barPlayingNodes.set(bar, new Set());
+        }
+        barPlayingNodes.get(bar).add(ev.sourceNodeId);
+      }
     }
   };
 
@@ -346,7 +356,7 @@ export function createTransportScheduler({
         }
 
         if (currentBarIndex === barIndex) {
-          updateUiForEvents(barEvents.get(currentBarIndex) || []);
+          updateUiForBar(currentBarIndex);
         }
 
         updateExecutionsPanel(windowStartBeat, windowEndBeat, diagnostics);
@@ -386,6 +396,7 @@ export function createTransportScheduler({
 
     if (currentBarIndex !== lastBarIndex) {
       barEvents.delete(lastBarIndex);
+      barPlayingNodes.delete(lastBarIndex);
       lastBarIndex = currentBarIndex;
       nodeCards.forEach(c => c.latch());
       updateUiForBar(currentBarIndex);
@@ -448,6 +459,7 @@ export function createTransportScheduler({
     lastBeat = 0;
 
     barEvents.clear();
+    barPlayingNodes.clear();
     runtimeState = null;
     lastDebugTrace = [];
     compileQueue = Promise.resolve();
@@ -464,7 +476,7 @@ export function createTransportScheduler({
     }
 
     if (typeof flowStore?.setRuntimeState === 'function') {
-      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
+      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [], playingNodeIds: [] });
     }
 
     const engine = getAudioEngine();
@@ -502,6 +514,7 @@ export function createTransportScheduler({
       engine.stop();
     }
     barEvents.clear();
+    barPlayingNodes.clear();
     nodeCards.forEach(c => c.updatePlayhead(0));
 
     runtimeState = null;
@@ -517,7 +530,7 @@ export function createTransportScheduler({
     }
 
     if (typeof flowStore?.setRuntimeState === 'function') {
-      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [] });
+      flowStore.setRuntimeState({ runtimeState: null, debugTrace: [], playingNodeIds: [] });
     }
 
     updateExecutionsPanel(0, 0);

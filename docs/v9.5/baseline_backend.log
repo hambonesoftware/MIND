@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /workspace/MIND
+plugins: anyio-4.12.0
+collected 58 items
+
+backend/tests/test_arpeggiate_modes.py ...                               [  5%]
+backend/tests/test_chord_symbols.py .....                                [ 13%]
+backend/tests/test_compiler_graph.py .........                           [ 29%]
+backend/tests/test_custom_melody_compile.py .                            [ 31%]
+backend/tests/test_custom_melody_schema.py .                             [ 32%]
+backend/tests/test_fanout_semantics.py ..                                [ 36%]
+backend/tests/test_harmony_plan_beats.py ..                              [ 39%]
+backend/tests/test_lattice.py .                                          [ 41%]
+backend/tests/test_models_nodeinput.py ....                              [ 48%]
+backend/tests/test_motion_call_parser.py ...                             [ 53%]
+backend/tests/test_music_elements.py ...                                 [ 58%]
+backend/tests/test_mxl_parser_ties.py ..                                 [ 62%]
+backend/tests/test_mxl_parser_timing.py ...                              [ 67%]
+backend/tests/test_post_chain.py .                                       [ 68%]
+backend/tests/test_post_perc.py .                                        [ 70%]
+backend/tests/test_post_strum.py .                                       [ 72%]
+backend/tests/test_progression_runtime.py ....                           [ 79%]
+backend/tests/test_sustain_semantics.py ..                               [ 82%]
+backend/tests/test_theory_harmony_plan.py .                              [ 84%]
+backend/tests/test_theory_roman.py .                                     [ 86%]
+backend/tests/test_theory_voicing.py ..                                  [ 89%]
+backend/tests/test_v9_runtime_semantics.py ......                        [100%]
+
+============================== 58 passed in 0.32s ==============================
