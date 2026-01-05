@@ -4,6 +4,18 @@ import {
   getProgressionPresetById,
   getProgressionPresets,
 } from '../music/progressions.js';
+import { insertMoonlightTrebleTemplate } from '../templates/moonlightTreble.js';
+import {
+  buildPresetRhythmA,
+  buildPresetRhythmB,
+  getStepsPerBar,
+  listNoteStarts,
+  normalizeBars,
+  normalizeRhythm,
+  syncNotesToRhythm,
+  tokenizeNotes,
+} from './customMelodyModel.js';
+import { createStepStrip } from './stepStrip.js';
 
 const SOUND_FONTS = [
   { value: '/assets/soundfonts/General-GS.sf2', label: 'General GS' },
@@ -28,6 +40,9 @@ async function loadPresets() {
     });
   return presetCachePromise;
 }
+
+const customMelodyState = new Map();
+let customMelodyClipboard = null;
 
 function buildField({ label, type, value, onChange, placeholder, helper }) {
   const wrapper = document.createElement('label');
@@ -146,6 +161,23 @@ export function createFlowInspector({ store } = {}) {
     empty.className = 'flow-inspector-empty';
     empty.textContent = 'Select a node or edge to inspect its properties.';
     content.appendChild(empty);
+
+    const templates = document.createElement('div');
+    templates.className = 'flow-inspector-templates';
+    const title = document.createElement('div');
+    title.className = 'flow-inspector-title';
+    title.textContent = 'Templates';
+    templates.appendChild(title);
+
+    const templateButton = document.createElement('button');
+    templateButton.type = 'button';
+    templateButton.className = 'flow-branch-add';
+    templateButton.textContent = 'Insert Moonlight Treble (Bars 1–16)';
+    templateButton.addEventListener('click', () => {
+      insertMoonlightTrebleTemplate(store);
+    });
+    templates.appendChild(templateButton);
+    content.appendChild(templates);
   };
 
   const renderSwitchEditor = (node, state) => {
@@ -472,6 +504,255 @@ export function createFlowInspector({ store } = {}) {
       });
     };
 
+    const buildCustomMelodyEditor = () => {
+      const durationBars = Math.max(params.durationBars ?? 1, 1);
+      const grid = params.customMelody?.grid || params.rhythmGrid || '1/16';
+      const stepsPerBar = getStepsPerBar(grid);
+      const rawBars = params.customMelody?.bars;
+      const barCount = durationBars;
+      const emptyBar = normalizeBars([], 1, stepsPerBar)[0];
+      const baseBars = normalizeBars(
+        rawBars,
+        Math.max(barCount, Array.isArray(rawBars) ? rawBars.length : 0),
+        stepsPerBar
+      );
+      const bars = baseBars.slice(0, barCount);
+      const savedState = customMelodyState.get(node.id) || { barIndex: 0 };
+      let activeIndex = Math.min(Math.max(savedState.barIndex ?? 0, 0), bars.length - 1);
+      if (activeIndex !== savedState.barIndex) {
+        customMelodyState.set(node.id, { ...savedState, barIndex: activeIndex });
+      }
+
+      const mergeBars = (nextSubset) => {
+        const mergedLength = Math.max(
+          baseBars.length,
+          Array.isArray(nextSubset) ? nextSubset.length : 0,
+          barCount
+        );
+        const merged = [];
+        for (let idx = 0; idx < mergedLength; idx += 1) {
+          if (Array.isArray(nextSubset) && nextSubset[idx]) {
+            merged[idx] = nextSubset[idx];
+          } else if (baseBars[idx]) {
+            merged[idx] = baseBars[idx];
+          } else {
+            merged[idx] = emptyBar;
+          }
+        }
+        return merged;
+      };
+
+      const writeBars = (nextBars, nextGrid = grid) => {
+        const targetGrid = nextGrid || grid;
+        const merged = mergeBars(nextBars);
+        const normalized = normalizeBars(
+          merged,
+          Math.max(barCount, merged.length),
+          getStepsPerBar(targetGrid)
+        );
+        updateParams({
+          customMelody: {
+            grid: targetGrid,
+            bars: normalized,
+          },
+        });
+      };
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'melody-card';
+
+      const header = document.createElement('div');
+      header.className = 'melody-card-header';
+      header.textContent = 'Custom Melody';
+      wrapper.appendChild(header);
+
+      const topRow = document.createElement('div');
+      topRow.className = 'melody-row';
+      const gridField = buildSelect({
+        label: 'Grid',
+        value: grid,
+        options: [
+          { value: '1/4', label: 'Quarter (1/4)' },
+          { value: '1/8', label: 'Eighth (1/8)' },
+          { value: '1/12', label: 'Triplet (1/12)' },
+          { value: '1/16', label: 'Sixteenth (1/16)' },
+          { value: '1/24', label: '1/24' },
+        ],
+        onChange: (value) => {
+          const nextSteps = getStepsPerBar(value);
+          const nextBars = normalizeBars(baseBars, Math.max(barCount, baseBars.length), nextSteps);
+          writeBars(nextBars, value);
+        },
+      });
+      gridField.classList.add('melody-field');
+      topRow.appendChild(gridField);
+
+      const barField = buildSelect({
+        label: 'Bar (within thought)',
+        value: String(activeIndex),
+        options: bars.map((_, idx) => ({ value: String(idx), label: `Bar ${idx + 1}` })),
+        onChange: (value) => {
+          activeIndex = Math.min(Math.max(Number(value) || 0, 0), bars.length - 1);
+          customMelodyState.set(node.id, { ...savedState, barIndex: activeIndex });
+          renderBarDetails();
+        },
+      });
+      barField.classList.add('melody-field');
+      topRow.appendChild(barField);
+      wrapper.appendChild(topRow);
+
+      const stripContainer = document.createElement('div');
+      stripContainer.className = 'melody-strip-container';
+      const stripHint = document.createElement('div');
+      stripHint.className = 'melody-hint';
+      stripHint.textContent = 'Click to toggle notes, double-click to add/remove holds, right-click to clear.';
+      stripContainer.appendChild(stripHint);
+
+      const stepStrip = createStepStrip({
+        steps: normalizeRhythm(bars[activeIndex]?.rhythm, stepsPerBar).split(''),
+        onChange: (nextSteps) => {
+          const raw = (nextSteps || []).join('').slice(0, stepsPerBar).padEnd(stepsPerBar, '.');
+          const rhythm = normalizeRhythm(raw, stepsPerBar);
+          const nextBars = bars.map((bar, idx) => (
+            idx === activeIndex
+              ? { rhythm, notes: syncNotesToRhythm(bar.notes, rhythm) }
+              : bar
+          ));
+          writeBars(nextBars);
+        },
+      });
+      stripContainer.appendChild(stepStrip.element);
+      wrapper.appendChild(stripContainer);
+
+      const actions = document.createElement('div');
+      actions.className = 'melody-actions';
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.textContent = 'Copy bar';
+      copyButton.addEventListener('click', () => {
+        const bar = bars[activeIndex] || { rhythm: '', notes: '' };
+        customMelodyClipboard = { rhythm: bar.rhythm, notes: bar.notes };
+        pasteButton.disabled = false;
+      });
+      actions.appendChild(copyButton);
+
+      const pasteButton = document.createElement('button');
+      pasteButton.type = 'button';
+      pasteButton.textContent = 'Paste bar';
+      pasteButton.disabled = !customMelodyClipboard;
+      pasteButton.addEventListener('click', () => {
+        if (!customMelodyClipboard) return;
+        const rhythm = normalizeRhythm(customMelodyClipboard.rhythm, stepsPerBar);
+        const notes = syncNotesToRhythm(customMelodyClipboard.notes, rhythm);
+        const nextBars = bars.map((bar, idx) => (
+          idx === activeIndex ? { rhythm, notes } : bar
+        ));
+        writeBars(nextBars);
+      });
+      actions.appendChild(pasteButton);
+
+      const copyPrevButton = document.createElement('button');
+      copyPrevButton.type = 'button';
+      copyPrevButton.textContent = 'Copy previous';
+      copyPrevButton.disabled = activeIndex === 0;
+      copyPrevButton.addEventListener('click', () => {
+        if (activeIndex === 0) return;
+        const prev = bars[activeIndex - 1] || { rhythm: '', notes: '' };
+        const rhythm = normalizeRhythm(prev.rhythm, stepsPerBar);
+        const notes = syncNotesToRhythm(prev.notes, rhythm);
+        const nextBars = bars.map((bar, idx) => (
+          idx === activeIndex ? { rhythm, notes } : bar
+        ));
+        writeBars(nextBars);
+      });
+      actions.appendChild(copyPrevButton);
+
+      const presetAButton = document.createElement('button');
+      presetAButton.type = 'button';
+      presetAButton.textContent = 'Preset A';
+      presetAButton.addEventListener('click', () => {
+        const rhythm = normalizeRhythm(buildPresetRhythmA(stepsPerBar), stepsPerBar);
+        const notes = syncNotesToRhythm(bars[activeIndex]?.notes || '', rhythm);
+        const nextBars = bars.map((bar, idx) => (
+          idx === activeIndex ? { rhythm, notes } : bar
+        ));
+        writeBars(nextBars);
+      });
+      actions.appendChild(presetAButton);
+
+      const presetBButton = document.createElement('button');
+      presetBButton.type = 'button';
+      presetBButton.textContent = 'Preset B';
+      presetBButton.addEventListener('click', () => {
+        const rhythm = normalizeRhythm(buildPresetRhythmB(stepsPerBar), stepsPerBar);
+        const notes = syncNotesToRhythm(bars[activeIndex]?.notes || '', rhythm);
+        const nextBars = bars.map((bar, idx) => (
+          idx === activeIndex ? { rhythm, notes } : bar
+        ));
+        writeBars(nextBars);
+      });
+      actions.appendChild(presetBButton);
+
+      wrapper.appendChild(actions);
+
+      const notesSection = document.createElement('div');
+      notesSection.className = 'melody-notes';
+      const notesHeader = document.createElement('div');
+      notesHeader.className = 'melody-notes-header';
+      notesHeader.textContent = 'Notes (aligned to note starts)';
+      notesSection.appendChild(notesHeader);
+      const notesList = document.createElement('div');
+      notesList.className = 'melody-notes-list';
+      notesSection.appendChild(notesList);
+      wrapper.appendChild(notesSection);
+
+      const renderBarDetails = () => {
+        const bar = bars[activeIndex] || { rhythm: '.'.repeat(stepsPerBar), notes: '' };
+        const normalizedRhythm = normalizeRhythm(bar.rhythm, stepsPerBar);
+        stepStrip.setSteps(normalizedRhythm.split(''));
+
+        notesList.innerHTML = '';
+        const noteStarts = listNoteStarts(normalizedRhythm);
+        const tokens = tokenizeNotes(bar.notes);
+        if (noteStarts.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'melody-hint';
+          empty.textContent = 'Add note-on steps in the rhythm to enter notes.';
+          notesList.appendChild(empty);
+          return;
+        }
+        noteStarts.forEach((stepIndex, noteIndex) => {
+          const row = document.createElement('div');
+          row.className = 'melody-note-row';
+          const label = document.createElement('span');
+          label.className = 'melody-note-label';
+          label.textContent = `Note ${noteIndex + 1} (Step ${stepIndex + 1})`;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'melody-note-input';
+          input.placeholder = 'C#5 or 73';
+          input.value = tokens[noteIndex] || '';
+          input.addEventListener('input', () => {
+            const nextTokens = [...tokens];
+            nextTokens[noteIndex] = input.value;
+            const nextNotes = syncNotesToRhythm(nextTokens.join(' '), normalizedRhythm);
+            const nextBars = bars.map((item, idx) => (
+              idx === activeIndex ? { rhythm: normalizedRhythm, notes: nextNotes } : item
+            ));
+            writeBars(nextBars);
+          });
+          row.appendChild(label);
+          row.appendChild(input);
+          notesList.appendChild(row);
+        });
+      };
+
+      renderBarDetails();
+
+      return wrapper;
+    };
+
     const form = document.createElement('div');
     form.className = 'flow-inspector-form';
     form.appendChild(buildField({
@@ -649,54 +930,68 @@ export function createFlowInspector({ store } = {}) {
         form.appendChild(buildProgressionPreviewStrip(preview));
       }
     }
+    const melodyMode = params.melodyMode || 'generated';
     form.appendChild(buildSelect({
-      label: 'patternType',
-      value: params.patternType || 'arp-3-up',
+      label: 'melodyMode',
+      value: melodyMode,
       options: [
-        { value: 'arp-3-up', label: 'Arpeggio 3 Up' },
-        { value: 'arp-3-down', label: 'Arpeggio 3 Down' },
-        { value: 'arp-3-skip', label: 'Arpeggio 3 Skip' },
+        { value: 'generated', label: 'Generated' },
+        { value: 'custom', label: 'Custom' },
       ],
-      onChange: value => updateParams({ patternType: value }),
+      onChange: value => updateParams({ melodyMode: value }),
     }));
-    form.appendChild(buildSelect({
-      label: 'rhythmGrid',
-      value: params.rhythmGrid || '1/12',
-      options: [
-        { value: '1/4', label: 'Quarter (1/4)' },
-        { value: '1/8', label: 'Eighth (1/8)' },
-        { value: '1/12', label: 'Triplet (1/12)' },
-        { value: '1/16', label: 'Sixteenth (1/16)' },
-        { value: '1/24', label: '1/24' },
-      ],
-      onChange: value => updateParams({ rhythmGrid: value }),
-    }));
-    form.appendChild(buildSelect({
-      label: 'syncopation',
-      value: params.syncopation || 'none',
-      options: [
-        { value: 'none', label: 'None' },
-        { value: 'offbeat', label: 'Offbeat' },
-        { value: 'anticipation', label: 'Anticipation' },
-      ],
-      onChange: value => updateParams({ syncopation: value }),
-    }));
-    form.appendChild(buildSelect({
-      label: 'timingWarp',
-      value: params.timingWarp || 'none',
-      options: [
-        { value: 'none', label: 'None' },
-        { value: 'swing', label: 'Swing' },
-        { value: 'shuffle', label: 'Shuffle' },
-      ],
-      onChange: value => updateParams({ timingWarp: value }),
-    }));
-    form.appendChild(buildField({
-      label: 'timingIntensity',
-      type: 'number',
-      value: params.timingIntensity ?? 0,
-      onChange: value => updateParams({ timingIntensity: value }),
-    }));
+    if (melodyMode === 'generated') {
+      form.appendChild(buildSelect({
+        label: 'patternType',
+        value: params.patternType || 'arp-3-up',
+        options: [
+          { value: 'arp-3-up', label: 'Arpeggio 3 Up' },
+          { value: 'arp-3-down', label: 'Arpeggio 3 Down' },
+          { value: 'arp-3-skip', label: 'Arpeggio 3 Skip' },
+        ],
+        onChange: value => updateParams({ patternType: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'rhythmGrid',
+        value: params.rhythmGrid || '1/12',
+        options: [
+          { value: '1/4', label: 'Quarter (1/4)' },
+          { value: '1/8', label: 'Eighth (1/8)' },
+          { value: '1/12', label: 'Triplet (1/12)' },
+          { value: '1/16', label: 'Sixteenth (1/16)' },
+          { value: '1/24', label: '1/24' },
+        ],
+        onChange: value => updateParams({ rhythmGrid: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'syncopation',
+        value: params.syncopation || 'none',
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'offbeat', label: 'Offbeat' },
+          { value: 'anticipation', label: 'Anticipation' },
+        ],
+        onChange: value => updateParams({ syncopation: value }),
+      }));
+      form.appendChild(buildSelect({
+        label: 'timingWarp',
+        value: params.timingWarp || 'none',
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'swing', label: 'Swing' },
+          { value: 'shuffle', label: 'Shuffle' },
+        ],
+        onChange: value => updateParams({ timingWarp: value }),
+      }));
+      form.appendChild(buildField({
+        label: 'timingIntensity',
+        type: 'number',
+        value: params.timingIntensity ?? 0,
+        onChange: value => updateParams({ timingIntensity: value }),
+      }));
+    } else {
+      form.appendChild(buildCustomMelodyEditor());
+    }
     form.appendChild(buildField({
       label: 'registerMin',
       type: 'number',

@@ -19,7 +19,7 @@
 // - spessasynth_lib methods accept an eventOptions object with { time: <absTimeSec> }.
 //   The worklet queues the message if time > current synth time (see processor logic).
 
-const DEBUG_SPESSA = true;
+const DEBUG_SPESSA = false;
 const HEALTH_LOG_INTERVAL_MS = 10000;
 
 // -----------------------------------------------------------------------------

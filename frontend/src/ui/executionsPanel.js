@@ -30,6 +30,7 @@ export function createExecutionsPanel() {
   const barBeatValue = buildField('Bar / Beat');
   const sinksValue = buildField('Active Render Sinks');
   const scheduleValue = buildField('Schedule Window');
+  const nowPlayingValue = buildField('Now Playing');
   const traceValue = buildField('Runtime Trace');
   const diagnosticsValue = buildField('Diagnostics');
 
@@ -38,6 +39,7 @@ export function createExecutionsPanel() {
     barBeat,
     renderSinks,
     scheduleWindow,
+    nowPlaying,
     debugTrace,
     diagnostics,
   } = {}) => {
@@ -48,6 +50,7 @@ export function createExecutionsPanel() {
       : 'None';
     sinksValue.textContent = sinksText;
     scheduleValue.textContent = scheduleWindow || '--';
+    nowPlayingValue.textContent = nowPlaying || 'None';
     const traceText = Array.isArray(debugTrace) && debugTrace.length > 0
       ? debugTrace.join(' | ')
       : 'None';
