@@ -4,7 +4,7 @@ import { NullAudioEngine } from './audio/nullEngine.js';
 import { createTransportScheduler } from './audio/transport.js';
 import { USE_NODE_GRAPH } from './config.js';
 import { createGraphStore } from './state/graphStore.js';
-import { createFlowGraphStore, DEFAULT_STATE } from './state/flowGraph.js';
+import { createFlowGraphStore, DEFAULT_STATE, isStartPlayable } from './state/flowGraph.js';
 import { createExecutionsPanel } from './ui/executionsPanel.js';
 import { createFlowCanvas } from './ui/flowCanvas.js';
 import { createFlowInspector } from './ui/flowInspector.js';
@@ -1225,6 +1225,17 @@ async function main() {
 
     const flowStore = createFlowGraphStore();
     flowStore.load();
+    const updatePlayButtonState = (state) => {
+      const nextState = state || flowStore.getState?.() || {};
+      const startId = nextState.runtime?.activeStartNodeId
+        || (nextState.nodes || []).find(node => node.type === 'start')?.id
+        || null;
+      const canPlay = isStartPlayable(nextState.nodes || [], nextState.edges || [], startId);
+      playButton.disabled = !canPlay;
+      playButton.title = canPlay
+        ? 'Start playback from the Start node.'
+        : 'Add a Start node connected to a Thought to enable playback.';
+    };
     const flowCanvasMount = document.getElementById('flowCanvas');
     const flowPaletteMount = document.getElementById('flowPalette');
     const flowInspectorMount = document.getElementById('flowInspector');
@@ -1253,6 +1264,8 @@ async function main() {
     if (flowInspectorMount) {
       flowInspectorMount.appendChild(flowInspector.element);
     }
+    updatePlayButtonState(flowStore.getState());
+    flowStore.subscribe(updatePlayButtonState);
     const v9Demos = [
       { id: 'moonlight', label: 'Moonlight Opening Loop', url: '/docs/demos/v9/moonlight_loop_v9.json' },
       { id: 'parallel', label: 'Parallel Fan-out', url: '/docs/demos/v9/parallel_fanout_v9.json' },

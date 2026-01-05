@@ -957,3 +957,139 @@ label.mute-label {
   color: #0c4a6e;
   border: 1px solid #bae6fd;
 }
+
+.melody-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.melody-card-header {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.melody-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.melody-field {
+  flex: 1;
+  min-width: 180px;
+}
+
+.melody-strip-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.melody-step-strip {
+  display: grid;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 6px;
+  min-height: 40px;
+}
+
+.melody-step {
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #e5e7eb;
+  cursor: pointer;
+  transition: border-color 0.1s ease, background 0.1s ease;
+  font-size: 0.75rem;
+}
+
+.melody-step:hover {
+  border-color: #9ca3af;
+}
+
+.melody-step:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+  border-color: #2563eb;
+}
+
+.melody-step-on {
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.melody-step-hold {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+.melody-hint {
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.melody-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.melody-actions button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+  background: #eef2ff;
+  color: #1e3a8a;
+  cursor: pointer;
+}
+
+.melody-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.melody-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.melody-notes-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.melody-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.melody-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.melody-note-label {
+  min-width: 140px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.melody-note-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #d2d7e2;
+  border-radius: 6px;
+}

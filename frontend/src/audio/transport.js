@@ -4,10 +4,30 @@ import { buildCompilePayload } from '../state/compilePayload.js';
 const TICK_INTERVAL_MS = 25;
 const LOOKAHEAD_SEC = 0.2;
 const BEATS_PER_BAR = 4;
+const LOG_INTERVAL_MS = 1000;
 
 function toNumber(value, fallback) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
+}
+
+function createLogLimiter(intervalMs = LOG_INTERVAL_MS) {
+  const last = new Map();
+  const now = () => (typeof performance?.now === 'function' ? performance.now() : Date.now());
+  return (level, key, ...args) => {
+    const ts = now();
+    const previous = last.get(key) || 0;
+    if (ts - previous < intervalMs) {
+      return;
+    }
+    last.set(key, ts);
+    const fn = console[level] || console.log;
+    try {
+      fn(...args);
+    } catch {
+      // ignore logging failures
+    }
+  };
 }
 
 export function createTransportScheduler({
@@ -38,8 +58,16 @@ export function createTransportScheduler({
   let lastDebugTrace = [];
   let compileQueue = Promise.resolve();
   let playbackSession = 0;
+  const logLimited = createLogLimiter();
 
   const getAudioEngine = () => audioEngineRef?.current || null;
+  const getStartLabel = () => {
+    const state = flowStore?.getState?.();
+    const startId = state?.runtime?.activeStartNodeId || null;
+    if (!startId || !Array.isArray(state?.nodes)) return null;
+    const node = state.nodes.find(item => item.id === startId);
+    return node?.params?.label || node?.id || null;
+  };
 
   const getAudioTime = () => {
     const engine = getAudioEngine();
@@ -111,6 +139,7 @@ export function createTransportScheduler({
       barBeat,
       renderSinks: describeRenderSinks(),
       scheduleWindow: formatScheduleWindow(windowStartBeat, windowEndBeat),
+      nowPlaying: getStartLabel(),
       debugTrace: lastDebugTrace,
       diagnostics,
     });
@@ -286,7 +315,7 @@ export function createTransportScheduler({
         const events = Array.isArray(res.events) ? res.events : [];
         const diagnostics = Array.isArray(res.diagnostics) ? res.diagnostics : [];
         if (diagnostics.some(item => item.level === 'error')) {
-          console.error('Runtime diagnostics', diagnostics);
+          logLimited('error', 'runtime-diagnostics', 'Runtime diagnostics', diagnostics);
         }
 
         lastDebugTrace = Array.isArray(res.debugTrace) ? res.debugTrace : [];
@@ -323,7 +352,7 @@ export function createTransportScheduler({
         updateExecutionsPanel(windowStartBeat, windowEndBeat, diagnostics);
       }
     } catch (err) {
-      console.error('Compile error', err);
+      logLimited('error', 'compile-error', 'Compile error', err);
       updateExecutionsPanel(windowStartBeat, windowEndBeat, [
         { level: 'error', message: err?.message ? `Compile error: ${err.message}` : 'Compile error.' },
       ]);
@@ -389,7 +418,7 @@ export function createTransportScheduler({
       compileQueue = compileQueue
         .then(work)
         .catch(err => {
-          console.error('Compile error', err);
+          logLimited('error', 'compile-error', 'Compile error', err);
           updateExecutionsPanel(windowStartBeat, windowEndBeat, [
             { level: 'error', message: 'Compile request failed.' },
           ]);
@@ -406,7 +435,7 @@ export function createTransportScheduler({
       try {
         await ensureAudioStarted('play-click');
       } catch (err) {
-        console.error('Failed to start audio engine:', err);
+        logLimited('error', 'audio-start', 'Failed to start audio engine:', err);
         return;
       }
     }
@@ -440,7 +469,7 @@ export function createTransportScheduler({
 
     const engine = getAudioEngine();
     if (!engine) {
-      console.warn('No audio engine available; aborting startPlayback.');
+      logLimited('warn', 'missing-engine', 'No audio engine available; aborting startPlayback.');
       isPlaying = false;
       return;
     }
