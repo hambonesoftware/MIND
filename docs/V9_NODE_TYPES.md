@@ -14,8 +14,13 @@ A Musical Thought is a pattern object with harmonic context, timing settings, an
 - `instrument`: **SoundFont preset selection** (sf2/sf3).
 
 **Optional fields**
-- `register`: octave/register offset.
+- `register`: octave/register offset (`registerMin`/`registerMax`).
 - `humanize`: micro-timing/jitter parameters.
+- `styleId` / `styleSeed`: style metadata for deterministic resolution.
+- `styleOptionModes` / `styleOptionLocks` / `styleOptionOverrides`: Auto/Override + lock metadata per group (harmony, pattern, feel, instrument, register).
+- `notePatternId`: stable pattern identifier mapped to legacy `patternType` for V9.5 compatibility.
+- `patternType`: legacy pattern type (derived from `notePatternId` when Auto).
+- `progressionPresetId` / `progressionVariantId`: harmony selections (style-filtered when Auto).
 
 ## Logic Thoughts
 Logic Thoughts are control-flow nodes. They do **not** own audio transport.

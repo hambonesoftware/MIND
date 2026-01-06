@@ -4,6 +4,9 @@ import {
   getProgressionPresetById,
   getProgressionPresets,
 } from '../music/progressions.js';
+import { STYLE_CATALOG } from '../music/styleCatalog.js';
+import { resolveThoughtStyle } from '../music/styleResolver.js';
+import { NOTE_PATTERNS, NOTE_PATTERN_BY_ID } from '../music/patternCatalog.js';
 import { insertMoonlightTrebleTemplate } from '../templates/moonlightTreble.js';
 import {
   buildPresetRhythmA,
@@ -71,6 +74,20 @@ function buildField({ label, type, value, onChange, placeholder, helper }) {
     help.textContent = helper;
     wrapper.appendChild(help);
   }
+  return wrapper;
+}
+
+function buildToggle({ label, checked, onChange }) {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'flow-toggle';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = Boolean(checked);
+  input.addEventListener('change', () => onChange(input.checked));
+  const text = document.createElement('span');
+  text.textContent = label;
+  wrapper.appendChild(input);
+  wrapper.appendChild(text);
   return wrapper;
 }
 
@@ -503,6 +520,185 @@ export function createFlowInspector({ store } = {}) {
         },
       });
     };
+    let currentModes = {
+      harmony: 'auto',
+      pattern: 'auto',
+      feel: 'auto',
+      instrument: 'auto',
+      register: 'auto',
+      ...(params.styleOptionModes || {}),
+    };
+    let currentLocks = {
+      harmony: false,
+      pattern: false,
+      feel: false,
+      instrument: false,
+      register: false,
+      ...(params.styleOptionLocks || {}),
+    };
+    let currentOverrides = params.styleOptionOverrides || {};
+
+    const applyStyleResolution = (overrideSeed) => {
+      const seedToUse = overrideSeed ?? params.styleSeed ?? 1;
+      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'modern_pop');
+      const locks = {};
+      if (currentLocks.harmony) {
+        locks.harmonyMode = params.harmonyMode;
+        locks.progressionPresetId = params.progressionPresetId;
+        locks.progressionVariantId = params.progressionVariantId;
+        locks.chordsPerBar = params.chordsPerBar;
+        locks.fillBehavior = params.fillBehavior;
+        locks.progressionLength = params.progressionLength;
+      }
+      if (currentLocks.pattern) {
+        locks.notePatternId = params.notePatternId;
+        locks.patternType = params.patternType;
+      }
+      if (currentLocks.feel) {
+        locks.rhythmGrid = params.rhythmGrid;
+        locks.syncopation = params.syncopation;
+        locks.timingWarp = params.timingWarp;
+        locks.timingIntensity = params.timingIntensity;
+      }
+      if (currentLocks.instrument) {
+        locks.instrumentPreset = params.instrumentPreset;
+      }
+      if (currentLocks.register) {
+        locks.registerMin = params.registerMin;
+        locks.registerMax = params.registerMax;
+      }
+      const resolved = resolveThoughtStyle({
+        styleId,
+        styleSeed: seedToUse,
+        nodeId: node.id,
+        locks,
+        overrides: currentOverrides,
+        modes: currentModes,
+      });
+      const nextParams = {
+        styleId,
+        styleSeed: seedToUse,
+        styleOptionModes: currentModes,
+        styleOptionLocks: currentLocks,
+        styleOptionOverrides: currentOverrides,
+      };
+      if (currentModes.harmony === 'auto' && !currentLocks.harmony) {
+        nextParams.harmonyMode = resolved.harmonyMode ?? params.harmonyMode;
+        nextParams.progressionPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
+        nextParams.progressionVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
+        nextParams.chordsPerBar = resolved.chordsPerBar ?? params.chordsPerBar;
+        nextParams.fillBehavior = resolved.fillBehavior ?? params.fillBehavior;
+        nextParams.progressionLength = resolved.progressionLength ?? params.progressionLength;
+      }
+      if (currentModes.pattern === 'auto' && !currentLocks.pattern) {
+        nextParams.notePatternId = resolved.notePatternId ?? params.notePatternId;
+        nextParams.patternType = resolved.patternType ?? params.patternType;
+      }
+      if (currentModes.feel === 'auto' && !currentLocks.feel) {
+        nextParams.rhythmGrid = resolved.rhythmGrid ?? params.rhythmGrid;
+        nextParams.syncopation = resolved.syncopation ?? params.syncopation;
+        nextParams.timingWarp = resolved.timingWarp ?? params.timingWarp;
+        nextParams.timingIntensity = resolved.timingIntensity ?? params.timingIntensity;
+      }
+      if (currentModes.instrument === 'auto' && !currentLocks.instrument) {
+        nextParams.instrumentPreset = resolved.instrumentPreset ?? params.instrumentPreset;
+      }
+      if (currentModes.register === 'auto' && !currentLocks.register) {
+        nextParams.registerMin = resolved.registerMin ?? params.registerMin;
+        nextParams.registerMax = resolved.registerMax ?? params.registerMax;
+      }
+      updateParams(nextParams);
+    };
+
+    const rerollSeed = () => {
+      const nextSeed = Number.isFinite(params.styleSeed) ? params.styleSeed + 1 : 1;
+      applyStyleResolution(nextSeed);
+    };
+
+    const copySeed = async () => {
+      const seedValue = params.styleSeed ?? '';
+      if (navigator?.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(String(seedValue));
+        } catch (error) {
+          // ignore copy errors silently
+        }
+      }
+    };
+
+    const pasteSeed = async () => {
+      let text = '';
+      if (navigator?.clipboard?.readText) {
+        try {
+          text = await navigator.clipboard.readText();
+        } catch (error) {
+          text = '';
+        }
+      }
+      const parsed = Number.parseInt(text, 10);
+      if (Number.isFinite(parsed)) {
+        applyStyleResolution(parsed);
+      }
+    };
+
+    const buildModeLockRow = (label, key) => {
+      const row = document.createElement('div');
+      row.className = 'flow-mode-row';
+      row.appendChild(buildSelect({
+        label: `${label} Mode`,
+        value: currentModes[key] || 'auto',
+        options: [
+          { value: 'auto', label: 'Auto' },
+          { value: 'override', label: 'Override' },
+        ],
+        onChange: (value) => {
+          const nextModes = { ...currentModes, [key]: value };
+          currentModes = nextModes;
+          updateParams({ styleOptionModes: nextModes });
+          if (value === 'auto') {
+            applyStyleResolution();
+          }
+        },
+      }));
+      row.appendChild(buildToggle({
+        label: 'Lock',
+        checked: currentLocks[key],
+        onChange: (checked) => {
+          const nextLocks = { ...currentLocks, [key]: checked };
+          currentLocks = nextLocks;
+          updateParams({ styleOptionLocks: nextLocks });
+        },
+      }));
+      return row;
+    };
+
+    const buildSection = (title, body, { collapsible = false, defaultOpen = true } = {}) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-section';
+      if (collapsible) {
+        const details = document.createElement('details');
+        details.open = defaultOpen;
+        const summary = document.createElement('summary');
+        summary.className = 'flow-section-title';
+        summary.textContent = title;
+        details.appendChild(summary);
+        details.appendChild(body);
+        wrapper.appendChild(details);
+        return wrapper;
+      }
+      const header = document.createElement('div');
+      header.className = 'flow-section-title';
+      header.textContent = title;
+      wrapper.appendChild(header);
+      wrapper.appendChild(body);
+      return wrapper;
+    };
+
+    const getStyleDefinition = () => {
+      const fallback = STYLE_CATALOG[0] || null;
+      if (!params.styleId) return fallback;
+      return STYLE_CATALOG.find(style => style.id === params.styleId) || fallback;
+    };
 
     const buildCustomMelodyEditor = () => {
       const durationBars = Math.max(params.durationBars ?? 1, 1);
@@ -753,205 +949,240 @@ export function createFlowInspector({ store } = {}) {
       return wrapper;
     };
 
-    const form = document.createElement('div');
-    form.className = 'flow-inspector-form';
-    form.appendChild(buildField({
-      label: 'label',
-      type: 'string',
-      value: params.label,
-      onChange: value => updateParams({ label: value }),
-    }));
-    form.appendChild(buildField({
-      label: 'durationBars',
-      type: 'number',
-      value: params.durationBars ?? 1,
-      onChange: value => updateParams({ durationBars: value }),
-    }));
-    form.appendChild(buildField({
-      label: 'key',
-      type: 'string',
-      value: params.key || 'C# minor',
-      onChange: value => updateParams({ key: value }),
-    }));
-    form.appendChild(buildSelect({
-      label: 'harmonyMode',
-      value: params.harmonyMode || 'single',
-      options: [
-        { value: 'single', label: 'Single Chord' },
-        { value: 'progression_preset', label: 'Progression (Preset)' },
-        { value: 'progression_custom', label: 'Progression (Custom)' },
-      ],
-      onChange: value => updateParams({ harmonyMode: value }),
-    }));
+    const buildHarmonySection = () => {
+      const harmonyWrapper = document.createElement('div');
+      harmonyWrapper.className = 'flow-section-body';
+      const styleDef = getStyleDefinition();
+      const styleProgressions = styleDef?.progressions || [];
+      const allowedPresets = getProgressionPresets().filter(preset => (
+        styleProgressions.length === 0 || styleProgressions.includes(preset.id)
+      ));
+      harmonyWrapper.appendChild(buildSelect({
+        label: 'harmonyMode',
+        value: params.harmonyMode || 'single',
+        options: [
+          { value: 'single', label: 'Single Chord' },
+          { value: 'progression_preset', label: 'Progression (Preset)' },
+          { value: 'progression_custom', label: 'Progression (Custom)' },
+        ],
+        onChange: value => updateParams({ harmonyMode: value }),
+      }));
 
-    const harmonyMode = params.harmonyMode || 'single';
-    if (harmonyMode === 'single') {
-      form.appendChild(buildField({
-        label: 'chordRoot',
-        type: 'string',
-        value: params.chordRoot || '',
-        onChange: value => updateParams({ chordRoot: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'chordQuality',
-        value: params.chordQuality || 'minor',
-        options: [
-          { value: 'major', label: 'Major' },
-          { value: 'minor', label: 'Minor' },
-          { value: 'diminished', label: 'Diminished' },
-          { value: 'augmented', label: 'Augmented' },
-        ],
-        onChange: value => updateParams({ chordQuality: value }),
-      }));
-      form.appendChild(buildField({
-        label: 'Chord Notes Override',
-        type: 'string',
-        value: params.chordNotes || '',
-        placeholder: 'C#4:E4:G#4',
-        helper: 'Optional. One chord only. Colon-separated notes (with octave) or MIDI numbers (e.g., 61:64:68). Overrides Chord Root/Quality.',
-        onChange: value => updateParams({ chordNotes: value }),
-      }));
-    }
-
-    if (harmonyMode === 'progression_preset') {
-      const presets = getProgressionPresets();
-      const presetOptions = presets.map(preset => ({ value: preset.id, label: preset.name }));
-      const activePreset = getProgressionPresetById(params.progressionPresetId) || presets[0];
-      const presetId = params.progressionPresetId || activePreset?.id || '';
-      const variantOptions = (activePreset?.variants || []).map(variant => ({
-        value: variant.id,
-        label: variant.label,
-      }));
-      form.appendChild(buildSelect({
-        label: 'progressionPresetId',
-        value: presetId,
-        options: presetOptions,
-        onChange: value => updateParams({ progressionPresetId: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'progressionVariantId',
-        value: params.progressionVariantId || activePreset?.variants?.[0]?.id || 'triads',
-        options: variantOptions,
-        onChange: value => updateParams({ progressionVariantId: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'chordsPerBar',
-        value: params.chordsPerBar || '1',
-        options: [
-          { value: '1', label: '1 chord per bar' },
-          { value: '2', label: '2 chords per bar' },
-          { value: '0.5', label: '1 chord per 2 bars' },
-        ],
-        onChange: value => updateParams({ chordsPerBar: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'fillBehavior',
-        value: params.fillBehavior || 'repeat',
-        options: [
-          { value: 'repeat', label: 'Repeat' },
-          { value: 'hold_last', label: 'Hold last' },
-          { value: 'rest', label: 'Rest' },
-        ],
-        onChange: value => updateParams({ fillBehavior: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'progressionLength',
-        value: params.progressionLength ?? 'preset',
-        options: [
-          { value: 'preset', label: 'Preset length' },
-          { value: '2', label: '2 bars' },
-          { value: '4', label: '4 bars' },
-          { value: '8', label: '8 bars' },
-          { value: '16', label: '16 bars' },
-        ],
-        onChange: value => updateParams({ progressionLength: value }),
-      }));
-    }
-
-    if (harmonyMode === 'progression_custom') {
-      form.appendChild(buildTextarea({
-        label: 'progressionCustom',
-        value: params.progressionCustom || '',
-        placeholder: 'i VII VI VII',
-        helper: 'Enter roman numerals separated by spaces.',
-        onChange: value => updateParams({ progressionCustom: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'progressionCustomVariantStyle',
-        value: params.progressionCustomVariantStyle || 'triads',
-        options: [
-          { value: 'triads', label: 'Triads' },
-          { value: '7ths', label: '7ths' },
-          { value: '9ths_soft', label: '9ths (soft)' },
-        ],
-        onChange: value => updateParams({ progressionCustomVariantStyle: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'chordsPerBar',
-        value: params.chordsPerBar || '1',
-        options: [
-          { value: '1', label: '1 chord per bar' },
-          { value: '2', label: '2 chords per bar' },
-          { value: '0.5', label: '1 chord per 2 bars' },
-        ],
-        onChange: value => updateParams({ chordsPerBar: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'fillBehavior',
-        value: params.fillBehavior || 'repeat',
-        options: [
-          { value: 'repeat', label: 'Repeat' },
-          { value: 'hold_last', label: 'Hold last' },
-          { value: 'rest', label: 'Rest' },
-        ],
-        onChange: value => updateParams({ fillBehavior: value }),
-      }));
-      form.appendChild(buildSelect({
-        label: 'progressionLength',
-        value: params.progressionLength ?? 'preset',
-        options: [
-          { value: 'preset', label: 'Custom length' },
-          { value: '2', label: '2 bars' },
-          { value: '4', label: '4 bars' },
-          { value: '8', label: '8 bars' },
-          { value: '16', label: '16 bars' },
-        ],
-        onChange: value => updateParams({ progressionLength: value }),
-      }));
-    }
-
-    if (harmonyMode !== 'single') {
-      const preview = buildProgressionPreview({
-        ...params,
-        harmonyMode,
-        progressionPresetId: params.progressionPresetId || getProgressionPresets()[0]?.id,
-      });
-      if (preview) {
-        form.appendChild(buildProgressionPreviewStrip(preview));
+      const harmonyMode = params.harmonyMode || 'single';
+      if (harmonyMode === 'single') {
+        harmonyWrapper.appendChild(buildField({
+          label: 'chordRoot',
+          type: 'string',
+          value: params.chordRoot || '',
+          onChange: value => updateParams({ chordRoot: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'chordQuality',
+          value: params.chordQuality || 'minor',
+          options: [
+            { value: 'major', label: 'Major' },
+            { value: 'minor', label: 'Minor' },
+            { value: 'diminished', label: 'Diminished' },
+            { value: 'augmented', label: 'Augmented' },
+          ],
+          onChange: value => updateParams({ chordQuality: value }),
+        }));
+        harmonyWrapper.appendChild(buildField({
+          label: 'Chord Notes Override',
+          type: 'string',
+          value: params.chordNotes || '',
+          placeholder: 'C#4:E4:G#4',
+          helper: 'Optional. One chord only. Colon-separated notes (with octave) or MIDI numbers (e.g., 61:64:68). Overrides Chord Root/Quality.',
+          onChange: value => updateParams({ chordNotes: value }),
+        }));
       }
-    }
-    const melodyMode = params.melodyMode || 'generated';
-    form.appendChild(buildSelect({
-      label: 'melodyMode',
-      value: melodyMode,
-      options: [
-        { value: 'generated', label: 'Generated' },
-        { value: 'custom', label: 'Custom' },
-      ],
-      onChange: value => updateParams({ melodyMode: value }),
-    }));
-    if (melodyMode === 'generated') {
-      form.appendChild(buildSelect({
-        label: 'patternType',
-        value: params.patternType || 'arp-3-up',
+
+      if (harmonyMode === 'progression_preset') {
+        const presets = allowedPresets.length > 0 ? allowedPresets : getProgressionPresets();
+        const presetOptions = presets.map(preset => ({ value: preset.id, label: preset.name }));
+        let activePreset = getProgressionPresetById(params.progressionPresetId);
+        if (!activePreset || !presets.some(p => p.id === activePreset.id)) {
+          activePreset = presets[0];
+          if (activePreset) {
+            updateParams({ progressionPresetId: activePreset.id });
+          }
+        }
+        const presetId = params.progressionPresetId || activePreset?.id || '';
+        const variantOptions = (activePreset?.variants || []).map(variant => ({
+          value: variant.id,
+          label: variant.label,
+        }));
+        const harmonyAuto = currentModes.harmony === 'auto';
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'progressionPresetId',
+          value: presetId,
+          options: presetOptions,
+          onChange: value => updateParams({ progressionPresetId: value }),
+          disabled: harmonyAuto,
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'progressionVariantId',
+          value: params.progressionVariantId || activePreset?.variants?.[0]?.id || 'triads',
+          options: variantOptions,
+          onChange: value => updateParams({ progressionVariantId: value }),
+          disabled: harmonyAuto,
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'chordsPerBar',
+          value: params.chordsPerBar || '1',
+          options: [
+            { value: '1', label: '1 chord per bar' },
+            { value: '2', label: '2 chords per bar' },
+            { value: '0.5', label: '1 chord per 2 bars' },
+          ],
+          onChange: value => updateParams({ chordsPerBar: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'fillBehavior',
+          value: params.fillBehavior || 'repeat',
+          options: [
+            { value: 'repeat', label: 'Repeat' },
+            { value: 'hold_last', label: 'Hold last' },
+            { value: 'rest', label: 'Rest' },
+          ],
+          onChange: value => updateParams({ fillBehavior: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'progressionLength',
+          value: params.progressionLength ?? 'preset',
+          options: [
+            { value: 'preset', label: 'Preset length' },
+            { value: '2', label: '2 bars' },
+            { value: '4', label: '4 bars' },
+            { value: '8', label: '8 bars' },
+            { value: '16', label: '16 bars' },
+          ],
+          onChange: value => updateParams({ progressionLength: value }),
+        }));
+      }
+
+      if (harmonyMode === 'progression_custom') {
+        harmonyWrapper.appendChild(buildTextarea({
+          label: 'progressionCustom',
+          value: params.progressionCustom || '',
+          placeholder: 'i VII VI VII',
+          helper: 'Enter roman numerals separated by spaces.',
+          onChange: value => updateParams({ progressionCustom: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'progressionCustomVariantStyle',
+          value: params.progressionCustomVariantStyle || 'triads',
+          options: [
+            { value: 'triads', label: 'Triads' },
+            { value: '7ths', label: '7ths' },
+            { value: '9ths_soft', label: '9ths (soft)' },
+          ],
+          onChange: value => updateParams({ progressionCustomVariantStyle: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'chordsPerBar',
+          value: params.chordsPerBar || '1',
+          options: [
+            { value: '1', label: '1 chord per bar' },
+            { value: '2', label: '2 chords per bar' },
+            { value: '0.5', label: '1 chord per 2 bars' },
+          ],
+          onChange: value => updateParams({ chordsPerBar: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'fillBehavior',
+          value: params.fillBehavior || 'repeat',
+          options: [
+            { value: 'repeat', label: 'Repeat' },
+            { value: 'hold_last', label: 'Hold last' },
+            { value: 'rest', label: 'Rest' },
+          ],
+          onChange: value => updateParams({ fillBehavior: value }),
+        }));
+        harmonyWrapper.appendChild(buildSelect({
+          label: 'progressionLength',
+          value: params.progressionLength ?? 'preset',
+          options: [
+            { value: 'preset', label: 'Custom length' },
+            { value: '2', label: '2 bars' },
+            { value: '4', label: '4 bars' },
+            { value: '8', label: '8 bars' },
+            { value: '16', label: '16 bars' },
+          ],
+          onChange: value => updateParams({ progressionLength: value }),
+        }));
+      }
+
+      if (harmonyMode !== 'single') {
+        const preview = buildProgressionPreview({
+          ...params,
+          harmonyMode,
+          progressionPresetId: params.progressionPresetId || getProgressionPresets()[0]?.id,
+        });
+        if (preview) {
+          harmonyWrapper.appendChild(buildProgressionPreviewStrip(preview));
+        }
+      }
+      return harmonyWrapper;
+    };
+
+    const buildPatternSection = ({ includeCustomEditor = true } = {}) => {
+      const patternWrapper = document.createElement('div');
+      patternWrapper.className = 'flow-section-body';
+      const melodyMode = params.melodyMode || 'generated';
+      patternWrapper.appendChild(buildSelect({
+        label: 'melodyMode',
+        value: melodyMode,
         options: [
-          { value: 'arp-3-up', label: 'Arpeggio 3 Up' },
-          { value: 'arp-3-down', label: 'Arpeggio 3 Down' },
-          { value: 'arp-3-skip', label: 'Arpeggio 3 Skip' },
+          { value: 'generated', label: 'Generated' },
+          { value: 'custom', label: 'Custom' },
         ],
-        onChange: value => updateParams({ patternType: value }),
+        onChange: value => updateParams({ melodyMode: value }),
       }));
-      form.appendChild(buildSelect({
+      if (melodyMode === 'generated') {
+        const styleDef = getStyleDefinition();
+        const allowedPatterns = (styleDef?.patterns || NOTE_PATTERNS.map(p => p.id));
+        const patternOptions = NOTE_PATTERNS.filter(
+          pattern => allowedPatterns.length === 0 || allowedPatterns.includes(pattern.id)
+        ).map(pattern => ({ value: pattern.id, label: pattern.label }));
+        let activePatternId = params.notePatternId || allowedPatterns[0];
+        if (activePatternId && !allowedPatterns.includes(activePatternId)) {
+          activePatternId = allowedPatterns[0];
+          const mapped = NOTE_PATTERN_BY_ID[activePatternId];
+          updateParams({
+            notePatternId: activePatternId,
+            patternType: mapped?.patternType || params.patternType || 'arp-3-up',
+          });
+        }
+        const patternAuto = currentModes.pattern === 'auto';
+        patternWrapper.appendChild(buildSelect({
+          label: 'pattern',
+          value: activePatternId || '',
+          options: patternOptions,
+          disabled: patternAuto,
+          onChange: (value) => {
+            const mapped = NOTE_PATTERN_BY_ID[value];
+            updateParams({
+              notePatternId: value,
+              patternType: mapped?.patternType || value || params.patternType,
+            });
+          },
+        }));
+      } else if (includeCustomEditor) {
+        patternWrapper.appendChild(buildCustomMelodyEditor());
+      } else {
+        const hint = document.createElement('div');
+        hint.className = 'flow-field-help';
+        hint.textContent = 'Custom melody editing is available in Advanced.';
+        patternWrapper.appendChild(hint);
+      }
+      return patternWrapper;
+    };
+
+    const buildFeelSection = () => {
+      const feelWrapper = document.createElement('div');
+      feelWrapper.className = 'flow-section-body';
+      feelWrapper.appendChild(buildSelect({
         label: 'rhythmGrid',
         value: params.rhythmGrid || '1/12',
         options: [
@@ -963,7 +1194,7 @@ export function createFlowInspector({ store } = {}) {
         ],
         onChange: value => updateParams({ rhythmGrid: value }),
       }));
-      form.appendChild(buildSelect({
+      feelWrapper.appendChild(buildSelect({
         label: 'syncopation',
         value: params.syncopation || 'none',
         options: [
@@ -973,7 +1204,7 @@ export function createFlowInspector({ store } = {}) {
         ],
         onChange: value => updateParams({ syncopation: value }),
       }));
-      form.appendChild(buildSelect({
+      feelWrapper.appendChild(buildSelect({
         label: 'timingWarp',
         value: params.timingWarp || 'none',
         options: [
@@ -983,71 +1214,197 @@ export function createFlowInspector({ store } = {}) {
         ],
         onChange: value => updateParams({ timingWarp: value }),
       }));
-      form.appendChild(buildField({
+      feelWrapper.appendChild(buildField({
         label: 'timingIntensity',
         type: 'number',
         value: params.timingIntensity ?? 0,
         onChange: value => updateParams({ timingIntensity: value }),
       }));
-    } else {
-      form.appendChild(buildCustomMelodyEditor());
-    }
-    form.appendChild(buildField({
-      label: 'registerMin',
-      type: 'number',
-      value: params.registerMin ?? 48,
-      onChange: value => updateParams({ registerMin: value }),
-    }));
-    form.appendChild(buildField({
-      label: 'registerMax',
-      type: 'number',
-      value: params.registerMax ?? 84,
-      onChange: value => updateParams({ registerMax: value }),
-    }));
-    form.appendChild(buildSelect({
-      label: 'instrumentSoundfont',
-      value: params.instrumentSoundfont || SOUND_FONTS[0].value,
-      options: SOUND_FONTS,
-      onChange: value => updateParams({ instrumentSoundfont: value }),
-    }));
+      return feelWrapper;
+    };
 
-    const presets = presetCache || [];
-    if (presets.length > 0) {
-      form.appendChild(buildSelect({
-        label: 'instrumentPreset',
-        value: params.instrumentPreset || presets[0].id,
-        options: presets.map(preset => ({ value: preset.id, label: preset.name })),
-        onChange: value => updateParams({ instrumentPreset: value }),
+    const buildRegisterAndInstrumentSection = ({ includeModeRows = false } = {}) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-section-body';
+      if (includeModeRows) {
+        wrapper.appendChild(buildModeLockRow('Instrument', 'instrument'));
+      }
+      wrapper.appendChild(buildField({
+        label: 'registerMin',
+        type: 'number',
+        value: params.registerMin ?? 48,
+        onChange: value => updateParams({ registerMin: value }),
       }));
-    } else {
-      form.appendChild(buildField({
-        label: 'instrumentPreset',
+      wrapper.appendChild(buildField({
+        label: 'registerMax',
+        type: 'number',
+        value: params.registerMax ?? 84,
+        onChange: value => updateParams({ registerMax: value }),
+      }));
+      if (includeModeRows) {
+        wrapper.appendChild(buildModeLockRow('Register', 'register'));
+      }
+      wrapper.appendChild(buildSelect({
+        label: 'instrumentSoundfont',
+        value: params.instrumentSoundfont || SOUND_FONTS[0].value,
+        options: SOUND_FONTS,
+        onChange: value => updateParams({ instrumentSoundfont: value }),
+      }));
+
+      const presets = presetCache || [];
+      if (presets.length > 0) {
+        wrapper.appendChild(buildSelect({
+          label: 'instrumentPreset',
+          value: params.instrumentPreset || presets[0].id,
+          options: presets.map(preset => ({ value: preset.id, label: preset.name })),
+          onChange: value => updateParams({ instrumentPreset: value }),
+        }));
+      } else {
+        wrapper.appendChild(buildField({
+          label: 'instrumentPreset',
+          type: 'string',
+          value: params.instrumentPreset || '',
+          onChange: value => updateParams({ instrumentPreset: value }),
+        }));
+      }
+      return wrapper;
+    };
+
+    const renderThoughtCoreSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      body.appendChild(buildField({
+        label: 'label',
         type: 'string',
-        value: params.instrumentPreset || '',
-        onChange: value => updateParams({ instrumentPreset: value }),
+        value: params.label,
+        onChange: value => updateParams({ label: value }),
       }));
-    }
+      body.appendChild(buildField({
+        label: 'durationBars',
+        type: 'number',
+        value: params.durationBars ?? 1,
+        onChange: value => updateParams({ durationBars: value }),
+      }));
+      body.appendChild(buildField({
+        label: 'key',
+        type: 'string',
+        value: params.key || 'C# minor',
+        onChange: value => updateParams({ key: value }),
+      }));
+      return buildSection('Core', body);
+    };
 
-    const moonlightButton = document.createElement('button');
-    moonlightButton.type = 'button';
-    moonlightButton.className = 'flow-branch-add';
-    moonlightButton.textContent = 'Apply Moonlight Opening Arp';
-    moonlightButton.addEventListener('click', () => {
-      updateParams({
-        key: 'C# minor',
-        chordRoot: 'C#',
-        chordQuality: 'minor',
-        patternType: 'arp-3-up',
-        rhythmGrid: '1/12',
-        syncopation: 'none',
-        timingWarp: 'none',
-        timingIntensity: 0,
-        durationBars: 1,
-        instrumentPreset: 'gm_piano',
+    const renderThoughtStyleSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+
+      const styleOptions = (STYLE_CATALOG || []).map(style => ({
+        value: style.id,
+        label: style.label || style.id,
+      }));
+      if (styleOptions.length > 0) {
+        body.appendChild(buildSelect({
+          label: 'Style',
+          value: params.styleId || styleOptions[0].value,
+          options: styleOptions,
+          onChange: value => {
+            updateParams({ styleId: value });
+            applyStyleResolution();
+          },
+        }));
+      }
+
+      body.appendChild(buildRegisterAndInstrumentSection({ includeModeRows: true }));
+      return buildSection('Style', body);
+    };
+
+    const renderThoughtStyleOptionsSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+
+      const seedRow = document.createElement('div');
+      seedRow.className = 'flow-inline-actions';
+      seedRow.appendChild(buildField({
+        label: 'styleSeed',
+        type: 'number',
+        value: params.styleSeed ?? 1,
+        onChange: value => applyStyleResolution(value),
+      }));
+      const buttonRow = document.createElement('div');
+      buttonRow.className = 'flow-seed-actions';
+      const rerollButton = document.createElement('button');
+      rerollButton.type = 'button';
+      rerollButton.textContent = 'Reroll';
+      rerollButton.addEventListener('click', rerollSeed);
+      buttonRow.appendChild(rerollButton);
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.textContent = 'Copy';
+      copyButton.addEventListener('click', () => copySeed());
+      buttonRow.appendChild(copyButton);
+      const pasteButton = document.createElement('button');
+      pasteButton.type = 'button';
+      pasteButton.textContent = 'Paste';
+      pasteButton.addEventListener('click', () => pasteSeed());
+      buttonRow.appendChild(pasteButton);
+      seedRow.appendChild(buttonRow);
+      body.appendChild(seedRow);
+      const seedHelp = document.createElement('div');
+      seedHelp.className = 'flow-field-help';
+      seedHelp.textContent = 'Seed controls Auto choices. Reroll to deterministically update Auto fields.';
+      body.appendChild(seedHelp);
+
+      body.appendChild(buildModeLockRow('Harmony', 'harmony'));
+      body.appendChild(buildHarmonySection());
+      body.appendChild(buildModeLockRow('Pattern', 'pattern'));
+      body.appendChild(buildPatternSection({ includeCustomEditor: true }));
+      body.appendChild(buildModeLockRow('Feel', 'feel'));
+      body.appendChild(buildFeelSection());
+      return buildSection('Style Options', body, { collapsible: true, defaultOpen: false });
+    };
+
+    const renderThoughtAdvancedSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      const legacyNote = document.createElement('div');
+      legacyNote.className = 'flow-field-help';
+      legacyNote.textContent = 'Legacy raw controls (duplicate of Style Options) stay here.';
+      body.appendChild(legacyNote);
+      body.appendChild(buildHarmonySection());
+      body.appendChild(buildPatternSection({ includeCustomEditor: true }));
+      body.appendChild(buildFeelSection());
+      body.appendChild(buildRegisterAndInstrumentSection());
+
+      const moonlightButton = document.createElement('button');
+      moonlightButton.type = 'button';
+      moonlightButton.className = 'flow-branch-add';
+      moonlightButton.textContent = 'Apply Moonlight Opening Arp';
+      moonlightButton.addEventListener('click', () => {
+        updateParams({
+          key: 'C# minor',
+          chordRoot: 'C#',
+          chordQuality: 'minor',
+          patternType: 'arp-3-up',
+          rhythmGrid: '1/12',
+          syncopation: 'none',
+          timingWarp: 'none',
+          timingIntensity: 0,
+          durationBars: 1,
+          instrumentPreset: 'gm_piano',
+        });
       });
-    });
-    form.appendChild(moonlightButton);
-    return form;
+      body.appendChild(moonlightButton);
+
+      return buildSection('Advanced', body, { collapsible: true, defaultOpen: false });
+    };
+
+    const stack = document.createElement('div');
+    stack.className = 'flow-inspector-form';
+    stack.appendChild(renderThoughtCoreSection());
+    stack.appendChild(renderThoughtStyleSection());
+    stack.appendChild(renderThoughtStyleOptionsSection());
+    stack.appendChild(renderThoughtAdvancedSection());
+    return stack;
   };
 
   const buildProgressionPreviewStrip = (preview) => {
