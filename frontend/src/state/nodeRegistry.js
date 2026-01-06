@@ -5,7 +5,7 @@ const PORT_TYPES = {
   EVENTS: 'events',
 };
 
-const DEFAULT_STYLE_ID = 'modern_pop';
+const DEFAULT_STYLE_ID = 'classical_film';
 const DEFAULT_STYLE_SEED = 1;
 const DEFAULT_STYLE_OPTION_MODES = {
   harmony: 'auto',
@@ -24,16 +24,22 @@ const LEGACY_STYLE_OPTION_MODES = {
 const STYLE_METADATA_DEFAULTS = {
   styleId: DEFAULT_STYLE_ID,
   styleSeed: DEFAULT_STYLE_SEED,
+  moodMode: 'auto',
+  moodId: 'none',
   styleOptionModes: DEFAULT_STYLE_OPTION_MODES,
   styleOptionLocks: {},
   styleOptionOverrides: {},
+  dropdownViewPrefs: {},
 };
 const STYLE_METADATA_LEGACY_DEFAULTS = {
   styleId: 'legacy',
   styleSeed: 0,
+  moodMode: 'override',
+  moodId: 'none',
   styleOptionModes: LEGACY_STYLE_OPTION_MODES,
   styleOptionLocks: {},
   styleOptionOverrides: {},
+  dropdownViewPrefs: {},
 };
 
 const nodeRegistry = {
@@ -85,9 +91,12 @@ const nodeRegistry = {
       thoughtVersion: { type: 'number' },
       styleId: { type: 'string' },
       styleSeed: { type: 'number' },
+      moodMode: { type: 'string' },
+      moodId: { type: 'string' },
       styleOptionModes: { type: 'object' },
       styleOptionLocks: { type: 'object' },
       styleOptionOverrides: { type: 'object' },
+      dropdownViewPrefs: { type: 'object' },
     },
     defaults: {
       label: 'Thought',
@@ -123,9 +132,12 @@ const nodeRegistry = {
       thoughtVersion: 1,
       styleId: DEFAULT_STYLE_ID,
       styleSeed: DEFAULT_STYLE_SEED,
+      moodMode: 'auto',
+      moodId: 'none',
       styleOptionModes: DEFAULT_STYLE_OPTION_MODES,
       styleOptionLocks: {},
       styleOptionOverrides: {},
+      dropdownViewPrefs: {},
     },
     ports: {
       inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.FLOW, required: true }],

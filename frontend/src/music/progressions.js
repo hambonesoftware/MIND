@@ -1,65 +1,15 @@
-const PROGRESSION_PRESETS = [
-  {
-    id: 'pop_i_v_vi_iv',
-    name: 'I–V–vi–IV (Pop)',
-    romans: ['I', 'V', 'vi', 'IV'],
-    defaultLength: 4,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-  {
-    id: 'pop_vi_iv_i_v',
-    name: 'vi–IV–I–V (Pop)',
-    romans: ['vi', 'IV', 'I', 'V'],
-    defaultLength: 4,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-  {
-    id: 'fifties_i_vi_iv_v',
-    name: 'I–vi–IV–V (50s)',
-    romans: ['I', 'vi', 'IV', 'V'],
-    defaultLength: 4,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-  {
-    id: 'cinematic_minor_i_vi_iii_vii',
-    name: 'i–VI–III–VII (Cinematic minor)',
-    romans: ['i', 'VI', 'III', 'VII'],
-    defaultLength: 4,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-  {
-    id: 'minor_loop_i_vii_vi_vii',
-    name: 'i–VII–VI–VII (Minor loop)',
-    romans: ['i', 'VII', 'VI', 'VII'],
-    defaultLength: 4,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-  {
-    id: 'jazz_ii_v_i',
-    name: 'ii–V–I (Jazz)',
-    romans: ['ii', 'V', 'I'],
-    defaultLength: 3,
-    variants: [
-      { id: 'triads', label: 'Standard (Triads)' },
-      { id: '7ths', label: 'Add 7ths' },
-    ],
-  },
-];
+import { HARMONY_PROGRESSIONS } from './harmonyCatalog.js';
+
+const PROGRESSION_PRESETS = HARMONY_PROGRESSIONS.map((progression) => ({
+  id: progression.id,
+  name: progression.label,
+  romans: parseRomanSequence(progression.romanTemplate),
+  defaultLength: progression.defaultLengthBars ?? parseRomanSequence(progression.romanTemplate).length || 4,
+  variants: (progression.variants || []).map(variant => ({
+    id: variant.id,
+    label: variant.label,
+  })),
+}));
 
 const NOTE_TO_PC = {
   C: 0,

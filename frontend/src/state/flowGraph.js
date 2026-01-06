@@ -41,9 +41,12 @@ function hasStyleMetadata(params = {}) {
   return (
     params.styleId !== undefined ||
     params.styleSeed !== undefined ||
+    params.moodMode !== undefined ||
+    params.moodId !== undefined ||
     params.styleOptionModes !== undefined ||
     params.styleOptionLocks !== undefined ||
-    params.styleOptionOverrides !== undefined
+    params.styleOptionOverrides !== undefined ||
+    params.dropdownViewPrefs !== undefined
   );
 }
 
@@ -59,9 +62,12 @@ function normalizeStyleMetadata(params = {}, { legacyFallback = false } = {}) {
   return {
     styleId: params.styleId ?? baseDefaults.styleId,
     styleSeed: params.styleSeed ?? baseDefaults.styleSeed,
+    moodMode: params.moodMode ?? baseDefaults.moodMode,
+    moodId: params.moodId ?? baseDefaults.moodId,
     styleOptionModes: modes,
     styleOptionLocks: { ...(params.styleOptionLocks || {}) },
     styleOptionOverrides: { ...(params.styleOptionOverrides || {}) },
+    dropdownViewPrefs: { ...(baseDefaults.dropdownViewPrefs || {}), ...(params.dropdownViewPrefs || {}) },
   };
 }
 
