@@ -18,6 +18,7 @@ from ..models import (
     StreamRuntimeToken,
     StreamRuntimeThoughtState,
 )
+from .determinism import stable_seed
 from .music_elements.harmony_plan import HarmonyPlan, HarmonyStep
 from .music_elements.phrase_plan import PhrasePlan
 from .music_elements.texture_engine import generate_events
@@ -38,6 +39,23 @@ ALLOWED_GRIDS = {"1/4", "1/8", "1/12", "1/16", "1/24"}
 
 MAX_NODE_FIRINGS_PER_BAR = 256
 MAX_TOKENS_PER_BAR = 512
+DEFAULT_PATTERN_FAMILY = ("low-mid-high",)
+PATTERN_TYPE_BY_NOTE_ID = {
+    "simple_arpeggio": "arp-3-up",
+    "descending_arpeggio": "arp-3-down",
+    "skipping_arpeggio": "arp-3-skip",
+    "sustain_drone": "arp-3-down",
+    "offbeat_plucks": "arp-3-up",
+    "swing_response": "arp-3-down",
+    "latin_clave": "arp-3-up",
+    "folk_roll": "arp-3-up",
+    "airy_arp": "arp-3-up",
+    "grit_riff": "arp-3-skip",
+    "walking_bass": "arp-3-down",
+    "montuno_pattern": "arp-3-up",
+    "travis_pick": "arp-3-down",
+    "alberti_bass": "arp-3-up",
+}
 
 
 def _coerce_number(value: object, fallback: int = 0) -> int:
@@ -145,6 +163,25 @@ def _coerce_chords_per_bar(value: str | None) -> float:
     return 1.0
 
 
+def _combined_seed(global_seed: int, style_seed: int, node_id: str) -> int:
+    return stable_seed(f"{int(global_seed)}:{int(style_seed)}:{node_id}") % 2147483647
+
+
+def _pattern_family_for_type(pattern_type: str, *, seed: int) -> tuple[str, ...]:
+    base = {
+        "arp-3-up": ("low-mid-high", "low-high-mid"),
+        "arp-3-down": ("high-mid-low", "high-low-mid"),
+        "arp-3-skip": ("low-high-mid", "low-mid-high"),
+    }.get(pattern_type, DEFAULT_PATTERN_FAMILY)
+    if not base:
+        return DEFAULT_PATTERN_FAMILY
+    if len(base) == 1:
+        return base
+    # Shuffle variants deterministically for different seeds
+    idx = stable_seed(f"pattern:{pattern_type}:{seed}") % len(base)
+    return (base[idx],) + tuple(opt for i, opt in enumerate(base) if i != idx)
+
+
 def _parse_roman_sequence(raw: str | None) -> List[str]:
     if not raw:
         return []
@@ -194,11 +231,15 @@ def _resolve_progression_harmony(params: dict, duration_bars: int, grid: str) ->
     variant_style = "triads"
 
     if harmony_mode == "progression_preset":
-        preset = get_progression_preset(params.get("progressionPresetId"))
+        preset_id = params.get("progressionPresetId")
+        preset = get_progression_preset(preset_id)
         if preset:
             romans = preset.romans
             preset_length = preset.default_length
             variant_style = params.get("progressionVariantId") or "triads"
+        elif params.get("progressionCustom"):
+            romans = _parse_roman_sequence(params.get("progressionCustom"))
+            variant_style = params.get("progressionCustomVariantStyle") or params.get("progressionVariantId") or "triads"
     elif harmony_mode == "progression_custom":
         romans = _parse_roman_sequence(params.get("progressionCustom"))
         variant_style = params.get("progressionCustomVariantStyle") or "triads"
@@ -305,6 +346,101 @@ def _apply_timing_adjustments(
             warp = step_len * (0.5 if timing_warp == "swing" else 0.75)
             tbeat += warp * intensity
         event.tBeat = max(0.0, min(4.0, tbeat))
+    return events
+
+
+def _slice_events_to_bar(events: List[Event], *, bar_offset: int) -> List[Event]:
+    if not events:
+        return []
+    bar_start = bar_offset * 4.0
+    bar_end = (bar_offset + 1) * 4.0
+    sliced: List[Event] = []
+    for event in events:
+        if bar_start <= event.tBeat < bar_end:
+            adjusted = Event.model_validate(event.model_dump())
+            adjusted.tBeat = event.tBeat - bar_start
+            sliced.append(adjusted)
+    return sliced
+
+
+def _generate_alberti_bass(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    variant_roll = stable_seed(f"alberti:{seed}") % 2
+    pattern = [0, 2, 1, 2] if variant_roll == 0 else [0, 1, 2, 1]
+    events: List[Event] = []
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            idx = min(pattern[step % len(pattern)], len(ordered) - 1)
+            pitch = ordered[idx]
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=96,
+                    durationBeats=step_len,
+                )
+            )
+    return events
+
+
+def _generate_walking_bass(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    seed: int,
+    register_min: int,
+    register_max: int,
+) -> List[Event]:
+    events: List[Event] = []
+    direction_roll = stable_seed(f"walking:{seed}") % 4
+    passing_intervals = [-2, 2, -1, 1]
+    passing = passing_intervals[direction_roll % len(passing_intervals)]
+    approach_up = direction_roll % 2 == 0
+    for bar_index in range(bars):
+        for beat in range(4):
+            chord = harmony.chord_at_step(bar_index, beat * max(1, harmony.steps_per_bar // 4))
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            root = ordered[0]
+            third = ordered[min(1, len(ordered) - 1)]
+            fifth = ordered[min(2, len(ordered) - 1)] if len(ordered) > 2 else root + 7
+            choices = [root - 12, root, third, fifth]
+            pitch = choices[min(beat, len(choices) - 1)]
+            if beat == 3:
+                target = root + (passing if approach_up else -passing)
+                pitch = target
+            while pitch < register_min:
+                pitch += 12
+            while pitch > register_max:
+                pitch -= 12
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + beat,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=96,
+                    durationBeats=1.0,
+                )
+            )
     return events
 
 
@@ -454,13 +590,10 @@ def _compile_thought_bar(
     duration_bars = max(1, _coerce_number(params.get("durationBars"), 1))
     register_min = _coerce_number(params.get("registerMin"), 48)
     register_max = _coerce_number(params.get("registerMax"), 84)
-
-    pattern_type = params.get("patternType") or "arp-3-up"
-    pattern_family = {
-        "arp-3-up": ("low-mid-high",),
-        "arp-3-down": ("high-mid-low",),
-        "arp-3-skip": ("low-high-mid",),
-    }.get(pattern_type, ("low-mid-high",))
+    style_seed = _coerce_number(params.get("styleSeed"), 0)
+    combined_seed = _combined_seed(seed, style_seed, node.id)
+    note_pattern_id = (params.get("notePatternId") or "").strip().lower()
+    pattern_type = params.get("patternType") or PATTERN_TYPE_BY_NOTE_ID.get(note_pattern_id, "arp-3-up")
 
     if _normalize_harmony_mode(params) == "single":
         chord = _build_chord_pitches(params)
@@ -468,26 +601,33 @@ def _compile_thought_bar(
         harmony = HarmonyPlan.from_chords([chord] * duration_bars, steps_per_bar=_steps_per_bar_for_grid(grid))
     else:
         harmony = _resolve_progression_harmony(params, duration_bars, grid)
-    texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
-    phrase = PhrasePlan(density_curve=(1.0,))
-    generated = generate_events(
-        harmony,
-        texture,
-        phrase,
-        bars=duration_bars,
-        grid=grid,
-        seed=seed,
-        piece_id=node.id,
-    )
+    generated: List[Event]
+    if note_pattern_id == "walking_bass":
+        bass_min = max(0, register_min - 12)
+        generated = _generate_walking_bass(
+            harmony,
+            bars=duration_bars,
+            seed=combined_seed,
+            register_min=bass_min,
+            register_max=max(register_min, register_max),
+        )
+    elif note_pattern_id == "alberti_bass":
+        generated = _generate_alberti_bass(harmony, bars=duration_bars, grid=grid, seed=combined_seed)
+    else:
+        pattern_family = _pattern_family_for_type(pattern_type, seed=combined_seed)
+        texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
+        phrase = PhrasePlan(density_curve=(1.0,))
+        generated = generate_events(
+            harmony,
+            texture,
+            phrase,
+            bars=duration_bars,
+            grid=grid,
+            seed=combined_seed,
+            piece_id=node.id,
+        )
 
-    bar_start = bar_offset * 4.0
-    bar_end = (bar_offset + 1) * 4.0
-    events: List[Event] = []
-    for event in generated:
-        if bar_start <= event.tBeat < bar_end:
-            adjusted = Event.model_validate(event.model_dump())
-            adjusted.tBeat = event.tBeat - bar_start
-            events.append(adjusted)
+    events = _slice_events_to_bar(generated, bar_offset=bar_offset)
 
     syncopation = params.get("syncopation") or "none"
     timing_warp = params.get("timingWarp") or "none"

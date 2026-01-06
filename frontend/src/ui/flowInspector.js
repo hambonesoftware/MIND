@@ -29,6 +29,33 @@ const STYLE_DROPDOWN_VIEW_OPTIONS = [
   { value: 'all', label: 'All in Style' },
 ];
 
+let currentFocusScope = '';
+
+function debounce(fn, delay = 250) {
+  let timeout = null;
+  let lastArgs = null;
+  const wrapped = (...args) => {
+    lastArgs = args;
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      timeout = null;
+      fn(...(lastArgs || []));
+    }, delay);
+  };
+  wrapped.flush = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+      if (lastArgs) {
+        fn(...lastArgs);
+      }
+    }
+  };
+  return wrapped;
+}
+
 let presetCache = null;
 let presetCachePromise = null;
 
@@ -52,7 +79,7 @@ async function loadPresets() {
 const customMelodyState = new Map();
 let customMelodyClipboard = null;
 
-function buildField({ label, type, value, onChange, placeholder, helper }) {
+function buildField({ label, type, value, onChange, placeholder, helper, focusKey, commitDelay = 250 }) {
   const wrapper = document.createElement('label');
   wrapper.className = 'flow-field';
   const title = document.createElement('span');
@@ -65,11 +92,24 @@ function buildField({ label, type, value, onChange, placeholder, helper }) {
   if (placeholder) {
     input.placeholder = placeholder;
   }
+  const keyBase = focusKey || label;
+  if (keyBase) {
+    const scopedKey = currentFocusScope ? `${currentFocusScope}:${keyBase}` : keyBase;
+    input.dataset.focusKey = scopedKey;
+  }
+  const commit = debounce((nextValue) => {
+    onChange(nextValue);
+  }, commitDelay);
   input.addEventListener('input', () => {
     const nextValue = type === 'number'
       ? Number(input.value)
       : input.value;
-    onChange(nextValue);
+    commit(nextValue);
+  });
+  input.addEventListener('blur', () => {
+    if (typeof commit.flush === 'function') {
+      commit.flush();
+    }
   });
   wrapper.appendChild(title);
   wrapper.appendChild(input);
@@ -96,7 +136,7 @@ function buildToggle({ label, checked, onChange }) {
   return wrapper;
 }
 
-function buildSelect({ label, value, options, onChange }) {
+function buildSelect({ label, value, options, onChange, focusKey }) {
   const wrapper = document.createElement('label');
   wrapper.className = 'flow-field';
   const title = document.createElement('span');
@@ -104,6 +144,11 @@ function buildSelect({ label, value, options, onChange }) {
   title.textContent = label;
   const select = document.createElement('select');
   select.className = 'flow-field-input';
+  const keyBase = focusKey || label;
+  if (keyBase) {
+    const scopedKey = currentFocusScope ? `${currentFocusScope}:${keyBase}` : keyBase;
+    select.dataset.focusKey = scopedKey;
+  }
   options.forEach((option) => {
     const opt = document.createElement('option');
     opt.value = option.value;
@@ -121,7 +166,7 @@ function buildSelect({ label, value, options, onChange }) {
   return wrapper;
 }
 
-function buildTextarea({ label, value, onChange, placeholder, helper }) {
+function buildTextarea({ label, value, onChange, placeholder, helper, focusKey, commitDelay = 250 }) {
   const wrapper = document.createElement('label');
   wrapper.className = 'flow-field';
   const title = document.createElement('span');
@@ -133,8 +178,19 @@ function buildTextarea({ label, value, onChange, placeholder, helper }) {
   if (placeholder) {
     input.placeholder = placeholder;
   }
+  const keyBase = focusKey || label;
+  if (keyBase) {
+    const scopedKey = currentFocusScope ? `${currentFocusScope}:${keyBase}` : keyBase;
+    input.dataset.focusKey = scopedKey;
+  }
+  const commit = debounce(onChange, commitDelay);
   input.addEventListener('input', () => {
-    onChange(input.value);
+    commit(input.value);
+  });
+  input.addEventListener('blur', () => {
+    if (typeof commit.flush === 'function') {
+      commit.flush();
+    }
   });
   wrapper.appendChild(title);
   wrapper.appendChild(input);
@@ -177,7 +233,41 @@ export function createFlowInspector({ store } = {}) {
   content.className = 'flow-inspector-content';
   panel.appendChild(content);
 
+  const captureFocusState = () => {
+    const active = document.activeElement;
+    if (!active || !content.contains(active)) {
+      return null;
+    }
+    const key = active.dataset?.focusKey || null;
+    const selectionStart = typeof active.selectionStart === 'number' ? active.selectionStart : null;
+    const selectionEnd = typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
+    return { key, selectionStart, selectionEnd };
+  };
+
+  const restoreFocusState = (state) => {
+    if (!state || !state.key) {
+      return;
+    }
+    const targets = Array.from(content.querySelectorAll('[data-focus-key]'));
+    const match = targets.find(el => el.dataset.focusKey === state.key);
+    if (!match) {
+      return;
+    }
+    match.focus({ preventScroll: true });
+    if (typeof match.setSelectionRange === 'function' && state.selectionStart !== null && state.selectionEnd !== null) {
+      const length = typeof match.value === 'string' ? match.value.length : 0;
+      const start = Math.min(state.selectionStart, length);
+      const end = Math.min(state.selectionEnd, length);
+      try {
+        match.setSelectionRange(start, end);
+      } catch (error) {
+        // ignore selection errors
+      }
+    }
+  };
+
   const renderEmpty = () => {
+    currentFocusScope = 'empty';
     content.innerHTML = '';
     const empty = document.createElement('div');
     empty.className = 'flow-inspector-empty';
@@ -257,6 +347,7 @@ export function createFlowInspector({ store } = {}) {
     branches.forEach((branch, index) => {
       const row = document.createElement('div');
       row.className = 'flow-branch-row';
+      const focusKeyFor = suffix => `${node.id}-branch-${branch.id || index}-${suffix}`;
       const rowHeader = document.createElement('div');
       rowHeader.className = 'flow-branch-header';
       rowHeader.textContent = branch.id;
@@ -266,6 +357,7 @@ export function createFlowInspector({ store } = {}) {
         label: 'label',
         type: 'string',
         value: branch.label || '',
+        focusKey: focusKeyFor('label'),
         onChange: (value) => {
           const nextBranches = branches.map((item, idx) => (
             idx === index ? { ...item, label: value } : item
@@ -301,6 +393,7 @@ export function createFlowInspector({ store } = {}) {
           label: 'counterId',
           type: 'string',
           value: condition.counterId || '',
+          focusKey: focusKeyFor('counterId'),
           onChange: (value) => {
             const nextBranches = branches.map((item, idx) => (
               idx === index
@@ -327,6 +420,7 @@ export function createFlowInspector({ store } = {}) {
           label: 'value',
           type: 'number',
           value: condition.value ?? 0,
+          focusKey: focusKeyFor('counter-value'),
           onChange: (value) => {
             const nextBranches = branches.map((item, idx) => (
               idx === index
@@ -354,6 +448,7 @@ export function createFlowInspector({ store } = {}) {
           label: 'value',
           type: 'number',
           value: condition.value ?? 0,
+          focusKey: focusKeyFor('bar-index'),
           onChange: (value) => {
             const nextBranches = branches.map((item, idx) => (
               idx === index
@@ -368,6 +463,7 @@ export function createFlowInspector({ store } = {}) {
           label: 'value',
           type: 'string',
           value: condition.value || '',
+          focusKey: focusKeyFor('manual-value'),
           onChange: (value) => {
             const nextBranches = branches.map((item, idx) => (
               idx === index
@@ -382,6 +478,7 @@ export function createFlowInspector({ store } = {}) {
           label: 'threshold',
           type: 'number',
           value: condition.threshold ?? 0.5,
+          focusKey: focusKeyFor('threshold'),
           onChange: (value) => {
             const nextBranches = branches.map((item, idx) => (
               idx === index
@@ -617,12 +714,24 @@ export function createFlowInspector({ store } = {}) {
         dropdownViewPrefs: params.dropdownViewPrefs || {},
       };
       if (currentModes.harmony === 'auto' && !currentLocks.harmony) {
+        const resolvedPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
+        const resolvedVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
+        const resolvedLength = resolved.progressionLength ?? params.progressionLength;
         nextParams.harmonyMode = resolved.harmonyMode ?? params.harmonyMode;
-        nextParams.progressionPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
-        nextParams.progressionVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
+        nextParams.progressionPresetId = resolvedPresetId;
+        nextParams.progressionVariantId = resolvedVariantId;
         nextParams.chordsPerBar = resolved.chordsPerBar ?? params.chordsPerBar;
         nextParams.fillBehavior = resolved.fillBehavior ?? params.fillBehavior;
-        nextParams.progressionLength = resolved.progressionLength ?? params.progressionLength;
+        nextParams.progressionLength = resolvedLength;
+        const preset = getProgressionPresetById(resolvedPresetId);
+        if (preset) {
+          nextParams.harmonyMode = 'progression_custom';
+          nextParams.progressionCustom = (preset.romans || []).join(' ');
+          nextParams.progressionCustomVariantStyle = resolvedVariantId || 'triads';
+          if (resolvedLength === 'preset' || resolvedLength == null) {
+            nextParams.progressionLength = preset.defaultLength || (preset.romans?.length || 'preset');
+          }
+        }
       }
       if (currentModes.pattern === 'auto' && !currentLocks.pattern) {
         nextParams.notePatternId = resolved.notePatternId ?? params.notePatternId;
@@ -1617,6 +1726,7 @@ export function createFlowInspector({ store } = {}) {
   };
 
   const renderNode = (node, state) => {
+    currentFocusScope = node?.id || 'node';
     content.innerHTML = '';
     const definition = getNodeDefinition(node.type);
     const title = document.createElement('div');
@@ -1680,6 +1790,7 @@ export function createFlowInspector({ store } = {}) {
   };
 
   const renderEdge = (edge, nodeMap) => {
+    currentFocusScope = edge?.id || 'edge';
     content.innerHTML = '';
     const title = document.createElement('div');
     title.className = 'flow-inspector-title';
@@ -1702,12 +1813,14 @@ export function createFlowInspector({ store } = {}) {
   };
 
   const update = (state) => {
+    const previousFocus = captureFocusState();
+    let rendered = false;
     const selection = state.selection || { nodes: [], edges: [] };
     if (selection.nodes.length > 0) {
       const node = state.nodes.find(item => item.id === selection.nodes[0]);
       if (node) {
         renderNode(node, state);
-        return;
+        rendered = true;
       }
     }
     if (selection.edges.length > 0) {
@@ -1715,10 +1828,13 @@ export function createFlowInspector({ store } = {}) {
       if (edge) {
         const nodeMap = new Map(state.nodes.map(node => [node.id, node]));
         renderEdge(edge, nodeMap);
-        return;
+        rendered = true;
       }
     }
-    renderEmpty();
+    if (!rendered) {
+      renderEmpty();
+    }
+    restoreFocusState(previousFocus);
   };
 
   loadPresets().finally(() => {

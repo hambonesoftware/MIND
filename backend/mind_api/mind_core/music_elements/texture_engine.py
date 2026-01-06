@@ -14,6 +14,7 @@ _PATTERN_MAP = {
     "low-mid-high": [0, 1, 2],
     "high-mid-low": [2, 1, 0],
     "low-high-mid": [0, 2, 1],
+    "high-low-mid": [2, 0, 1],
 }
 
 
