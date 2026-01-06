@@ -1,10 +1,150 @@
-export const NOTE_PATTERNS = [
-  { id: 'arp_up_3', label: 'Arpeggio 3 Up', patternType: 'arp-3-up' },
-  { id: 'arp_down_3', label: 'Arpeggio 3 Down', patternType: 'arp-3-down' },
-  { id: 'arp_skip_3', label: 'Arpeggio 3 Skip', patternType: 'arp-3-skip' },
+export const PATTERN_CATALOG = [
+  {
+    id: 'simple_arpeggio',
+    label: 'Simple Arpeggio',
+    styles: ['classical_film', 'jazz_blues_funk', 'rock_pop_metal', 'edm_electronic', 'latin_afrocuban', 'folk_country_bluegrass', 'legacy'],
+    tags: ['bright', 'stable', 'on_grid'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_arpeggio_basic',
+  },
+  {
+    id: 'descending_arpeggio',
+    label: 'Descending Arpeggio',
+    styles: ['classical_film', 'jazz_blues_funk', 'rock_pop_metal', 'edm_electronic', 'latin_afrocuban', 'folk_country_bluegrass', 'legacy'],
+    tags: ['dark', 'dreamy', 'on_grid'],
+    mapsToPatternType: 'arp-3-down',
+    recommendedGrid: '1/12',
+    requiresHarmony: true,
+    requiresCapability: 'gen_arpeggio_basic',
+  },
+  {
+    id: 'skipping_arpeggio',
+    label: 'Skipping Arp',
+    styles: ['classical_film', 'jazz_blues_funk', 'rock_pop_metal', 'edm_electronic'],
+    tags: ['syncopated', 'bright', 'high_energy'],
+    mapsToPatternType: 'arp-3-skip',
+    recommendedGrid: '1/16',
+    requiresHarmony: true,
+    requiresCapability: 'gen_broken_chords',
+  },
+  {
+    id: 'sustain_drone',
+    label: 'Drone / Sustain',
+    styles: ['classical_film', 'edm_electronic', 'folk_country_bluegrass'],
+    tags: ['dreamy', 'low_energy', 'wide_register'],
+    mapsToPatternType: 'arp-3-down',
+    recommendedGrid: '1/4',
+    requiresHarmony: false,
+    requiresCapability: 'gen_sustain_basic',
+  },
+  {
+    id: 'offbeat_plucks',
+    label: 'Offbeat Plucks',
+    styles: ['jazz_blues_funk', 'rock_pop_metal', 'latin_afrocuban', 'edm_electronic'],
+    tags: ['syncopated', 'high_energy', 'bright'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/12',
+    requiresHarmony: true,
+    requiresCapability: 'gen_offbeat_plucks',
+  },
+  {
+    id: 'swing_response',
+    label: 'Swing Response',
+    styles: ['jazz_blues_funk'],
+    tags: ['swing', 'low_energy', 'dreamy'],
+    mapsToPatternType: 'arp-3-down',
+    recommendedGrid: '1/12',
+    requiresHarmony: true,
+    requiresCapability: 'gen_call_response',
+  },
+  {
+    id: 'latin_clave',
+    label: 'Clave Stab',
+    styles: ['latin_afrocuban'],
+    tags: ['syncopated', 'percussive', 'high_energy'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/12',
+    requiresHarmony: true,
+    requiresCapability: 'gen_arpeggio_basic',
+  },
+  {
+    id: 'folk_roll',
+    label: 'Rolling Strum',
+    styles: ['folk_country_bluegrass'],
+    tags: ['bright', 'stable', 'swing'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_sustain_basic',
+  },
+  {
+    id: 'airy_arp',
+    label: 'Airy Arp',
+    styles: ['classical_film', 'edm_electronic'],
+    tags: ['dreamy', 'wide_register', 'bright'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/16',
+    requiresHarmony: true,
+    requiresCapability: 'gen_arpeggio_basic',
+  },
+  {
+    id: 'grit_riff',
+    label: 'Grit Riff',
+    styles: ['rock_pop_metal'],
+    tags: ['dark', 'high_energy', 'on_grid'],
+    mapsToPatternType: 'arp-3-skip',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_broken_chords',
+  },
+  {
+    id: 'walking_bass',
+    label: 'Walking Bass',
+    styles: ['jazz_blues_funk', 'rock_pop_metal'],
+    tags: ['swing', 'high_energy', 'tight_register'],
+    mapsToPatternType: 'arp-3-down',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_walking_bass',
+  },
+  {
+    id: 'montuno_pattern',
+    label: 'Montuno Sketch',
+    styles: ['latin_afrocuban'],
+    tags: ['syncopated', 'high_energy', 'percussive'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_montuno',
+  },
+  {
+    id: 'travis_pick',
+    label: 'Travis Picking',
+    styles: ['folk_country_bluegrass'],
+    tags: ['syncopated', 'swing', 'bright'],
+    mapsToPatternType: 'arp-3-down',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_travis_picking',
+  },
 ];
+
+export const NOTE_PATTERNS = PATTERN_CATALOG.map(pattern => ({
+  id: pattern.id,
+  label: pattern.label,
+  patternType: pattern.mapsToPatternType,
+}));
+
+export const PATTERN_BY_ID = PATTERN_CATALOG.reduce((acc, pattern) => {
+  acc[pattern.id] = pattern;
+  return acc;
+}, {});
 
 export const NOTE_PATTERN_BY_ID = NOTE_PATTERNS.reduce((acc, pattern) => {
   acc[pattern.id] = pattern;
   return acc;
 }, {});
+
+export const FALLBACK_PATTERNS = ['simple_arpeggio', 'sustain_drone'];

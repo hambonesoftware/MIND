@@ -5,8 +5,8 @@ import {
   getProgressionPresets,
 } from '../music/progressions.js';
 import { STYLE_CATALOG } from '../music/styleCatalog.js';
-import { resolveThoughtStyle } from '../music/styleResolver.js';
-import { NOTE_PATTERNS, NOTE_PATTERN_BY_ID } from '../music/patternCatalog.js';
+import { buildStyleOptionSets, resolveThoughtStyle } from '../music/styleResolver.js';
+import { PATTERN_BY_ID } from '../music/patternCatalog.js';
 import { insertMoonlightTrebleTemplate } from '../templates/moonlightTreble.js';
 import {
   buildPresetRhythmA,
@@ -22,6 +22,11 @@ import { createStepStrip } from './stepStrip.js';
 
 const SOUND_FONTS = [
   { value: '/assets/soundfonts/General-GS.sf2', label: 'General GS' },
+];
+
+const STYLE_DROPDOWN_VIEW_OPTIONS = [
+  { value: 'recommended', label: 'Recommended (Style+Mood)' },
+  { value: 'all', label: 'All in Style' },
 ];
 
 let presetCache = null;
@@ -537,10 +542,34 @@ export function createFlowInspector({ store } = {}) {
       ...(params.styleOptionLocks || {}),
     };
     let currentOverrides = params.styleOptionOverrides || {};
+    const getDropdownView = (key) => (params.dropdownViewPrefs?.[key] || 'recommended');
+    const updateDropdownPrefs = (key, value) => {
+      const nextPrefs = { ...(params.dropdownViewPrefs || {}) };
+      nextPrefs[key] = value;
+      updateParams({ dropdownViewPrefs: nextPrefs });
+    };
+    const ensureOptionPresence = (options, currentValue, labelResolver) => {
+      if (!currentValue) return options;
+      if (options.some(option => option.value === currentValue)) {
+        return options;
+      }
+      const label = labelResolver ? labelResolver(currentValue) : currentValue;
+      return [...options, { value: currentValue, label }];
+    };
+    const computeStyleContext = () => buildStyleOptionSets({
+      styleId: params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film'),
+      moodId: params.moodId || 'none',
+      moodMode: params.moodMode || 'auto',
+      styleSeed: params.styleSeed ?? 0,
+      nodeId: node.id,
+    });
+    const styleContext = computeStyleContext();
 
     const applyStyleResolution = (overrideSeed) => {
       const seedToUse = overrideSeed ?? params.styleSeed ?? 1;
-      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'modern_pop');
+      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
+      const moodMode = params.moodMode || 'auto';
+      const moodId = params.moodId || 'none';
       const locks = {};
       if (currentLocks.harmony) {
         locks.harmonyMode = params.harmonyMode;
@@ -574,13 +603,18 @@ export function createFlowInspector({ store } = {}) {
         locks,
         overrides: currentOverrides,
         modes: currentModes,
+        moodMode,
+        moodId,
       });
       const nextParams = {
         styleId,
         styleSeed: seedToUse,
+        moodMode,
+        moodId: resolved.moodId || moodId,
         styleOptionModes: currentModes,
         styleOptionLocks: currentLocks,
         styleOptionOverrides: currentOverrides,
+        dropdownViewPrefs: params.dropdownViewPrefs || {},
       };
       if (currentModes.harmony === 'auto' && !currentLocks.harmony) {
         nextParams.harmonyMode = resolved.harmonyMode ?? params.harmonyMode;
@@ -694,11 +728,7 @@ export function createFlowInspector({ store } = {}) {
       return wrapper;
     };
 
-    const getStyleDefinition = () => {
-      const fallback = STYLE_CATALOG[0] || null;
-      if (!params.styleId) return fallback;
-      return STYLE_CATALOG.find(style => style.id === params.styleId) || fallback;
-    };
+    const getStyleDefinition = () => styleContext?.style || STYLE_CATALOG[0] || null;
 
     const buildCustomMelodyEditor = () => {
       const durationBars = Math.max(params.durationBars ?? 1, 1);
@@ -952,11 +982,24 @@ export function createFlowInspector({ store } = {}) {
     const buildHarmonySection = () => {
       const harmonyWrapper = document.createElement('div');
       harmonyWrapper.className = 'flow-section-body';
-      const styleDef = getStyleDefinition();
-      const styleProgressions = styleDef?.progressions || [];
-      const allowedPresets = getProgressionPresets().filter(preset => (
-        styleProgressions.length === 0 || styleProgressions.includes(preset.id)
-      ));
+      const progressionView = getDropdownView('progression');
+      const progressionSets = styleContext?.optionSets?.progressions || { recommended: [], all: [] };
+      const progressionPool = progressionView === 'all' ? progressionSets.all : progressionSets.recommended;
+      const availablePresets = progressionPool.length > 0 ? progressionPool : progressionSets.all;
+      const progressionOptions = ensureOptionPresence(
+        availablePresets.map(preset => ({ value: preset.id, label: preset.label || preset.id })),
+        params.progressionPresetId,
+        value => getProgressionPresetById(value)?.name || value
+      );
+      harmonyWrapper.appendChild(buildSelect({
+        label: 'Progression View',
+        value: progressionView,
+        options: [
+          { value: 'recommended', label: 'Recommended (Style+Mood)' },
+          { value: 'all', label: 'All in Style' },
+        ],
+        onChange: value => updateDropdownPrefs('progression', value),
+      }));
       harmonyWrapper.appendChild(buildSelect({
         label: 'harmonyMode',
         value: params.harmonyMode || 'single',
@@ -998,24 +1041,27 @@ export function createFlowInspector({ store } = {}) {
       }
 
       if (harmonyMode === 'progression_preset') {
-        const presets = allowedPresets.length > 0 ? allowedPresets : getProgressionPresets();
-        const presetOptions = presets.map(preset => ({ value: preset.id, label: preset.name }));
-        let activePreset = getProgressionPresetById(params.progressionPresetId);
-        if (!activePreset || !presets.some(p => p.id === activePreset.id)) {
-          activePreset = presets[0];
-          if (activePreset) {
-            updateParams({ progressionPresetId: activePreset.id });
-          }
-        }
-        const presetId = params.progressionPresetId || activePreset?.id || '';
-        const variantOptions = (activePreset?.variants || []).map(variant => ({
-          value: variant.id,
-          label: variant.label,
+        const presetOptions = progressionOptions.length > 0 ? progressionOptions : getProgressionPresets().map(preset => ({
+          value: preset.id,
+          label: preset.name,
         }));
+        let activePresetId = params.progressionPresetId || presetOptions[0]?.value || '';
         const harmonyAuto = currentModes.harmony === 'auto';
+        if (!presetOptions.some(option => option.value === activePresetId)) {
+          activePresetId = presetOptions[0]?.value || activePresetId;
+        }
+        const activePreset = getProgressionPresetById(activePresetId);
+        const variantOptions = ensureOptionPresence(
+          (activePreset?.variants || []).map(variant => ({
+            value: variant.id,
+            label: variant.label,
+          })),
+          params.progressionVariantId,
+          value => value || 'variant'
+        );
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionPresetId',
-          value: presetId,
+          value: activePresetId,
           options: presetOptions,
           onChange: value => updateParams({ progressionPresetId: value }),
           disabled: harmonyAuto,
@@ -1140,31 +1186,32 @@ export function createFlowInspector({ store } = {}) {
         onChange: value => updateParams({ melodyMode: value }),
       }));
       if (melodyMode === 'generated') {
-        const styleDef = getStyleDefinition();
-        const allowedPatterns = (styleDef?.patterns || NOTE_PATTERNS.map(p => p.id));
-        const patternOptions = NOTE_PATTERNS.filter(
-          pattern => allowedPatterns.length === 0 || allowedPatterns.includes(pattern.id)
-        ).map(pattern => ({ value: pattern.id, label: pattern.label }));
-        let activePatternId = params.notePatternId || allowedPatterns[0];
-        if (activePatternId && !allowedPatterns.includes(activePatternId)) {
-          activePatternId = allowedPatterns[0];
-          const mapped = NOTE_PATTERN_BY_ID[activePatternId];
-          updateParams({
-            notePatternId: activePatternId,
-            patternType: mapped?.patternType || params.patternType || 'arp-3-up',
-          });
-        }
+        const patternView = getDropdownView('pattern');
+        const patternSets = styleContext?.optionSets?.patterns || { recommended: [], all: [] };
+        const patternPool = patternView === 'all' ? patternSets.all : patternSets.recommended;
+        const availablePatterns = patternPool.length > 0 ? patternPool : patternSets.all;
+        const patternOptions = ensureOptionPresence(
+          availablePatterns.map(pattern => ({ value: pattern.id, label: pattern.label || pattern.id })),
+          params.notePatternId,
+          value => PATTERN_BY_ID[value]?.label || value
+        );
+        patternWrapper.appendChild(buildSelect({
+          label: 'Pattern View',
+          value: patternView,
+          options: STYLE_DROPDOWN_VIEW_OPTIONS,
+          onChange: value => updateDropdownPrefs('pattern', value),
+        }));
         const patternAuto = currentModes.pattern === 'auto';
         patternWrapper.appendChild(buildSelect({
           label: 'pattern',
-          value: activePatternId || '',
+          value: params.notePatternId || patternOptions[0]?.value || '',
           options: patternOptions,
           disabled: patternAuto,
           onChange: (value) => {
-            const mapped = NOTE_PATTERN_BY_ID[value];
+            const mapped = PATTERN_BY_ID[value];
             updateParams({
               notePatternId: value,
-              patternType: mapped?.patternType || value || params.patternType,
+              patternType: mapped?.mapsToPatternType || mapped?.patternType || value || params.patternType,
             });
           },
         }));
@@ -1182,6 +1229,50 @@ export function createFlowInspector({ store } = {}) {
     const buildFeelSection = () => {
       const feelWrapper = document.createElement('div');
       feelWrapper.className = 'flow-section-body';
+      const feelView = getDropdownView('feel');
+      const feelSets = styleContext?.optionSets?.feels || { recommended: [], all: [] };
+      const feelPool = feelView === 'all' ? feelSets.all : feelSets.recommended;
+      const availableFeels = feelPool.length > 0 ? feelPool : feelSets.all;
+      const activeFeel = availableFeels.find(feel => (
+        feel.rhythmGrid === (params.rhythmGrid || '1/12')
+        && feel.syncopation === (params.syncopation || 'none')
+        && feel.timingWarp === (params.timingWarp || 'none')
+        && Number(feel.timingIntensity) === Number(params.timingIntensity ?? 0)
+      )) || feelSets.all.find(feel => (
+        feel.rhythmGrid === (params.rhythmGrid || '1/12')
+        && feel.syncopation === (params.syncopation || 'none')
+        && feel.timingWarp === (params.timingWarp || 'none')
+        && Number(feel.timingIntensity) === Number(params.timingIntensity ?? 0)
+      ));
+      const feelOptions = ensureOptionPresence(
+        availableFeels.map(feel => ({ value: feel.id, label: feel.label || feel.id })),
+        activeFeel?.id,
+        value => availableFeels.find(feel => feel.id === value)?.label || value
+      );
+      const feelAuto = currentModes.feel === 'auto';
+      feelWrapper.appendChild(buildSelect({
+        label: 'Feel View',
+        value: feelView,
+        options: STYLE_DROPDOWN_VIEW_OPTIONS,
+        onChange: value => updateDropdownPrefs('feel', value),
+      }));
+      feelWrapper.appendChild(buildSelect({
+        label: 'Feel Preset',
+        value: activeFeel?.id || '',
+        options: feelOptions,
+        disabled: feelAuto,
+        onChange: (value) => {
+          const selected = availableFeels.find(feel => feel.id === value) || feelSets.all.find(feel => feel.id === value);
+          if (selected) {
+            updateParams({
+              rhythmGrid: selected.rhythmGrid,
+              syncopation: selected.syncopation,
+              timingWarp: selected.timingWarp,
+              timingIntensity: selected.timingIntensity,
+            });
+          }
+        },
+      }));
       feelWrapper.appendChild(buildSelect({
         label: 'rhythmGrid',
         value: params.rhythmGrid || '1/12',
@@ -1192,6 +1283,7 @@ export function createFlowInspector({ store } = {}) {
           { value: '1/16', label: 'Sixteenth (1/16)' },
           { value: '1/24', label: '1/24' },
         ],
+        disabled: feelAuto,
         onChange: value => updateParams({ rhythmGrid: value }),
       }));
       feelWrapper.appendChild(buildSelect({
@@ -1202,6 +1294,7 @@ export function createFlowInspector({ store } = {}) {
           { value: 'offbeat', label: 'Offbeat' },
           { value: 'anticipation', label: 'Anticipation' },
         ],
+        disabled: feelAuto,
         onChange: value => updateParams({ syncopation: value }),
       }));
       feelWrapper.appendChild(buildSelect({
@@ -1212,6 +1305,7 @@ export function createFlowInspector({ store } = {}) {
           { value: 'swing', label: 'Swing' },
           { value: 'shuffle', label: 'Shuffle' },
         ],
+        disabled: feelAuto,
         onChange: value => updateParams({ timingWarp: value }),
       }));
       feelWrapper.appendChild(buildField({
@@ -1229,6 +1323,58 @@ export function createFlowInspector({ store } = {}) {
       if (includeModeRows) {
         wrapper.appendChild(buildModeLockRow('Instrument', 'instrument'));
       }
+      const instrumentView = getDropdownView('instrument');
+      const registerView = getDropdownView('register');
+      const instrumentSets = styleContext?.optionSets?.instruments || { recommended: [], all: [] };
+      const registerSets = styleContext?.optionSets?.registers || { recommended: [], all: [] };
+      const instrumentPool = instrumentView === 'all' ? instrumentSets.all : instrumentSets.recommended;
+      const registerPool = registerView === 'all' ? registerSets.all : registerSets.recommended;
+      const instruments = instrumentPool.length > 0 ? instrumentPool : instrumentSets.all;
+      const registers = registerPool.length > 0 ? registerPool : registerSets.all;
+      const instrumentOptions = ensureOptionPresence(
+        [
+          ...instruments.map(item => ({ value: item.instrumentPreset || item.id, label: item.label || item.instrumentPreset || item.id })),
+          ...((presetCache || []).map(preset => ({ value: preset.id, label: preset.name }))),
+        ].filter(option => option.value),
+        params.instrumentPreset,
+        value => value
+      );
+      const activeRegister = registers.find(item => item.min === params.registerMin && item.max === params.registerMax)
+        || registerSets.all.find(item => item.min === params.registerMin && item.max === params.registerMax);
+      const registerOptions = ensureOptionPresence(
+        registers.map(item => ({ value: item.id, label: item.label || item.id })),
+        activeRegister?.id,
+        value => registers.find(item => item.id === value)?.label || value
+      );
+      wrapper.appendChild(buildSelect({
+        label: 'Instrument View',
+        value: instrumentView,
+        options: STYLE_DROPDOWN_VIEW_OPTIONS,
+        onChange: value => updateDropdownPrefs('instrument', value),
+      }));
+      if (instrumentOptions.length > 0) {
+        wrapper.appendChild(buildSelect({
+          label: 'instrumentPreset',
+          value: params.instrumentPreset || instrumentOptions[0]?.value,
+          options: instrumentOptions,
+          disabled: currentModes.instrument === 'auto',
+          onChange: value => updateParams({ instrumentPreset: value }),
+        }));
+      } else {
+        wrapper.appendChild(buildField({
+          label: 'instrumentPreset',
+          type: 'string',
+          value: params.instrumentPreset || '',
+          onChange: value => updateParams({ instrumentPreset: value }),
+        }));
+      }
+
+      wrapper.appendChild(buildSelect({
+        label: 'Register View',
+        value: registerView,
+        options: STYLE_DROPDOWN_VIEW_OPTIONS,
+        onChange: value => updateDropdownPrefs('register', value),
+      }));
       wrapper.appendChild(buildField({
         label: 'registerMin',
         type: 'number',
@@ -1251,20 +1397,18 @@ export function createFlowInspector({ store } = {}) {
         onChange: value => updateParams({ instrumentSoundfont: value }),
       }));
 
-      const presets = presetCache || [];
-      if (presets.length > 0) {
+      if (registerOptions.length > 0) {
         wrapper.appendChild(buildSelect({
-          label: 'instrumentPreset',
-          value: params.instrumentPreset || presets[0].id,
-          options: presets.map(preset => ({ value: preset.id, label: preset.name })),
-          onChange: value => updateParams({ instrumentPreset: value }),
-        }));
-      } else {
-        wrapper.appendChild(buildField({
-          label: 'instrumentPreset',
-          type: 'string',
-          value: params.instrumentPreset || '',
-          onChange: value => updateParams({ instrumentPreset: value }),
+          label: 'Register Suggestion',
+          value: activeRegister?.id || '',
+          options: registerOptions,
+          disabled: currentModes.register === 'auto',
+          onChange: (value) => {
+            const selected = registers.find(item => item.id === value) || registerSets.all.find(item => item.id === value);
+            if (selected) {
+              updateParams({ registerMin: selected.min, registerMax: selected.max });
+            }
+          },
         }));
       }
       return wrapper;
@@ -1308,7 +1452,7 @@ export function createFlowInspector({ store } = {}) {
           value: params.styleId || styleOptions[0].value,
           options: styleOptions,
           onChange: value => {
-            updateParams({ styleId: value });
+            updateParams({ styleId: value, moodId: 'none' });
             applyStyleResolution();
           },
         }));
@@ -1353,6 +1497,34 @@ export function createFlowInspector({ store } = {}) {
       seedHelp.className = 'flow-field-help';
       seedHelp.textContent = 'Seed controls Auto choices. Reroll to deterministically update Auto fields.';
       body.appendChild(seedHelp);
+
+      const moodRow = document.createElement('div');
+      moodRow.className = 'flow-inline-actions';
+      const moodMode = params.moodMode || 'auto';
+      const moodOptions = (styleContext?.moods || []).map(mood => ({ value: mood.id, label: mood.label }));
+      moodRow.appendChild(buildSelect({
+        label: 'Mood Mode',
+        value: moodMode,
+        options: [
+          { value: 'auto', label: 'Auto' },
+          { value: 'override', label: 'Override' },
+        ],
+        onChange: (value) => {
+          updateParams({ moodMode: value });
+          applyStyleResolution();
+        },
+      }));
+      moodRow.appendChild(buildSelect({
+        label: moodMode === 'auto' ? `Mood (Auto → ${styleContext?.mood?.label || '—'})` : 'Mood',
+        value: moodMode === 'auto' ? (styleContext?.mood?.id || '') : (params.moodId || styleContext?.mood?.id || ''),
+        options: ensureOptionPresence(moodOptions, styleContext?.mood?.id, val => moodOptions.find(opt => opt.value === val)?.label || val),
+        disabled: moodMode === 'auto',
+        onChange: value => {
+          updateParams({ moodId: value });
+          applyStyleResolution();
+        },
+      }));
+      body.appendChild(moodRow);
 
       body.appendChild(buildModeLockRow('Harmony', 'harmony'));
       body.appendChild(buildHarmonySection());
