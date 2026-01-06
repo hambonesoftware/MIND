@@ -61,10 +61,17 @@ function stablePickId(candidates, rng) {
   if (!candidates || candidates.length === 0) {
     return null;
   }
-  const sorted = [...candidates].map(value => value).sort();
+  const normalized = [...candidates].map((value) => {
+    if (value && typeof value === 'object') {
+      const id = value.id ?? JSON.stringify(value);
+      return { value, key: String(id) };
+    }
+    return { value, key: String(value) };
+  });
+  normalized.sort((a, b) => a.key.localeCompare(b.key));
   const roll = rng();
-  const index = Math.floor(roll * sorted.length) % sorted.length;
-  return sorted[index];
+  const index = Math.floor(roll * normalized.length) % normalized.length;
+  return normalized[index].value;
 }
 
 function normalizeStyle(styleId) {
