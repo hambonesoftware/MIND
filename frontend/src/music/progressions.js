@@ -1,15 +1,19 @@
 import { HARMONY_PROGRESSIONS } from './harmonyCatalog.js';
 
-const PROGRESSION_PRESETS = HARMONY_PROGRESSIONS.map((progression) => ({
-  id: progression.id,
-  name: progression.label,
-  romans: parseRomanSequence(progression.romanTemplate),
-  defaultLength: progression.defaultLengthBars ?? parseRomanSequence(progression.romanTemplate).length || 4,
-  variants: (progression.variants || []).map(variant => ({
-    id: variant.id,
-    label: variant.label,
-  })),
-}));
+const PROGRESSION_PRESETS = HARMONY_PROGRESSIONS.map((progression) => {
+  const romans = parseRomanSequence(progression.romanTemplate);
+  const defaultLength = progression.defaultLengthBars ?? romans.length;
+  return {
+    id: progression.id,
+    name: progression.label,
+    romans,
+    defaultLength: defaultLength || 4,
+    variants: (progression.variants || []).map(variant => ({
+      id: variant.id,
+      label: variant.label,
+    })),
+  };
+});
 
 const NOTE_TO_PC = {
   C: 0,
