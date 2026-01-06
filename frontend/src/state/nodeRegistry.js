@@ -5,6 +5,37 @@ const PORT_TYPES = {
   EVENTS: 'events',
 };
 
+const DEFAULT_STYLE_ID = 'modern_pop';
+const DEFAULT_STYLE_SEED = 1;
+const DEFAULT_STYLE_OPTION_MODES = {
+  harmony: 'auto',
+  pattern: 'auto',
+  feel: 'auto',
+  instrument: 'auto',
+  register: 'auto',
+};
+const LEGACY_STYLE_OPTION_MODES = {
+  harmony: 'override',
+  pattern: 'override',
+  feel: 'override',
+  instrument: 'override',
+  register: 'override',
+};
+const STYLE_METADATA_DEFAULTS = {
+  styleId: DEFAULT_STYLE_ID,
+  styleSeed: DEFAULT_STYLE_SEED,
+  styleOptionModes: DEFAULT_STYLE_OPTION_MODES,
+  styleOptionLocks: {},
+  styleOptionOverrides: {},
+};
+const STYLE_METADATA_LEGACY_DEFAULTS = {
+  styleId: 'legacy',
+  styleSeed: 0,
+  styleOptionModes: LEGACY_STYLE_OPTION_MODES,
+  styleOptionLocks: {},
+  styleOptionOverrides: {},
+};
+
 const nodeRegistry = {
   start: {
     label: 'Start',
@@ -38,6 +69,7 @@ const nodeRegistry = {
       fillBehavior: { type: 'string' },
       progressionCustom: { type: 'string' },
       progressionCustomVariantStyle: { type: 'string' },
+      notePatternId: { type: 'string' },
       patternType: { type: 'string' },
       rhythmGrid: { type: 'string' },
       syncopation: { type: 'string' },
@@ -51,6 +83,11 @@ const nodeRegistry = {
       customMelody: { type: 'object' },
       thoughtStatus: { type: 'string' },
       thoughtVersion: { type: 'number' },
+      styleId: { type: 'string' },
+      styleSeed: { type: 'number' },
+      styleOptionModes: { type: 'object' },
+      styleOptionLocks: { type: 'object' },
+      styleOptionOverrides: { type: 'object' },
     },
     defaults: {
       label: 'Thought',
@@ -67,6 +104,7 @@ const nodeRegistry = {
       fillBehavior: 'repeat',
       progressionCustom: '',
       progressionCustomVariantStyle: 'triads',
+      notePatternId: '',
       patternType: 'arp-3-up',
       rhythmGrid: '1/12',
       syncopation: 'none',
@@ -83,6 +121,11 @@ const nodeRegistry = {
       },
       thoughtStatus: 'draft',
       thoughtVersion: 1,
+      styleId: DEFAULT_STYLE_ID,
+      styleSeed: DEFAULT_STYLE_SEED,
+      styleOptionModes: DEFAULT_STYLE_OPTION_MODES,
+      styleOptionLocks: {},
+      styleOptionOverrides: {},
     },
     ports: {
       inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.FLOW, required: true }],
@@ -352,6 +395,8 @@ function validateRequiredInputs(nodes, edges) {
 export {
   PORT_TYPES,
   nodeRegistry,
+  STYLE_METADATA_DEFAULTS,
+  STYLE_METADATA_LEGACY_DEFAULTS,
   listNodeTypes,
   getNodeDefinition,
   buildPortsForNode,

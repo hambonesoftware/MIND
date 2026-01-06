@@ -3,6 +3,8 @@ import {
   buildPortsForNode,
   validateConnection,
   validateRequiredInputs,
+  STYLE_METADATA_DEFAULTS,
+  STYLE_METADATA_LEGACY_DEFAULTS,
 } from './nodeRegistry.js';
 
 const STORAGE_VERSION = 9;
@@ -35,6 +37,34 @@ function generateId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function hasStyleMetadata(params = {}) {
+  return (
+    params.styleId !== undefined ||
+    params.styleSeed !== undefined ||
+    params.styleOptionModes !== undefined ||
+    params.styleOptionLocks !== undefined ||
+    params.styleOptionOverrides !== undefined
+  );
+}
+
+function normalizeStyleMetadata(params = {}, { legacyFallback = false } = {}) {
+  const styleProvided = hasStyleMetadata(params);
+  const baseDefaults = legacyFallback && !styleProvided
+    ? STYLE_METADATA_LEGACY_DEFAULTS
+    : STYLE_METADATA_DEFAULTS;
+  const modes = {
+    ...(baseDefaults.styleOptionModes || {}),
+    ...(params.styleOptionModes || {}),
+  };
+  return {
+    styleId: params.styleId ?? baseDefaults.styleId,
+    styleSeed: params.styleSeed ?? baseDefaults.styleSeed,
+    styleOptionModes: modes,
+    styleOptionLocks: { ...(params.styleOptionLocks || {}) },
+    styleOptionOverrides: { ...(params.styleOptionOverrides || {}) },
+  };
+}
+
 function serializeGraphState(state) {
   return JSON.stringify({
     version: STORAGE_VERSION,
@@ -50,9 +80,22 @@ function serializeGraphState(state) {
 }
 
 function normalizeGraphState(data) {
+  const normalizedNodes = (data.nodes || []).map((node) => {
+    if (node.type !== 'thought') {
+      return node;
+    }
+    const styleMetadata = normalizeStyleMetadata(node.params, { legacyFallback: true });
+    return {
+      ...node,
+      params: {
+        ...node.params,
+        ...styleMetadata,
+      },
+    };
+  });
   return {
     graphVersion: data.graphVersion || GRAPH_VERSION,
-    nodes: Array.isArray(data.nodes) ? data.nodes : [],
+    nodes: Array.isArray(data.nodes) ? normalizedNodes : [],
     edges: Array.isArray(data.edges) ? data.edges : [],
     selection: data.selection || DEFAULT_SELECTION,
     viewport: data.viewport || DEFAULT_VIEWPORT,
@@ -111,6 +154,9 @@ function isStartPlayable(nodes, edges, startNodeId) {
 }
 
 function buildThoughtParams(node) {
+  const styleMetadata = normalizeStyleMetadata(node.params, { legacyFallback: true });
+  const patternType = node.params?.patternType || 'arp-3-up';
+  const notePatternId = node.params?.notePatternId || patternType || '';
   return {
     label: node.params?.label || node.type || 'Thought',
     durationBars: node.params?.durationBars ?? 1,
@@ -126,7 +172,8 @@ function buildThoughtParams(node) {
     fillBehavior: node.params?.fillBehavior || 'repeat',
     progressionCustom: node.params?.progressionCustom || '',
     progressionCustomVariantStyle: node.params?.progressionCustomVariantStyle || 'triads',
-    patternType: node.params?.patternType || 'arp-3-up',
+    notePatternId,
+    patternType,
     rhythmGrid: node.params?.rhythmGrid || '1/12',
     syncopation: node.params?.syncopation || 'none',
     timingWarp: node.params?.timingWarp || 'none',
@@ -143,6 +190,7 @@ function buildThoughtParams(node) {
     thoughtStatus: node.params?.thoughtStatus || 'draft',
     thoughtVersion: node.params?.thoughtVersion ?? 1,
     legacyParams: node.params || {},
+    ...styleMetadata,
   };
 }
 

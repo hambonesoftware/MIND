@@ -696,6 +696,77 @@ label.mute-label {
   resize: vertical;
 }
 
+.flow-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-section-title {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.flow-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-section details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.flow-section details summary::-webkit-details-marker {
+  display: none;
+}
+
+.flow-section details[open] summary .flow-section-title {
+  color: #0f172a;
+}
+
+.flow-mode-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.flow-inline-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-seed-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flow-seed-actions button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.flow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
 .flow-progression-preview {
   display: flex;
   flex-direction: column;
