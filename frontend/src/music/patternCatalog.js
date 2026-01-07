@@ -30,6 +30,16 @@ export const PATTERN_CATALOG = [
     requiresCapability: 'gen_broken_chords',
   },
   {
+    id: 'alberti_bass',
+    label: 'Alberti Bass',
+    styles: ['classical_film', 'legacy'],
+    tags: ['flowing', 'stable', 'low_register'],
+    mapsToPatternType: 'arp-3-up',
+    recommendedGrid: '1/8',
+    requiresHarmony: true,
+    requiresCapability: 'gen_alberti_bass',
+  },
+  {
     id: 'sustain_drone',
     label: 'Drone / Sustain',
     styles: ['classical_film', 'edm_electronic', 'folk_country_bluegrass'],
