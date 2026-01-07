@@ -1,3 +1,31 @@
+import { normalizeMusicThoughtParams } from '../music/normalizeThought.js';
+import { resolveMusicThought } from '../music/resolveThought.js';
+
+const normalizeFlowGraph = (flowGraph) => {
+  if (!flowGraph || !Array.isArray(flowGraph.nodes)) {
+    return flowGraph;
+  }
+  const nodes = flowGraph.nodes.map((node) => {
+    if (node.type !== 'thought') {
+      return node;
+    }
+    const canon = normalizeMusicThoughtParams(node.params || {});
+    const { resolved, flat } = resolveMusicThought(canon, { nodeId: node.id });
+    return {
+      ...node,
+      params: {
+        ...canon,
+        ...flat,
+        resolved,
+      },
+    };
+  });
+  return {
+    ...flowGraph,
+    nodes,
+  };
+};
+
 export function buildCompilePayload({
   seed,
   bpm,
@@ -13,6 +41,7 @@ export function buildCompilePayload({
   startNodeIds = [],
   useNodeGraph = false,
 }) {
+  const normalizedFlowGraph = normalizeFlowGraph(flowGraph);
   if (!useNodeGraph) {
     return {
       seed,
@@ -20,7 +49,7 @@ export function buildCompilePayload({
       barIndex,
       beatStart,
       beatEnd,
-      flowGraph,
+      flowGraph: normalizedFlowGraph,
       runtimeState,
       nodes: legacyNodes,
     };
@@ -34,7 +63,7 @@ export function buildCompilePayload({
     barIndex,
     beatStart,
     beatEnd,
-    flowGraph,
+    flowGraph: normalizedFlowGraph,
     runtimeState,
     nodes,
     edges,
