@@ -53,8 +53,8 @@ export function hash32(input) {
   return hash >>> 0;
 }
 
-function makeSubSeed(styleSeed, styleId, nodeId, namespace) {
-  return hash32(`${styleId}|${styleSeed}|${nodeId}|${namespace}`);
+function makeSubSeed(styleSeed, nodeId, groupName) {
+  return hash32(`${styleSeed}|${nodeId}|${groupName}`);
 }
 
 function stablePickId(candidates, rng) {
@@ -81,7 +81,7 @@ function normalizeStyle(styleId) {
 function resolveMoodId({ style, moodId, moodMode, styleSeed, nodeId }) {
   const moods = getMoodsForStyle(style.id);
   if (moodMode === 'auto') {
-    const rng = mulberry32(makeSubSeed(styleSeed, style.id, nodeId, 'mood'));
+    const rng = mulberry32(makeSubSeed(styleSeed, nodeId, `mood:${style.id}`));
     return stablePickId(moods.map(mood => mood.id), rng) || moods[0]?.id || getDefaultMoodId(style.id);
   }
   const requested = moods.find(mood => mood.id === moodId);
@@ -254,7 +254,7 @@ function pickWithPriority({ field, candidates, fallback, locks, overrides, rng }
 }
 
 function resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moodTags = [], styleTags = [] }) {
-  const rng = mulberry32(makeSubSeed(seed, style.id, nodeId, 'harmony'));
+  const rng = mulberry32(makeSubSeed(seed, nodeId, `harmony:${style.id}`));
   const progressionCandidates = optionSets.progressions?.recommended?.length
     ? optionSets.progressions.recommended
     : optionSets.progressions?.all || [];
@@ -290,7 +290,7 @@ function resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moo
 }
 
 function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides }) {
-  const rng = mulberry32(makeSubSeed(seed, style.id, nodeId, 'pattern'));
+  const rng = mulberry32(makeSubSeed(seed, nodeId, `pattern:${style.id}`));
   const patternCandidates = optionSets.patterns?.recommended?.length
     ? optionSets.patterns.recommended
     : optionSets.patterns?.all || [];
@@ -319,7 +319,7 @@ function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides }) {
 }
 
 function resolveFeel({ optionSets, seed, style, nodeId, locks, overrides }) {
-  const rng = mulberry32(makeSubSeed(seed, style.id, nodeId, 'feel'));
+  const rng = mulberry32(makeSubSeed(seed, nodeId, `feel:${style.id}`));
   const feelCandidates = optionSets.feels?.recommended?.length
     ? optionSets.feels.recommended
     : optionSets.feels?.all || [];
@@ -342,7 +342,7 @@ function resolveFeel({ optionSets, seed, style, nodeId, locks, overrides }) {
 }
 
 function resolveInstrument({ optionSets, seed, style, nodeId, locks, overrides }) {
-  const rng = mulberry32(makeSubSeed(seed, style.id, nodeId, 'instrument'));
+  const rng = mulberry32(makeSubSeed(seed, nodeId, `instrument:${style.id}`));
   const instrumentCandidates = optionSets.instruments?.recommended?.length
     ? optionSets.instruments.recommended
     : optionSets.instruments?.all || [];

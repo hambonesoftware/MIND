@@ -97,6 +97,7 @@ const nodeRegistry = {
       styleOptionLocks: { type: 'object' },
       styleOptionOverrides: { type: 'object' },
       dropdownViewPrefs: { type: 'object' },
+      styleResolvedSignature: { type: 'string' },
     },
     defaults: {
       label: 'Thought',
@@ -138,6 +139,7 @@ const nodeRegistry = {
       styleOptionLocks: {},
       styleOptionOverrides: {},
       dropdownViewPrefs: {},
+      styleResolvedSignature: '',
     },
     ports: {
       inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.FLOW, required: true }],
