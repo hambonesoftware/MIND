@@ -622,23 +622,10 @@ export function createFlowInspector({ store } = {}) {
         },
       });
     };
-    let currentModes = {
-      harmony: 'auto',
-      pattern: 'auto',
-      feel: 'auto',
-      instrument: 'auto',
-      register: 'auto',
-      ...(params.styleOptionModes || {}),
-    };
-    let currentLocks = {
-      harmony: false,
-      pattern: false,
-      feel: false,
-      instrument: false,
-      register: false,
-      ...(params.styleOptionLocks || {}),
-    };
-    let currentOverrides = params.styleOptionOverrides || {};
+    const coerceSeed = (value, fallback = 1) => (
+      Number.isFinite(value) ? Number(value) : fallback
+    );
+    const buildStyleSignature = ({ styleId, moodId, styleSeed }) => `${styleId}|${moodId}|${styleSeed}`;
     const getDropdownView = (key) => (params.dropdownViewPrefs?.[key] || 'recommended');
     const updateDropdownPrefs = (key, value) => {
       const nextPrefs = { ...(params.dropdownViewPrefs || {}) };
@@ -656,106 +643,71 @@ export function createFlowInspector({ store } = {}) {
     const computeStyleContext = () => buildStyleOptionSets({
       styleId: params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film'),
       moodId: params.moodId || 'none',
-      moodMode: params.moodMode || 'auto',
-      styleSeed: params.styleSeed ?? 0,
+      moodMode: 'override',
+      styleSeed: coerceSeed(params.styleSeed, 1),
       nodeId: node.id,
     });
     const styleContext = computeStyleContext();
 
-    const applyStyleResolution = (overrideSeed) => {
-      const seedToUse = overrideSeed ?? params.styleSeed ?? 1;
-      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
-      const moodMode = params.moodMode || 'auto';
-      const moodId = params.moodId || 'none';
-      const locks = {};
-      if (currentLocks.harmony) {
-        locks.harmonyMode = params.harmonyMode;
-        locks.progressionPresetId = params.progressionPresetId;
-        locks.progressionVariantId = params.progressionVariantId;
-        locks.chordsPerBar = params.chordsPerBar;
-        locks.fillBehavior = params.fillBehavior;
-        locks.progressionLength = params.progressionLength;
-      }
-      if (currentLocks.pattern) {
-        locks.notePatternId = params.notePatternId;
-        locks.patternType = params.patternType;
-      }
-      if (currentLocks.feel) {
-        locks.rhythmGrid = params.rhythmGrid;
-        locks.syncopation = params.syncopation;
-        locks.timingWarp = params.timingWarp;
-        locks.timingIntensity = params.timingIntensity;
-      }
-      if (currentLocks.instrument) {
-        locks.instrumentPreset = params.instrumentPreset;
-      }
-      if (currentLocks.register) {
-        locks.registerMin = params.registerMin;
-        locks.registerMax = params.registerMax;
-      }
+    const applyStyleResolution = ({ nextSeed, nextStyleId, nextMoodId } = {}) => {
+      const seedToUse = coerceSeed(nextSeed ?? params.styleSeed, 1);
+      const styleId = nextStyleId || params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
+      const moodId = nextMoodId || params.moodId || 'none';
+      const moodMode = 'override';
       const resolved = resolveThoughtStyle({
         styleId,
         styleSeed: seedToUse,
         nodeId: node.id,
-        locks,
-        overrides: currentOverrides,
-        modes: currentModes,
         moodMode,
         moodId,
       });
+      const resolvedPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
+      const resolvedVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
+      const resolvedLength = resolved.progressionLength ?? params.progressionLength;
+      const preset = getProgressionPresetById(resolvedPresetId);
+      const progressionCustom = preset ? (preset.romans || []).join(' ') : (params.progressionCustom || '');
+      const progressionCustomVariantStyle = resolvedVariantId || params.progressionCustomVariantStyle || 'triads';
+      const nextMoodIdValue = resolved.moodId || moodId;
+      const nextSignature = buildStyleSignature({
+        styleId,
+        moodId: nextMoodIdValue,
+        styleSeed: seedToUse,
+      });
+
       const nextParams = {
         styleId,
         styleSeed: seedToUse,
         moodMode,
-        moodId: resolved.moodId || moodId,
-        styleOptionModes: currentModes,
-        styleOptionLocks: currentLocks,
-        styleOptionOverrides: currentOverrides,
+        moodId: nextMoodIdValue,
+        styleResolvedSignature: nextSignature,
+        harmonyMode: resolved.harmonyMode ?? params.harmonyMode ?? 'progression_preset',
+        progressionPresetId: resolvedPresetId,
+        progressionVariantId: resolvedVariantId,
+        chordsPerBar: resolved.chordsPerBar ?? params.chordsPerBar,
+        fillBehavior: resolved.fillBehavior ?? params.fillBehavior,
+        progressionLength: resolvedLength,
+        progressionCustom,
+        progressionCustomVariantStyle,
+        notePatternId: resolved.notePatternId ?? params.notePatternId,
+        patternType: resolved.patternType ?? params.patternType,
+        rhythmGrid: resolved.rhythmGrid ?? params.rhythmGrid,
+        syncopation: resolved.syncopation ?? params.syncopation,
+        timingWarp: resolved.timingWarp ?? params.timingWarp,
+        timingIntensity: resolved.timingIntensity ?? params.timingIntensity,
+        instrumentPreset: resolved.instrumentPreset ?? params.instrumentPreset,
+        registerMin: resolved.registerMin ?? params.registerMin,
+        registerMax: resolved.registerMax ?? params.registerMax,
         dropdownViewPrefs: params.dropdownViewPrefs || {},
       };
-      if (currentModes.harmony === 'auto' && !currentLocks.harmony) {
-        const resolvedPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
-        const resolvedVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
-        const resolvedLength = resolved.progressionLength ?? params.progressionLength;
-        nextParams.harmonyMode = resolved.harmonyMode ?? params.harmonyMode;
-        nextParams.progressionPresetId = resolvedPresetId;
-        nextParams.progressionVariantId = resolvedVariantId;
-        nextParams.chordsPerBar = resolved.chordsPerBar ?? params.chordsPerBar;
-        nextParams.fillBehavior = resolved.fillBehavior ?? params.fillBehavior;
-        nextParams.progressionLength = resolvedLength;
-        const preset = getProgressionPresetById(resolvedPresetId);
-        if (preset) {
-          nextParams.harmonyMode = 'progression_custom';
-          nextParams.progressionCustom = (preset.romans || []).join(' ');
-          nextParams.progressionCustomVariantStyle = resolvedVariantId || 'triads';
-          if (resolvedLength === 'preset' || resolvedLength == null) {
-            nextParams.progressionLength = preset.defaultLength || (preset.romans?.length || 'preset');
-          }
-        }
-      }
-      if (currentModes.pattern === 'auto' && !currentLocks.pattern) {
-        nextParams.notePatternId = resolved.notePatternId ?? params.notePatternId;
-        nextParams.patternType = resolved.patternType ?? params.patternType;
-      }
-      if (currentModes.feel === 'auto' && !currentLocks.feel) {
-        nextParams.rhythmGrid = resolved.rhythmGrid ?? params.rhythmGrid;
-        nextParams.syncopation = resolved.syncopation ?? params.syncopation;
-        nextParams.timingWarp = resolved.timingWarp ?? params.timingWarp;
-        nextParams.timingIntensity = resolved.timingIntensity ?? params.timingIntensity;
-      }
-      if (currentModes.instrument === 'auto' && !currentLocks.instrument) {
-        nextParams.instrumentPreset = resolved.instrumentPreset ?? params.instrumentPreset;
-      }
-      if (currentModes.register === 'auto' && !currentLocks.register) {
-        nextParams.registerMin = resolved.registerMin ?? params.registerMin;
-        nextParams.registerMax = resolved.registerMax ?? params.registerMax;
+      if (preset && (resolvedLength === 'preset' || resolvedLength == null)) {
+        nextParams.progressionLength = preset.defaultLength || (preset.romans?.length || 'preset');
       }
       updateParams(nextParams);
     };
 
     const rerollSeed = () => {
-      const nextSeed = Number.isFinite(params.styleSeed) ? params.styleSeed + 1 : 1;
-      applyStyleResolution(nextSeed);
+      const nextSeed = coerceSeed(params.styleSeed, 1) + 1;
+      applyStyleResolution({ nextSeed });
     };
 
     const copySeed = async () => {
@@ -780,39 +732,8 @@ export function createFlowInspector({ store } = {}) {
       }
       const parsed = Number.parseInt(text, 10);
       if (Number.isFinite(parsed)) {
-        applyStyleResolution(parsed);
+        applyStyleResolution({ nextSeed: parsed });
       }
-    };
-
-    const buildModeLockRow = (label, key) => {
-      const row = document.createElement('div');
-      row.className = 'flow-mode-row';
-      row.appendChild(buildSelect({
-        label: `${label} Mode`,
-        value: currentModes[key] || 'auto',
-        options: [
-          { value: 'auto', label: 'Auto' },
-          { value: 'override', label: 'Override' },
-        ],
-        onChange: (value) => {
-          const nextModes = { ...currentModes, [key]: value };
-          currentModes = nextModes;
-          updateParams({ styleOptionModes: nextModes });
-          if (value === 'auto') {
-            applyStyleResolution();
-          }
-        },
-      }));
-      row.appendChild(buildToggle({
-        label: 'Lock',
-        checked: currentLocks[key],
-        onChange: (checked) => {
-          const nextLocks = { ...currentLocks, [key]: checked };
-          currentLocks = nextLocks;
-          updateParams({ styleOptionLocks: nextLocks });
-        },
-      }));
-      return row;
     };
 
     const buildSection = (title, body, { collapsible = false, defaultOpen = true } = {}) => {
@@ -1155,7 +1076,6 @@ export function createFlowInspector({ store } = {}) {
           label: preset.name,
         }));
         let activePresetId = params.progressionPresetId || presetOptions[0]?.value || '';
-        const harmonyAuto = currentModes.harmony === 'auto';
         if (!presetOptions.some(option => option.value === activePresetId)) {
           activePresetId = presetOptions[0]?.value || activePresetId;
         }
@@ -1173,14 +1093,12 @@ export function createFlowInspector({ store } = {}) {
           value: activePresetId,
           options: presetOptions,
           onChange: value => updateParams({ progressionPresetId: value }),
-          disabled: harmonyAuto,
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionVariantId',
           value: params.progressionVariantId || activePreset?.variants?.[0]?.id || 'triads',
           options: variantOptions,
           onChange: value => updateParams({ progressionVariantId: value }),
-          disabled: harmonyAuto,
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'chordsPerBar',
@@ -1310,12 +1228,10 @@ export function createFlowInspector({ store } = {}) {
           options: STYLE_DROPDOWN_VIEW_OPTIONS,
           onChange: value => updateDropdownPrefs('pattern', value),
         }));
-        const patternAuto = currentModes.pattern === 'auto';
         patternWrapper.appendChild(buildSelect({
           label: 'pattern',
           value: params.notePatternId || patternOptions[0]?.value || '',
           options: patternOptions,
-          disabled: patternAuto,
           onChange: (value) => {
             const mapped = PATTERN_BY_ID[value];
             updateParams({
@@ -1358,7 +1274,6 @@ export function createFlowInspector({ store } = {}) {
         activeFeel?.id,
         value => availableFeels.find(feel => feel.id === value)?.label || value
       );
-      const feelAuto = currentModes.feel === 'auto';
       feelWrapper.appendChild(buildSelect({
         label: 'Feel View',
         value: feelView,
@@ -1369,7 +1284,6 @@ export function createFlowInspector({ store } = {}) {
         label: 'Feel Preset',
         value: activeFeel?.id || '',
         options: feelOptions,
-        disabled: feelAuto,
         onChange: (value) => {
           const selected = availableFeels.find(feel => feel.id === value) || feelSets.all.find(feel => feel.id === value);
           if (selected) {
@@ -1392,7 +1306,6 @@ export function createFlowInspector({ store } = {}) {
           { value: '1/16', label: 'Sixteenth (1/16)' },
           { value: '1/24', label: '1/24' },
         ],
-        disabled: feelAuto,
         onChange: value => updateParams({ rhythmGrid: value }),
       }));
       feelWrapper.appendChild(buildSelect({
@@ -1403,7 +1316,6 @@ export function createFlowInspector({ store } = {}) {
           { value: 'offbeat', label: 'Offbeat' },
           { value: 'anticipation', label: 'Anticipation' },
         ],
-        disabled: feelAuto,
         onChange: value => updateParams({ syncopation: value }),
       }));
       feelWrapper.appendChild(buildSelect({
@@ -1414,7 +1326,6 @@ export function createFlowInspector({ store } = {}) {
           { value: 'swing', label: 'Swing' },
           { value: 'shuffle', label: 'Shuffle' },
         ],
-        disabled: feelAuto,
         onChange: value => updateParams({ timingWarp: value }),
       }));
       feelWrapper.appendChild(buildField({
@@ -1426,12 +1337,9 @@ export function createFlowInspector({ store } = {}) {
       return feelWrapper;
     };
 
-    const buildRegisterAndInstrumentSection = ({ includeModeRows = false } = {}) => {
+    const buildRegisterAndInstrumentSection = () => {
       const wrapper = document.createElement('div');
       wrapper.className = 'flow-section-body';
-      if (includeModeRows) {
-        wrapper.appendChild(buildModeLockRow('Instrument', 'instrument'));
-      }
       const instrumentView = getDropdownView('instrument');
       const registerView = getDropdownView('register');
       const instrumentSets = styleContext?.optionSets?.instruments || { recommended: [], all: [] };
@@ -1466,7 +1374,6 @@ export function createFlowInspector({ store } = {}) {
           label: 'instrumentPreset',
           value: params.instrumentPreset || instrumentOptions[0]?.value,
           options: instrumentOptions,
-          disabled: currentModes.instrument === 'auto',
           onChange: value => updateParams({ instrumentPreset: value }),
         }));
       } else {
@@ -1496,9 +1403,6 @@ export function createFlowInspector({ store } = {}) {
         value: params.registerMax ?? 84,
         onChange: value => updateParams({ registerMax: value }),
       }));
-      if (includeModeRows) {
-        wrapper.appendChild(buildModeLockRow('Register', 'register'));
-      }
       wrapper.appendChild(buildSelect({
         label: 'instrumentSoundfont',
         value: params.instrumentSoundfont || SOUND_FONTS[0].value,
@@ -1511,7 +1415,6 @@ export function createFlowInspector({ store } = {}) {
           label: 'Register Suggestion',
           value: activeRegister?.id || '',
           options: registerOptions,
-          disabled: currentModes.register === 'auto',
           onChange: (value) => {
             const selected = registers.find(item => item.id === value) || registerSets.all.find(item => item.id === value);
             if (selected) {
@@ -1561,27 +1464,37 @@ export function createFlowInspector({ store } = {}) {
           value: params.styleId || styleOptions[0].value,
           options: styleOptions,
           onChange: value => {
-            updateParams({ styleId: value, moodId: 'none' });
-            applyStyleResolution();
+            updateParams({ styleId: value, moodId: 'none', moodMode: 'override' });
+            applyStyleResolution({ nextStyleId: value, nextMoodId: 'none' });
           },
         }));
       }
 
-      body.appendChild(buildRegisterAndInstrumentSection({ includeModeRows: true }));
+      body.appendChild(buildRegisterAndInstrumentSection());
       return buildSection('Style', body);
     };
 
     const renderThoughtStyleOptionsSection = () => {
       const body = document.createElement('div');
       body.className = 'flow-section-body';
+      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
+      const moodId = params.moodId || 'none';
+      const styleSeed = coerceSeed(params.styleSeed, 1);
+      const signature = buildStyleSignature({ styleId, moodId, styleSeed });
+      const isSignatureResolved = params.styleResolvedSignature === signature;
+      const resolveIfNeeded = () => {
+        if (!isSignatureResolved) {
+          applyStyleResolution({ nextStyleId: styleId, nextMoodId: moodId, nextSeed: styleSeed });
+        }
+      };
 
       const seedRow = document.createElement('div');
       seedRow.className = 'flow-inline-actions';
       seedRow.appendChild(buildField({
         label: 'styleSeed',
         type: 'number',
-        value: params.styleSeed ?? 1,
-        onChange: value => applyStyleResolution(value),
+        value: styleSeed,
+        onChange: value => applyStyleResolution({ nextSeed: value }),
       }));
       const buttonRow = document.createElement('div');
       buttonRow.className = 'flow-seed-actions';
@@ -1609,39 +1522,37 @@ export function createFlowInspector({ store } = {}) {
 
       const moodRow = document.createElement('div');
       moodRow.className = 'flow-inline-actions';
-      const moodMode = params.moodMode || 'auto';
       const moodOptions = (styleContext?.moods || []).map(mood => ({ value: mood.id, label: mood.label }));
       moodRow.appendChild(buildSelect({
-        label: 'Mood Mode',
-        value: moodMode,
-        options: [
-          { value: 'auto', label: 'Auto' },
-          { value: 'override', label: 'Override' },
-        ],
-        onChange: (value) => {
-          updateParams({ moodMode: value });
-          applyStyleResolution();
-        },
-      }));
-      moodRow.appendChild(buildSelect({
-        label: moodMode === 'auto' ? `Mood (Auto → ${styleContext?.mood?.label || '—'})` : 'Mood',
-        value: moodMode === 'auto' ? (styleContext?.mood?.id || '') : (params.moodId || styleContext?.mood?.id || ''),
+        label: 'Mood',
+        value: params.moodId || styleContext?.mood?.id || '',
         options: ensureOptionPresence(moodOptions, styleContext?.mood?.id, val => moodOptions.find(opt => opt.value === val)?.label || val),
-        disabled: moodMode === 'auto',
         onChange: value => {
-          updateParams({ moodId: value });
-          applyStyleResolution();
+          updateParams({ moodId: value, moodMode: 'override' });
+          applyStyleResolution({ nextMoodId: value });
         },
       }));
       body.appendChild(moodRow);
 
-      body.appendChild(buildModeLockRow('Harmony', 'harmony'));
       body.appendChild(buildHarmonySection());
-      body.appendChild(buildModeLockRow('Pattern', 'pattern'));
       body.appendChild(buildPatternSection({ includeCustomEditor: true }));
-      body.appendChild(buildModeLockRow('Feel', 'feel'));
       body.appendChild(buildFeelSection());
-      return buildSection('Style Options', body, { collapsible: true, defaultOpen: false });
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-section';
+      const details = document.createElement('details');
+      details.open = false;
+      const summary = document.createElement('summary');
+      summary.className = 'flow-section-title';
+      summary.textContent = 'Style Options';
+      details.appendChild(summary);
+      details.appendChild(body);
+      details.addEventListener('toggle', () => {
+        if (details.open) {
+          resolveIfNeeded();
+        }
+      });
+      wrapper.appendChild(details);
+      return wrapper;
     };
 
     const renderThoughtAdvancedSection = () => {
