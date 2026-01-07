@@ -36,6 +36,7 @@ def generate_events(
         density = phrase.density_for_bar(bar_index, bars=bars)
         pattern = texture.pattern_for_bar(seed=seed, piece_id=piece_id, bar_index=bar_index)
         pattern_steps = _PATTERN_MAP.get(pattern, _PATTERN_MAP["low-mid-high"])
+        pattern_offset = stable_seed(f"{piece_id}:{seed}:{bar_index}:offset") % len(pattern_steps)
 
         chord_by_step = [
             harmony.chord_at_step(bar_index, step) for step in range(steps_per_bar)
@@ -45,7 +46,13 @@ def generate_events(
             if not _should_emit_step(seed, piece_id, bar_index, step, density):
                 continue
             chord = chord_by_step[step]
-            pitches = _select_pattern_pitches(chord, pattern_steps, step)
+            offset_step = step + pattern_offset
+            pitches = _select_pattern_pitches(
+                chord,
+                pattern_steps,
+                offset_step,
+                rotation_seed=seed,
+            )
             if pitches:
                 lattice.add_onset(step=step, pitches=pitches, velocity=96, dur_steps=1)
 
@@ -84,10 +91,16 @@ def _select_pattern_pitches(
     chord: Iterable[int],
     pattern_steps: List[int],
     step: int,
+    *,
+    rotation_seed: int,
 ) -> List[int]:
     chord_list = list(chord)
     if not chord_list:
         return []
+    if len(chord_list) > 1:
+        rotation = rotation_seed % len(chord_list)
+        if rotation:
+            chord_list = chord_list[rotation:] + chord_list[:rotation]
     index = pattern_steps[step % len(pattern_steps)]
     index = min(index, len(chord_list) - 1)
     return [chord_list[index]]

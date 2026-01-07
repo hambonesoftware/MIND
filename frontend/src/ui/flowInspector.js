@@ -649,7 +649,7 @@ export function createFlowInspector({ store } = {}) {
     });
     const styleContext = computeStyleContext();
 
-    const applyStyleResolution = ({ nextSeed, nextStyleId, nextMoodId } = {}) => {
+    const applyStyleResolution = ({ nextSeed, nextStyleId, nextMoodId, forceHarmony = false } = {}) => {
       const seedToUse = coerceSeed(nextSeed ?? params.styleSeed, 1);
       const styleId = nextStyleId || params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
       const moodId = nextMoodId || params.moodId || 'none';
@@ -664,9 +664,7 @@ export function createFlowInspector({ store } = {}) {
       const resolvedPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
       const resolvedVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
       const resolvedLength = resolved.progressionLength ?? params.progressionLength;
-      const preset = getProgressionPresetById(resolvedPresetId);
-      const progressionCustom = preset ? (preset.romans || []).join(' ') : (params.progressionCustom || '');
-      const progressionCustomVariantStyle = resolvedVariantId || params.progressionCustomVariantStyle || 'triads';
+      const shouldUseCustomHarmony = forceHarmony || params.harmonyMode !== 'progression_preset';
       const nextMoodIdValue = resolved.moodId || moodId;
       const nextSignature = buildStyleSignature({
         styleId,
@@ -680,14 +678,6 @@ export function createFlowInspector({ store } = {}) {
         moodMode,
         moodId: nextMoodIdValue,
         styleResolvedSignature: nextSignature,
-        harmonyMode: resolved.harmonyMode ?? params.harmonyMode ?? 'progression_preset',
-        progressionPresetId: resolvedPresetId,
-        progressionVariantId: resolvedVariantId,
-        chordsPerBar: resolved.chordsPerBar ?? params.chordsPerBar,
-        fillBehavior: resolved.fillBehavior ?? params.fillBehavior,
-        progressionLength: resolvedLength,
-        progressionCustom,
-        progressionCustomVariantStyle,
         notePatternId: resolved.notePatternId ?? params.notePatternId,
         patternType: resolved.patternType ?? params.patternType,
         rhythmGrid: resolved.rhythmGrid ?? params.rhythmGrid,
@@ -699,15 +689,35 @@ export function createFlowInspector({ store } = {}) {
         registerMax: resolved.registerMax ?? params.registerMax,
         dropdownViewPrefs: params.dropdownViewPrefs || {},
       };
-      if (preset && (resolvedLength === 'preset' || resolvedLength == null)) {
-        nextParams.progressionLength = preset.defaultLength || (preset.romans?.length || 'preset');
+
+      if (shouldUseCustomHarmony) {
+        nextParams.harmonyMode = 'progression_custom';
+        nextParams.progressionCustom = resolved.progressionCustom ?? params.progressionCustom ?? '';
+        nextParams.progressionCustomVariantStyle = resolved.progressionCustomVariantStyle
+          ?? resolvedVariantId
+          ?? params.progressionCustomVariantStyle
+          ?? 'triads';
+        nextParams.progressionPresetId = resolvedPresetId;
+        nextParams.progressionVariantId = resolvedVariantId;
+        nextParams.chordsPerBar = resolved.chordsPerBar ?? params.chordsPerBar;
+        nextParams.fillBehavior = resolved.fillBehavior ?? params.fillBehavior;
+        nextParams.progressionLength = resolvedLength;
+      } else {
+        nextParams.harmonyMode = params.harmonyMode ?? 'progression_preset';
+        nextParams.progressionPresetId = params.progressionPresetId;
+        nextParams.progressionVariantId = params.progressionVariantId;
+        nextParams.chordsPerBar = params.chordsPerBar;
+        nextParams.fillBehavior = params.fillBehavior;
+        nextParams.progressionLength = params.progressionLength;
+        nextParams.progressionCustom = params.progressionCustom;
+        nextParams.progressionCustomVariantStyle = params.progressionCustomVariantStyle;
       }
       updateParams(nextParams);
     };
 
     const rerollSeed = () => {
       const nextSeed = coerceSeed(params.styleSeed, 1) + 1;
-      applyStyleResolution({ nextSeed });
+      applyStyleResolution({ nextSeed, forceHarmony: true });
     };
 
     const copySeed = async () => {
@@ -732,7 +742,7 @@ export function createFlowInspector({ store } = {}) {
       }
       const parsed = Number.parseInt(text, 10);
       if (Number.isFinite(parsed)) {
-        applyStyleResolution({ nextSeed: parsed });
+        applyStyleResolution({ nextSeed: parsed, forceHarmony: true });
       }
     };
 
@@ -989,14 +999,22 @@ export function createFlowInspector({ store } = {}) {
           input.className = 'melody-note-input';
           input.placeholder = 'C#5 or 73';
           input.value = tokens[noteIndex] || '';
-          input.addEventListener('input', () => {
+          const commitNote = debounce((nextValue) => {
             const nextTokens = [...tokens];
-            nextTokens[noteIndex] = input.value;
+            nextTokens[noteIndex] = nextValue;
             const nextNotes = syncNotesToRhythm(nextTokens.join(' '), normalizedRhythm);
             const nextBars = bars.map((item, idx) => (
               idx === activeIndex ? { rhythm: normalizedRhythm, notes: nextNotes } : item
             ));
             writeBars(nextBars);
+          }, 250);
+          input.addEventListener('input', () => {
+            commitNote(input.value);
+          });
+          input.addEventListener('blur', () => {
+            if (typeof commitNote.flush === 'function') {
+              commitNote.flush();
+            }
           });
           row.appendChild(label);
           row.appendChild(input);
