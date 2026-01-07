@@ -76,6 +76,7 @@ const nodeRegistry = {
       progressionCustom: { type: 'string' },
       progressionCustomVariantStyle: { type: 'string' },
       notePatternId: { type: 'string' },
+      // Legacy: patternType remains for backward compatibility (Phase 1).
       patternType: { type: 'string' },
       rhythmGrid: { type: 'string' },
       syncopation: { type: 'string' },
@@ -98,6 +99,12 @@ const nodeRegistry = {
       styleOptionOverrides: { type: 'object' },
       dropdownViewPrefs: { type: 'object' },
       styleResolvedSignature: { type: 'string' },
+      style: { type: 'object' },
+      harmony: { type: 'object' },
+      pattern: { type: 'object' },
+      feel: { type: 'object' },
+      voice: { type: 'object' },
+      resolved: { type: 'object' },
     },
     defaults: {
       label: 'Thought',
@@ -140,6 +147,68 @@ const nodeRegistry = {
       styleOptionOverrides: {},
       dropdownViewPrefs: {},
       styleResolvedSignature: '',
+      style: {
+        id: DEFAULT_STYLE_ID,
+        seed: DEFAULT_STYLE_SEED,
+        mood: { mode: 'auto', id: 'none' },
+        resolution: {
+          modes: DEFAULT_STYLE_OPTION_MODES,
+          locks: {},
+          overrides: {},
+        },
+        ui: { dropdownViewPrefs: {} },
+      },
+      harmony: {
+        mode: 'single',
+        single: {
+          root: 'C#',
+          quality: 'minor',
+          notesOverride: '',
+        },
+        preset: {
+          id: '',
+          variantId: '',
+          chordsPerBar: '1',
+          fill: 'repeat',
+          length: 'preset',
+        },
+        custom: {
+          roman: '',
+          variantStyle: 'triads',
+          chordsPerBar: '1',
+          fill: 'repeat',
+          length: 'preset',
+        },
+      },
+      pattern: {
+        mode: 'generated',
+        generated: {
+          id: '',
+        },
+        custom: {
+          grid: '1/16',
+          bars: [],
+        },
+      },
+      feel: {
+        mode: 'manual',
+        presetId: '',
+        manual: {
+          grid: '1/12',
+          syncopation: 'none',
+          warp: 'none',
+          intensity: 0,
+        },
+      },
+      voice: {
+        soundfont: '/assets/soundfonts/General-GS.sf2',
+        preset: 'gm:0:0',
+        register: {
+          min: 48,
+          max: 84,
+        },
+      },
+      resolved: {},
     },
     ports: {
       inputs: [{ id: 'in', label: 'In', type: PORT_TYPES.FLOW, required: true }],

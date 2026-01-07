@@ -7,6 +7,7 @@ import {
 import { STYLE_CATALOG } from '../music/styleCatalog.js';
 import { buildStyleOptionSets, resolveThoughtStyle } from '../music/styleResolver.js';
 import { PATTERN_BY_ID } from '../music/patternCatalog.js';
+import { normalizeMusicThoughtParams } from '../music/normalizeThought.js';
 import { insertMoonlightTrebleTemplate } from '../templates/moonlightTreble.js';
 import {
   buildPresetRhythmA,
@@ -614,6 +615,8 @@ export function createFlowInspector({ store } = {}) {
 
   const renderThoughtEditor = (node) => {
     const params = node.params || {};
+    const canon = normalizeMusicThoughtParams(params);
+    const isLegacyOnly = !params.style && !params.harmony && !params.pattern && !params.feel && !params.voice;
     const updateParams = (next) => {
       store.updateNode(node.id, {
         params: {
@@ -622,15 +625,25 @@ export function createFlowInspector({ store } = {}) {
         },
       });
     };
+    const updateParamsNormalized = (next) => {
+      const merged = { ...params, ...next };
+      const normalized = normalizeMusicThoughtParams(merged);
+      store.updateNode(node.id, {
+        params: {
+          ...params,
+          ...normalized,
+        },
+      });
+    };
     const coerceSeed = (value, fallback = 1) => (
       Number.isFinite(value) ? Number(value) : fallback
     );
     const buildStyleSignature = ({ styleId, moodId, styleSeed }) => `${styleId}|${moodId}|${styleSeed}`;
-    const getDropdownView = (key) => (params.dropdownViewPrefs?.[key] || 'recommended');
+    const getDropdownView = (key) => (canon.dropdownViewPrefs?.[key] || 'recommended');
     const updateDropdownPrefs = (key, value) => {
-      const nextPrefs = { ...(params.dropdownViewPrefs || {}) };
+      const nextPrefs = { ...(canon.dropdownViewPrefs || {}) };
       nextPrefs[key] = value;
-      updateParams({ dropdownViewPrefs: nextPrefs });
+      updateParamsNormalized({ dropdownViewPrefs: nextPrefs });
     };
     const ensureOptionPresence = (options, currentValue, labelResolver) => {
       if (!currentValue) return options;
@@ -641,19 +654,19 @@ export function createFlowInspector({ store } = {}) {
       return [...options, { value: currentValue, label }];
     };
     const computeStyleContext = () => buildStyleOptionSets({
-      styleId: params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film'),
-      moodId: params.moodId || 'none',
-      moodMode: 'override',
-      styleSeed: coerceSeed(params.styleSeed, 1),
+      styleId: canon.style?.id || (STYLE_CATALOG[0]?.id || 'classical_film'),
+      moodId: canon.style?.mood?.id || 'none',
+      moodMode: canon.style?.mood?.mode || 'override',
+      styleSeed: coerceSeed(canon.style?.seed, 1),
       nodeId: node.id,
     });
     const styleContext = computeStyleContext();
 
     const applyStyleResolution = ({ nextSeed, nextStyleId, nextMoodId, forceHarmony = false } = {}) => {
-      const seedToUse = coerceSeed(nextSeed ?? params.styleSeed, 1);
-      const styleId = nextStyleId || params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
-      const moodId = nextMoodId || params.moodId || 'none';
-      const moodMode = 'override';
+      const seedToUse = coerceSeed(nextSeed ?? canon.style?.seed, 1);
+      const styleId = nextStyleId || canon.style?.id || (STYLE_CATALOG[0]?.id || 'classical_film');
+      const moodId = nextMoodId || canon.style?.mood?.id || 'none';
+      const moodMode = canon.style?.mood?.mode || 'override';
       const resolved = resolveThoughtStyle({
         styleId,
         styleSeed: seedToUse,
@@ -661,10 +674,10 @@ export function createFlowInspector({ store } = {}) {
         moodMode,
         moodId,
       });
-      const resolvedPresetId = resolved.progressionPresetId ?? params.progressionPresetId;
-      const resolvedVariantId = resolved.progressionVariantId ?? params.progressionVariantId;
-      const resolvedLength = resolved.progressionLength ?? params.progressionLength;
-      const shouldUseCustomHarmony = forceHarmony || params.harmonyMode !== 'progression_preset';
+      const resolvedPresetId = resolved.progressionPresetId ?? canon.progressionPresetId;
+      const resolvedVariantId = resolved.progressionVariantId ?? canon.progressionVariantId;
+      const resolvedLength = resolved.progressionLength ?? canon.progressionLength;
+      const shouldUseCustomHarmony = forceHarmony || canon.harmonyMode !== 'progression_preset';
       const nextMoodIdValue = resolved.moodId || moodId;
       const nextSignature = buildStyleSignature({
         styleId,
@@ -672,56 +685,81 @@ export function createFlowInspector({ store } = {}) {
         styleSeed: seedToUse,
       });
 
-      const nextParams = {
-        styleId,
-        styleSeed: seedToUse,
-        moodMode,
-        moodId: nextMoodIdValue,
-        styleResolvedSignature: nextSignature,
-        notePatternId: resolved.notePatternId ?? params.notePatternId,
-        patternType: resolved.patternType ?? params.patternType,
-        rhythmGrid: resolved.rhythmGrid ?? params.rhythmGrid,
-        syncopation: resolved.syncopation ?? params.syncopation,
-        timingWarp: resolved.timingWarp ?? params.timingWarp,
-        timingIntensity: resolved.timingIntensity ?? params.timingIntensity,
-        instrumentPreset: resolved.instrumentPreset ?? params.instrumentPreset,
-        registerMin: resolved.registerMin ?? params.registerMin,
-        registerMax: resolved.registerMax ?? params.registerMax,
-        dropdownViewPrefs: params.dropdownViewPrefs || {},
+      const nextHarmony = {
+        ...canon.harmony,
+        mode: shouldUseCustomHarmony ? 'custom' : 'preset',
+        preset: {
+          ...canon.harmony.preset,
+          id: resolvedPresetId ?? canon.harmony.preset.id,
+          variantId: resolvedVariantId ?? canon.harmony.preset.variantId,
+          chordsPerBar: resolved.chordsPerBar ?? canon.harmony.preset.chordsPerBar,
+          fill: resolved.fillBehavior ?? canon.harmony.preset.fill,
+          length: resolvedLength ?? canon.harmony.preset.length,
+        },
+        custom: {
+          ...canon.harmony.custom,
+          roman: resolved.progressionCustom ?? canon.harmony.custom.roman ?? '',
+          variantStyle: resolved.progressionCustomVariantStyle
+            ?? resolvedVariantId
+            ?? canon.harmony.custom.variantStyle
+            ?? 'triads',
+          chordsPerBar: resolved.chordsPerBar ?? canon.harmony.custom.chordsPerBar,
+          fill: resolved.fillBehavior ?? canon.harmony.custom.fill,
+          length: resolvedLength ?? canon.harmony.custom.length,
+        },
       };
 
-      if (shouldUseCustomHarmony) {
-        nextParams.harmonyMode = 'progression_custom';
-        nextParams.progressionCustom = resolved.progressionCustom ?? params.progressionCustom ?? '';
-        nextParams.progressionCustomVariantStyle = resolved.progressionCustomVariantStyle
-          ?? resolvedVariantId
-          ?? params.progressionCustomVariantStyle
-          ?? 'triads';
-        nextParams.progressionPresetId = resolvedPresetId;
-        nextParams.progressionVariantId = resolvedVariantId;
-        nextParams.chordsPerBar = resolved.chordsPerBar ?? params.chordsPerBar;
-        nextParams.fillBehavior = resolved.fillBehavior ?? params.fillBehavior;
-        nextParams.progressionLength = resolvedLength;
-      } else {
-        nextParams.harmonyMode = params.harmonyMode ?? 'progression_preset';
-        nextParams.progressionPresetId = params.progressionPresetId;
-        nextParams.progressionVariantId = params.progressionVariantId;
-        nextParams.chordsPerBar = params.chordsPerBar;
-        nextParams.fillBehavior = params.fillBehavior;
-        nextParams.progressionLength = params.progressionLength;
-        nextParams.progressionCustom = params.progressionCustom;
-        nextParams.progressionCustomVariantStyle = params.progressionCustomVariantStyle;
-      }
-      updateParams(nextParams);
+      const nextPattern = {
+        ...canon.pattern,
+        mode: 'generated',
+        generated: {
+          ...canon.pattern.generated,
+          id: resolved.notePatternId ?? canon.pattern.generated.id,
+        },
+      };
+
+      const nextFeel = {
+        ...canon.feel,
+        manual: {
+          ...canon.feel.manual,
+          grid: resolved.rhythmGrid ?? canon.feel.manual.grid,
+          syncopation: resolved.syncopation ?? canon.feel.manual.syncopation,
+          warp: resolved.timingWarp ?? canon.feel.manual.warp,
+          intensity: resolved.timingIntensity ?? canon.feel.manual.intensity,
+        },
+      };
+
+      const nextVoice = {
+        ...canon.voice,
+        preset: resolved.instrumentPreset ?? canon.voice.preset,
+        register: {
+          min: resolved.registerMin ?? canon.voice.register.min,
+          max: resolved.registerMax ?? canon.voice.register.max,
+        },
+      };
+
+      updateParamsNormalized({
+        styleResolvedSignature: nextSignature,
+        style: {
+          ...canon.style,
+          id: styleId,
+          seed: seedToUse,
+          mood: { ...canon.style.mood, mode: moodMode, id: nextMoodIdValue },
+        },
+        harmony: nextHarmony,
+        pattern: nextPattern,
+        feel: nextFeel,
+        voice: nextVoice,
+      });
     };
 
     const rerollSeed = () => {
-      const nextSeed = coerceSeed(params.styleSeed, 1) + 1;
+      const nextSeed = coerceSeed(canon.style?.seed, 1) + 1;
       applyStyleResolution({ nextSeed, forceHarmony: true });
     };
 
     const copySeed = async () => {
-      const seedValue = params.styleSeed ?? '';
+      const seedValue = canon.style?.seed ?? '';
       if (navigator?.clipboard?.writeText) {
         try {
           await navigator.clipboard.writeText(String(seedValue));
@@ -768,13 +806,31 @@ export function createFlowInspector({ store } = {}) {
       return wrapper;
     };
 
+    const inspectorViewMode = canon.dropdownViewPrefs?.inspectorView || 'simple';
+
+    const renderViewModeSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      body.appendChild(buildSelect({
+        label: 'View',
+        value: inspectorViewMode,
+        options: [
+          { value: 'simple', label: 'Simple' },
+          { value: 'advanced', label: 'Advanced' },
+          { value: 'expert', label: 'Expert' },
+        ],
+        onChange: value => updateDropdownPrefs('inspectorView', value),
+      }));
+      return buildSection('Inspector Mode', body);
+    };
+
     const getStyleDefinition = () => styleContext?.style || STYLE_CATALOG[0] || null;
 
     const buildCustomMelodyEditor = () => {
-      const durationBars = Math.max(params.durationBars ?? 1, 1);
-      const grid = params.customMelody?.grid || params.rhythmGrid || '1/16';
+      const durationBars = Math.max(canon.durationBars ?? 1, 1);
+      const grid = canon.customMelody?.grid || canon.pattern?.custom?.grid || canon.feel?.manual?.grid || '1/16';
       const stepsPerBar = getStepsPerBar(grid);
-      const rawBars = params.customMelody?.bars;
+      const rawBars = canon.customMelody?.bars;
       const barCount = durationBars;
       const emptyBar = normalizeBars([], 1, stepsPerBar)[0];
       const baseBars = normalizeBars(
@@ -816,10 +872,15 @@ export function createFlowInspector({ store } = {}) {
           Math.max(barCount, merged.length),
           getStepsPerBar(targetGrid)
         );
-        updateParams({
-          customMelody: {
-            grid: targetGrid,
-            bars: normalized,
+        updateParamsNormalized({
+          pattern: {
+            ...canon.pattern,
+            mode: 'custom',
+            custom: {
+              ...canon.pattern.custom,
+              grid: targetGrid,
+              bars: normalized,
+            },
           },
         });
       };
@@ -1036,7 +1097,7 @@ export function createFlowInspector({ store } = {}) {
       const availablePresets = progressionPool.length > 0 ? progressionPool : progressionSets.all;
       const progressionOptions = ensureOptionPresence(
         availablePresets.map(preset => ({ value: preset.id, label: preset.label || preset.id })),
-        params.progressionPresetId,
+        canon.harmony.preset.id,
         value => getProgressionPresetById(value)?.name || value
       );
       harmonyWrapper.appendChild(buildSelect({
@@ -1049,51 +1110,58 @@ export function createFlowInspector({ store } = {}) {
         onChange: value => updateDropdownPrefs('progression', value),
       }));
       harmonyWrapper.appendChild(buildSelect({
-        label: 'harmonyMode',
-        value: params.harmonyMode || 'single',
+        label: 'harmony.mode',
+        value: canon.harmony.mode || 'single',
         options: [
           { value: 'single', label: 'Single Chord' },
-          { value: 'progression_preset', label: 'Progression (Preset)' },
-          { value: 'progression_custom', label: 'Progression (Custom)' },
+          { value: 'preset', label: 'Progression (Preset)' },
+          { value: 'custom', label: 'Progression (Custom)' },
         ],
-        onChange: value => updateParams({ harmonyMode: value }),
+        onChange: value => updateParamsNormalized({
+          harmony: {
+            ...canon.harmony,
+            mode: value,
+          },
+        }),
       }));
 
-      const harmonyMode = params.harmonyMode || 'single';
+      const harmonyMode = canon.harmony.mode || 'single';
       if (harmonyMode === 'single') {
         harmonyWrapper.appendChild(buildField({
           label: 'chordRoot',
           type: 'string',
-          value: params.chordRoot || '',
-          onChange: value => updateParams({ chordRoot: value }),
+          value: canon.harmony.single.root || '',
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              single: { ...canon.harmony.single, root: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'chordQuality',
-          value: params.chordQuality || 'minor',
+          value: canon.harmony.single.quality || 'minor',
           options: [
             { value: 'major', label: 'Major' },
             { value: 'minor', label: 'Minor' },
             { value: 'diminished', label: 'Diminished' },
             { value: 'augmented', label: 'Augmented' },
           ],
-          onChange: value => updateParams({ chordQuality: value }),
-        }));
-        harmonyWrapper.appendChild(buildField({
-          label: 'Chord Notes Override',
-          type: 'string',
-          value: params.chordNotes || '',
-          placeholder: 'C#4:E4:G#4',
-          helper: 'Optional. One chord only. Colon-separated notes (with octave) or MIDI numbers (e.g., 61:64:68). Overrides Chord Root/Quality.',
-          onChange: value => updateParams({ chordNotes: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              single: { ...canon.harmony.single, quality: value },
+            },
+          }),
         }));
       }
 
-      if (harmonyMode === 'progression_preset') {
+      if (harmonyMode === 'preset') {
         const presetOptions = progressionOptions.length > 0 ? progressionOptions : getProgressionPresets().map(preset => ({
           value: preset.id,
           label: preset.name,
         }));
-        let activePresetId = params.progressionPresetId || presetOptions[0]?.value || '';
+        let activePresetId = canon.harmony.preset.id || presetOptions[0]?.value || '';
         if (!presetOptions.some(option => option.value === activePresetId)) {
           activePresetId = presetOptions[0]?.value || activePresetId;
         }
@@ -1103,44 +1171,64 @@ export function createFlowInspector({ store } = {}) {
             value: variant.id,
             label: variant.label,
           })),
-          params.progressionVariantId,
+          canon.harmony.preset.variantId,
           value => value || 'variant'
         );
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionPresetId',
           value: activePresetId,
           options: presetOptions,
-          onChange: value => updateParams({ progressionPresetId: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              preset: { ...canon.harmony.preset, id: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionVariantId',
-          value: params.progressionVariantId || activePreset?.variants?.[0]?.id || 'triads',
+          value: canon.harmony.preset.variantId || activePreset?.variants?.[0]?.id || 'triads',
           options: variantOptions,
-          onChange: value => updateParams({ progressionVariantId: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              preset: { ...canon.harmony.preset, variantId: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'chordsPerBar',
-          value: params.chordsPerBar || '1',
+          value: canon.harmony.preset.chordsPerBar || '1',
           options: [
             { value: '1', label: '1 chord per bar' },
             { value: '2', label: '2 chords per bar' },
             { value: '0.5', label: '1 chord per 2 bars' },
           ],
-          onChange: value => updateParams({ chordsPerBar: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              preset: { ...canon.harmony.preset, chordsPerBar: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'fillBehavior',
-          value: params.fillBehavior || 'repeat',
+          value: canon.harmony.preset.fill || 'repeat',
           options: [
             { value: 'repeat', label: 'Repeat' },
             { value: 'hold_last', label: 'Hold last' },
             { value: 'rest', label: 'Rest' },
           ],
-          onChange: value => updateParams({ fillBehavior: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              preset: { ...canon.harmony.preset, fill: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionLength',
-          value: params.progressionLength ?? 'preset',
+          value: canon.harmony.preset.length ?? 'preset',
           options: [
             { value: 'preset', label: 'Preset length' },
             { value: '2', label: '2 bars' },
@@ -1148,51 +1236,64 @@ export function createFlowInspector({ store } = {}) {
             { value: '8', label: '8 bars' },
             { value: '16', label: '16 bars' },
           ],
-          onChange: value => updateParams({ progressionLength: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              preset: { ...canon.harmony.preset, length: value },
+            },
+          }),
         }));
       }
 
-      if (harmonyMode === 'progression_custom') {
-        harmonyWrapper.appendChild(buildTextarea({
-          label: 'progressionCustom',
-          value: params.progressionCustom || '',
-          placeholder: 'i VII VI VII',
-          helper: 'Enter roman numerals separated by spaces.',
-          onChange: value => updateParams({ progressionCustom: value }),
-        }));
+      if (harmonyMode === 'custom') {
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionCustomVariantStyle',
-          value: params.progressionCustomVariantStyle || 'triads',
+          value: canon.harmony.custom.variantStyle || 'triads',
           options: [
             { value: 'triads', label: 'Triads' },
             { value: '7ths', label: '7ths' },
             { value: '9ths_soft', label: '9ths (soft)' },
           ],
-          onChange: value => updateParams({ progressionCustomVariantStyle: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              custom: { ...canon.harmony.custom, variantStyle: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'chordsPerBar',
-          value: params.chordsPerBar || '1',
+          value: canon.harmony.custom.chordsPerBar || '1',
           options: [
             { value: '1', label: '1 chord per bar' },
             { value: '2', label: '2 chords per bar' },
             { value: '0.5', label: '1 chord per 2 bars' },
           ],
-          onChange: value => updateParams({ chordsPerBar: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              custom: { ...canon.harmony.custom, chordsPerBar: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'fillBehavior',
-          value: params.fillBehavior || 'repeat',
+          value: canon.harmony.custom.fill || 'repeat',
           options: [
             { value: 'repeat', label: 'Repeat' },
             { value: 'hold_last', label: 'Hold last' },
             { value: 'rest', label: 'Rest' },
           ],
-          onChange: value => updateParams({ fillBehavior: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              custom: { ...canon.harmony.custom, fill: value },
+            },
+          }),
         }));
         harmonyWrapper.appendChild(buildSelect({
           label: 'progressionLength',
-          value: params.progressionLength ?? 'preset',
+          value: canon.harmony.custom.length ?? 'preset',
           options: [
             { value: 'preset', label: 'Custom length' },
             { value: '2', label: '2 bars' },
@@ -1200,15 +1301,20 @@ export function createFlowInspector({ store } = {}) {
             { value: '8', label: '8 bars' },
             { value: '16', label: '16 bars' },
           ],
-          onChange: value => updateParams({ progressionLength: value }),
+          onChange: value => updateParamsNormalized({
+            harmony: {
+              ...canon.harmony,
+              custom: { ...canon.harmony.custom, length: value },
+            },
+          }),
         }));
       }
 
       if (harmonyMode !== 'single') {
         const preview = buildProgressionPreview({
-          ...params,
-          harmonyMode,
-          progressionPresetId: params.progressionPresetId || getProgressionPresets()[0]?.id,
+          ...canon,
+          harmonyMode: harmonyMode === 'preset' ? 'progression_preset' : 'progression_custom',
+          progressionPresetId: canon.harmony.preset.id || getProgressionPresets()[0]?.id,
         });
         if (preview) {
           harmonyWrapper.appendChild(buildProgressionPreviewStrip(preview));
@@ -1220,15 +1326,20 @@ export function createFlowInspector({ store } = {}) {
     const buildPatternSection = ({ includeCustomEditor = true } = {}) => {
       const patternWrapper = document.createElement('div');
       patternWrapper.className = 'flow-section-body';
-      const melodyMode = params.melodyMode || 'generated';
+      const melodyMode = canon.pattern.mode || 'generated';
       patternWrapper.appendChild(buildSelect({
-        label: 'melodyMode',
+        label: 'pattern.mode',
         value: melodyMode,
         options: [
           { value: 'generated', label: 'Generated' },
           { value: 'custom', label: 'Custom' },
         ],
-        onChange: value => updateParams({ melodyMode: value }),
+        onChange: value => updateParamsNormalized({
+          pattern: {
+            ...canon.pattern,
+            mode: value,
+          },
+        }),
       }));
       if (melodyMode === 'generated') {
         const patternView = getDropdownView('pattern');
@@ -1237,7 +1348,7 @@ export function createFlowInspector({ store } = {}) {
         const availablePatterns = patternPool.length > 0 ? patternPool : patternSets.all;
         const patternOptions = ensureOptionPresence(
           availablePatterns.map(pattern => ({ value: pattern.id, label: pattern.label || pattern.id })),
-          params.notePatternId,
+          canon.pattern.generated.id,
           value => PATTERN_BY_ID[value]?.label || value
         );
         patternWrapper.appendChild(buildSelect({
@@ -1248,13 +1359,18 @@ export function createFlowInspector({ store } = {}) {
         }));
         patternWrapper.appendChild(buildSelect({
           label: 'pattern',
-          value: params.notePatternId || patternOptions[0]?.value || '',
+          value: canon.pattern.generated.id || patternOptions[0]?.value || '',
           options: patternOptions,
           onChange: (value) => {
-            const mapped = PATTERN_BY_ID[value];
-            updateParams({
-              notePatternId: value,
-              patternType: mapped?.mapsToPatternType || mapped?.patternType || value || params.patternType,
+            updateParamsNormalized({
+              pattern: {
+                ...canon.pattern,
+                mode: 'generated',
+                generated: {
+                  ...canon.pattern.generated,
+                  id: value,
+                },
+              },
             });
           },
         }));
@@ -1263,7 +1379,7 @@ export function createFlowInspector({ store } = {}) {
       } else {
         const hint = document.createElement('div');
         hint.className = 'flow-field-help';
-        hint.textContent = 'Custom melody editing is available in Advanced.';
+        hint.textContent = 'Custom melody editing is available in Expert.';
         patternWrapper.appendChild(hint);
       }
       return patternWrapper;
@@ -1272,26 +1388,41 @@ export function createFlowInspector({ store } = {}) {
     const buildFeelSection = () => {
       const feelWrapper = document.createElement('div');
       feelWrapper.className = 'flow-section-body';
+      const feelMode = canon.feel.mode || 'manual';
       const feelView = getDropdownView('feel');
       const feelSets = styleContext?.optionSets?.feels || { recommended: [], all: [] };
       const feelPool = feelView === 'all' ? feelSets.all : feelSets.recommended;
       const availableFeels = feelPool.length > 0 ? feelPool : feelSets.all;
       const activeFeel = availableFeels.find(feel => (
-        feel.rhythmGrid === (params.rhythmGrid || '1/12')
-        && feel.syncopation === (params.syncopation || 'none')
-        && feel.timingWarp === (params.timingWarp || 'none')
-        && Number(feel.timingIntensity) === Number(params.timingIntensity ?? 0)
+        feel.rhythmGrid === (canon.feel.manual.grid || '1/12')
+        && feel.syncopation === (canon.feel.manual.syncopation || 'none')
+        && feel.timingWarp === (canon.feel.manual.warp || 'none')
+        && Number(feel.timingIntensity) === Number(canon.feel.manual.intensity ?? 0)
       )) || feelSets.all.find(feel => (
-        feel.rhythmGrid === (params.rhythmGrid || '1/12')
-        && feel.syncopation === (params.syncopation || 'none')
-        && feel.timingWarp === (params.timingWarp || 'none')
-        && Number(feel.timingIntensity) === Number(params.timingIntensity ?? 0)
+        feel.rhythmGrid === (canon.feel.manual.grid || '1/12')
+        && feel.syncopation === (canon.feel.manual.syncopation || 'none')
+        && feel.timingWarp === (canon.feel.manual.warp || 'none')
+        && Number(feel.timingIntensity) === Number(canon.feel.manual.intensity ?? 0)
       ));
       const feelOptions = ensureOptionPresence(
         availableFeels.map(feel => ({ value: feel.id, label: feel.label || feel.id })),
         activeFeel?.id,
         value => availableFeels.find(feel => feel.id === value)?.label || value
       );
+      feelWrapper.appendChild(buildSelect({
+        label: 'feel.mode',
+        value: feelMode,
+        options: [
+          { value: 'preset', label: 'Preset' },
+          { value: 'manual', label: 'Manual' },
+        ],
+        onChange: value => updateParamsNormalized({
+          feel: {
+            ...canon.feel,
+            mode: value,
+          },
+        }),
+      }));
       feelWrapper.appendChild(buildSelect({
         label: 'Feel View',
         value: feelView,
@@ -1300,23 +1431,34 @@ export function createFlowInspector({ store } = {}) {
       }));
       feelWrapper.appendChild(buildSelect({
         label: 'Feel Preset',
-        value: activeFeel?.id || '',
+        value: canon.feel.presetId || activeFeel?.id || '',
         options: feelOptions,
         onChange: (value) => {
           const selected = availableFeels.find(feel => feel.id === value) || feelSets.all.find(feel => feel.id === value);
           if (selected) {
-            updateParams({
-              rhythmGrid: selected.rhythmGrid,
-              syncopation: selected.syncopation,
-              timingWarp: selected.timingWarp,
-              timingIntensity: selected.timingIntensity,
+            updateParamsNormalized({
+              feel: {
+                ...canon.feel,
+                mode: 'preset',
+                presetId: value,
+                manual: {
+                  ...canon.feel.manual,
+                  grid: selected.rhythmGrid,
+                  syncopation: selected.syncopation,
+                  warp: selected.timingWarp,
+                  intensity: selected.timingIntensity,
+                },
+              },
             });
           }
         },
       }));
+      if (feelMode !== 'manual') {
+        return feelWrapper;
+      }
       feelWrapper.appendChild(buildSelect({
         label: 'rhythmGrid',
-        value: params.rhythmGrid || '1/12',
+        value: canon.feel.manual.grid || '1/12',
         options: [
           { value: '1/4', label: 'Quarter (1/4)' },
           { value: '1/8', label: 'Eighth (1/8)' },
@@ -1324,33 +1466,57 @@ export function createFlowInspector({ store } = {}) {
           { value: '1/16', label: 'Sixteenth (1/16)' },
           { value: '1/24', label: '1/24' },
         ],
-        onChange: value => updateParams({ rhythmGrid: value }),
+        onChange: value => updateParamsNormalized({
+          feel: {
+            ...canon.feel,
+            mode: 'manual',
+            manual: { ...canon.feel.manual, grid: value },
+          },
+        }),
       }));
       feelWrapper.appendChild(buildSelect({
         label: 'syncopation',
-        value: params.syncopation || 'none',
+        value: canon.feel.manual.syncopation || 'none',
         options: [
           { value: 'none', label: 'None' },
           { value: 'offbeat', label: 'Offbeat' },
           { value: 'anticipation', label: 'Anticipation' },
         ],
-        onChange: value => updateParams({ syncopation: value }),
+        onChange: value => updateParamsNormalized({
+          feel: {
+            ...canon.feel,
+            mode: 'manual',
+            manual: { ...canon.feel.manual, syncopation: value },
+          },
+        }),
       }));
       feelWrapper.appendChild(buildSelect({
         label: 'timingWarp',
-        value: params.timingWarp || 'none',
+        value: canon.feel.manual.warp || 'none',
         options: [
           { value: 'none', label: 'None' },
           { value: 'swing', label: 'Swing' },
           { value: 'shuffle', label: 'Shuffle' },
         ],
-        onChange: value => updateParams({ timingWarp: value }),
+        onChange: value => updateParamsNormalized({
+          feel: {
+            ...canon.feel,
+            mode: 'manual',
+            manual: { ...canon.feel.manual, warp: value },
+          },
+        }),
       }));
       feelWrapper.appendChild(buildField({
         label: 'timingIntensity',
         type: 'number',
-        value: params.timingIntensity ?? 0,
-        onChange: value => updateParams({ timingIntensity: value }),
+        value: canon.feel.manual.intensity ?? 0,
+        onChange: value => updateParamsNormalized({
+          feel: {
+            ...canon.feel,
+            mode: 'manual',
+            manual: { ...canon.feel.manual, intensity: value },
+          },
+        }),
       }));
       return feelWrapper;
     };
@@ -1371,11 +1537,11 @@ export function createFlowInspector({ store } = {}) {
           ...instruments.map(item => ({ value: item.instrumentPreset || item.id, label: item.label || item.instrumentPreset || item.id })),
           ...((presetCache || []).map(preset => ({ value: preset.id, label: preset.name }))),
         ].filter(option => option.value),
-        params.instrumentPreset,
+        canon.voice.preset,
         value => value
       );
-      const activeRegister = registers.find(item => item.min === params.registerMin && item.max === params.registerMax)
-        || registerSets.all.find(item => item.min === params.registerMin && item.max === params.registerMax);
+      const activeRegister = registers.find(item => item.min === canon.voice.register.min && item.max === canon.voice.register.max)
+        || registerSets.all.find(item => item.min === canon.voice.register.min && item.max === canon.voice.register.max);
       const registerOptions = ensureOptionPresence(
         registers.map(item => ({ value: item.id, label: item.label || item.id })),
         activeRegister?.id,
@@ -1390,16 +1556,26 @@ export function createFlowInspector({ store } = {}) {
       if (instrumentOptions.length > 0) {
         wrapper.appendChild(buildSelect({
           label: 'instrumentPreset',
-          value: params.instrumentPreset || instrumentOptions[0]?.value,
+          value: canon.voice.preset || instrumentOptions[0]?.value,
           options: instrumentOptions,
-          onChange: value => updateParams({ instrumentPreset: value }),
+          onChange: value => updateParamsNormalized({
+            voice: {
+              ...canon.voice,
+              preset: value,
+            },
+          }),
         }));
       } else {
         wrapper.appendChild(buildField({
           label: 'instrumentPreset',
           type: 'string',
-          value: params.instrumentPreset || '',
-          onChange: value => updateParams({ instrumentPreset: value }),
+          value: canon.voice.preset || '',
+          onChange: value => updateParamsNormalized({
+            voice: {
+              ...canon.voice,
+              preset: value,
+            },
+          }),
         }));
       }
 
@@ -1412,20 +1588,35 @@ export function createFlowInspector({ store } = {}) {
       wrapper.appendChild(buildField({
         label: 'registerMin',
         type: 'number',
-        value: params.registerMin ?? 48,
-        onChange: value => updateParams({ registerMin: value }),
+        value: canon.voice.register.min ?? 48,
+        onChange: value => updateParamsNormalized({
+          voice: {
+            ...canon.voice,
+            register: { ...canon.voice.register, min: value },
+          },
+        }),
       }));
       wrapper.appendChild(buildField({
         label: 'registerMax',
         type: 'number',
-        value: params.registerMax ?? 84,
-        onChange: value => updateParams({ registerMax: value }),
+        value: canon.voice.register.max ?? 84,
+        onChange: value => updateParamsNormalized({
+          voice: {
+            ...canon.voice,
+            register: { ...canon.voice.register, max: value },
+          },
+        }),
       }));
       wrapper.appendChild(buildSelect({
         label: 'instrumentSoundfont',
-        value: params.instrumentSoundfont || SOUND_FONTS[0].value,
+        value: canon.voice.soundfont || SOUND_FONTS[0].value,
         options: SOUND_FONTS,
-        onChange: value => updateParams({ instrumentSoundfont: value }),
+        onChange: value => updateParamsNormalized({
+          voice: {
+            ...canon.voice,
+            soundfont: value,
+          },
+        }),
       }));
 
       if (registerOptions.length > 0) {
@@ -1436,7 +1627,124 @@ export function createFlowInspector({ store } = {}) {
           onChange: (value) => {
             const selected = registers.find(item => item.id === value) || registerSets.all.find(item => item.id === value);
             if (selected) {
-              updateParams({ registerMin: selected.min, registerMax: selected.max });
+              updateParamsNormalized({
+                voice: {
+                  ...canon.voice,
+                  register: { min: selected.min, max: selected.max },
+                },
+              });
+            }
+          },
+        }));
+      }
+      return wrapper;
+    };
+
+    const buildVoicePresetSection = () => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-section-body';
+      const instrumentView = getDropdownView('instrument');
+      const instrumentSets = styleContext?.optionSets?.instruments || { recommended: [], all: [] };
+      const instrumentPool = instrumentView === 'all' ? instrumentSets.all : instrumentSets.recommended;
+      const instruments = instrumentPool.length > 0 ? instrumentPool : instrumentSets.all;
+      const instrumentOptions = ensureOptionPresence(
+        [
+          ...instruments.map(item => ({ value: item.instrumentPreset || item.id, label: item.label || item.instrumentPreset || item.id })),
+          ...((presetCache || []).map(preset => ({ value: preset.id, label: preset.name }))),
+        ].filter(option => option.value),
+        canon.voice.preset,
+        value => value
+      );
+      wrapper.appendChild(buildSelect({
+        label: 'Instrument View',
+        value: instrumentView,
+        options: STYLE_DROPDOWN_VIEW_OPTIONS,
+        onChange: value => updateDropdownPrefs('instrument', value),
+      }));
+      if (instrumentOptions.length > 0) {
+        wrapper.appendChild(buildSelect({
+          label: 'voice.preset',
+          value: canon.voice.preset || instrumentOptions[0]?.value,
+          options: instrumentOptions,
+          onChange: value => updateParamsNormalized({
+            voice: {
+              ...canon.voice,
+              preset: value,
+            },
+          }),
+        }));
+      } else {
+        wrapper.appendChild(buildField({
+          label: 'voice.preset',
+          type: 'string',
+          value: canon.voice.preset || '',
+          onChange: value => updateParamsNormalized({
+            voice: {
+              ...canon.voice,
+              preset: value,
+            },
+          }),
+        }));
+      }
+      return wrapper;
+    };
+
+    const buildVoiceRegisterSection = () => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-section-body';
+      const registerView = getDropdownView('register');
+      const registerSets = styleContext?.optionSets?.registers || { recommended: [], all: [] };
+      const registerPool = registerView === 'all' ? registerSets.all : registerSets.recommended;
+      const registers = registerPool.length > 0 ? registerPool : registerSets.all;
+      const activeRegister = registers.find(item => item.min === canon.voice.register.min && item.max === canon.voice.register.max)
+        || registerSets.all.find(item => item.min === canon.voice.register.min && item.max === canon.voice.register.max);
+      const registerOptions = ensureOptionPresence(
+        registers.map(item => ({ value: item.id, label: item.label || item.id })),
+        activeRegister?.id,
+        value => registers.find(item => item.id === value)?.label || value
+      );
+      wrapper.appendChild(buildSelect({
+        label: 'Register View',
+        value: registerView,
+        options: STYLE_DROPDOWN_VIEW_OPTIONS,
+        onChange: value => updateDropdownPrefs('register', value),
+      }));
+      wrapper.appendChild(buildField({
+        label: 'voice.register.min',
+        type: 'number',
+        value: canon.voice.register.min ?? 48,
+        onChange: value => updateParamsNormalized({
+          voice: {
+            ...canon.voice,
+            register: { ...canon.voice.register, min: value },
+          },
+        }),
+      }));
+      wrapper.appendChild(buildField({
+        label: 'voice.register.max',
+        type: 'number',
+        value: canon.voice.register.max ?? 84,
+        onChange: value => updateParamsNormalized({
+          voice: {
+            ...canon.voice,
+            register: { ...canon.voice.register, max: value },
+          },
+        }),
+      }));
+      if (registerOptions.length > 0) {
+        wrapper.appendChild(buildSelect({
+          label: 'Register Suggestion',
+          value: activeRegister?.id || '',
+          options: registerOptions,
+          onChange: (value) => {
+            const selected = registers.find(item => item.id === value) || registerSets.all.find(item => item.id === value);
+            if (selected) {
+              updateParamsNormalized({
+                voice: {
+                  ...canon.voice,
+                  register: { min: selected.min, max: selected.max },
+                },
+              });
             }
           },
         }));
@@ -1450,20 +1758,20 @@ export function createFlowInspector({ store } = {}) {
       body.appendChild(buildField({
         label: 'label',
         type: 'string',
-        value: params.label,
-        onChange: value => updateParams({ label: value }),
+        value: canon.label,
+        onChange: value => updateParamsNormalized({ label: value }),
       }));
       body.appendChild(buildField({
         label: 'durationBars',
         type: 'number',
-        value: params.durationBars ?? 1,
-        onChange: value => updateParams({ durationBars: value }),
+        value: canon.durationBars ?? 1,
+        onChange: value => updateParamsNormalized({ durationBars: value }),
       }));
       body.appendChild(buildField({
         label: 'key',
         type: 'string',
-        value: params.key || 'C# minor',
-        onChange: value => updateParams({ key: value }),
+        value: canon.key || 'C# minor',
+        onChange: value => updateParamsNormalized({ key: value }),
       }));
       return buildSection('Core', body);
     };
@@ -1479,10 +1787,16 @@ export function createFlowInspector({ store } = {}) {
       if (styleOptions.length > 0) {
         body.appendChild(buildSelect({
           label: 'Style',
-          value: params.styleId || styleOptions[0].value,
+          value: canon.style.id || styleOptions[0].value,
           options: styleOptions,
           onChange: value => {
-            updateParams({ styleId: value, moodId: 'none', moodMode: 'override' });
+            updateParamsNormalized({
+              style: {
+                ...canon.style,
+                id: value,
+                mood: { ...canon.style.mood, id: 'none', mode: 'override' },
+              },
+            });
             applyStyleResolution({ nextStyleId: value, nextMoodId: 'none' });
           },
         }));
@@ -1492,14 +1806,89 @@ export function createFlowInspector({ store } = {}) {
       return buildSection('Style', body);
     };
 
+    const renderThoughtStyleBasicsSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      const styleOptions = (STYLE_CATALOG || []).map(style => ({
+        value: style.id,
+        label: style.label || style.id,
+      }));
+      if (styleOptions.length > 0) {
+        body.appendChild(buildSelect({
+          label: 'Style',
+          value: canon.style.id || styleOptions[0].value,
+          options: styleOptions,
+          onChange: value => {
+            updateParamsNormalized({
+              style: {
+                ...canon.style,
+                id: value,
+                mood: { ...canon.style.mood, id: 'none', mode: 'override' },
+              },
+            });
+            applyStyleResolution({ nextStyleId: value, nextMoodId: 'none' });
+          },
+        }));
+      }
+
+      const seedRow = document.createElement('div');
+      seedRow.className = 'flow-inline-actions';
+      seedRow.appendChild(buildField({
+        label: 'styleSeed',
+        type: 'number',
+        value: coerceSeed(canon.style?.seed, 1),
+        onChange: value => applyStyleResolution({ nextSeed: value }),
+      }));
+      const buttonRow = document.createElement('div');
+      buttonRow.className = 'flow-seed-actions';
+      const rerollButton = document.createElement('button');
+      rerollButton.type = 'button';
+      rerollButton.textContent = 'Reroll';
+      rerollButton.addEventListener('click', rerollSeed);
+      buttonRow.appendChild(rerollButton);
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.textContent = 'Copy';
+      copyButton.addEventListener('click', () => copySeed());
+      buttonRow.appendChild(copyButton);
+      const pasteButton = document.createElement('button');
+      pasteButton.type = 'button';
+      pasteButton.textContent = 'Paste';
+      pasteButton.addEventListener('click', () => pasteSeed());
+      buttonRow.appendChild(pasteButton);
+      seedRow.appendChild(buttonRow);
+      body.appendChild(seedRow);
+
+      const moodRow = document.createElement('div');
+      moodRow.className = 'flow-inline-actions';
+      const moodOptions = (styleContext?.moods || []).map(mood => ({ value: mood.id, label: mood.label }));
+      moodRow.appendChild(buildSelect({
+        label: 'Mood',
+        value: canon.style?.mood?.id || styleContext?.mood?.id || '',
+        options: ensureOptionPresence(moodOptions, styleContext?.mood?.id, val => moodOptions.find(opt => opt.value === val)?.label || val),
+        onChange: value => {
+          updateParamsNormalized({
+            style: {
+              ...canon.style,
+              mood: { ...canon.style.mood, id: value, mode: 'override' },
+            },
+          });
+          applyStyleResolution({ nextMoodId: value });
+        },
+      }));
+      body.appendChild(moodRow);
+
+      return buildSection('Style', body);
+    };
+
     const renderThoughtStyleOptionsSection = () => {
       const body = document.createElement('div');
       body.className = 'flow-section-body';
-      const styleId = params.styleId || (STYLE_CATALOG[0]?.id || 'classical_film');
-      const moodId = params.moodId || 'none';
-      const styleSeed = coerceSeed(params.styleSeed, 1);
+      const styleId = canon.style?.id || (STYLE_CATALOG[0]?.id || 'classical_film');
+      const moodId = canon.style?.mood?.id || 'none';
+      const styleSeed = coerceSeed(canon.style?.seed, 1);
       const signature = buildStyleSignature({ styleId, moodId, styleSeed });
-      const isSignatureResolved = params.styleResolvedSignature === signature;
+      const isSignatureResolved = canon.styleResolvedSignature === signature;
       const resolveIfNeeded = () => {
         if (!isSignatureResolved) {
           applyStyleResolution({ nextStyleId: styleId, nextMoodId: moodId, nextSeed: styleSeed });
@@ -1543,10 +1932,15 @@ export function createFlowInspector({ store } = {}) {
       const moodOptions = (styleContext?.moods || []).map(mood => ({ value: mood.id, label: mood.label }));
       moodRow.appendChild(buildSelect({
         label: 'Mood',
-        value: params.moodId || styleContext?.mood?.id || '',
+        value: canon.style?.mood?.id || styleContext?.mood?.id || '',
         options: ensureOptionPresence(moodOptions, styleContext?.mood?.id, val => moodOptions.find(opt => opt.value === val)?.label || val),
         onChange: value => {
-          updateParams({ moodId: value, moodMode: 'override' });
+          updateParamsNormalized({
+            style: {
+              ...canon.style,
+              mood: { ...canon.style.mood, id: value, mode: 'override' },
+            },
+          });
           applyStyleResolution({ nextMoodId: value });
         },
       }));
@@ -1576,44 +1970,109 @@ export function createFlowInspector({ store } = {}) {
     const renderThoughtAdvancedSection = () => {
       const body = document.createElement('div');
       body.className = 'flow-section-body';
+      body.appendChild(buildHarmonySection());
+      body.appendChild(buildPatternSection({ includeCustomEditor: false }));
+      body.appendChild(buildFeelSection());
+      body.appendChild(buildVoiceRegisterSection());
+      return buildSection('Advanced', body);
+    };
+
+    const renderThoughtExpertOverridesSection = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      body.appendChild(buildField({
+        label: 'Chord Notes Override',
+        type: 'string',
+        value: canon.harmony.single.notesOverride || '',
+        placeholder: 'C#4:E4:G#4',
+        helper: 'Optional. One chord only. Colon-separated notes (with octave) or MIDI numbers (e.g., 61:64:68). Overrides Chord Root/Quality.',
+        onChange: value => updateParamsNormalized({
+          harmony: {
+            ...canon.harmony,
+            single: { ...canon.harmony.single, notesOverride: value },
+          },
+        }),
+      }));
+      body.appendChild(buildTextarea({
+        label: 'progressionCustom',
+        value: canon.harmony.custom.roman || '',
+        placeholder: 'i VII VI VII',
+        helper: 'Enter roman numerals separated by spaces.',
+        onChange: value => updateParamsNormalized({
+          harmony: {
+            ...canon.harmony,
+            custom: { ...canon.harmony.custom, roman: value },
+          },
+        }),
+      }));
+      if (canon.pattern.mode === 'custom') {
+        body.appendChild(buildCustomMelodyEditor());
+      }
+      return buildSection('Expert Overrides', body, { collapsible: true, defaultOpen: true });
+    };
+
+    const renderLegacySection = () => {
+      if (!isLegacyOnly) {
+        return null;
+      }
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
       const legacyNote = document.createElement('div');
       legacyNote.className = 'flow-field-help';
-      legacyNote.textContent = 'Legacy raw controls (duplicate of Style Options) stay here.';
+      legacyNote.textContent = 'Legacy (v9.7) fields for older thoughts.';
       body.appendChild(legacyNote);
-      body.appendChild(buildHarmonySection());
-      body.appendChild(buildPatternSection({ includeCustomEditor: true }));
-      body.appendChild(buildFeelSection());
-      body.appendChild(buildRegisterAndInstrumentSection());
-
-      const moonlightButton = document.createElement('button');
-      moonlightButton.type = 'button';
-      moonlightButton.className = 'flow-branch-add';
-      moonlightButton.textContent = 'Apply Moonlight Opening Arp';
-      moonlightButton.addEventListener('click', () => {
-        updateParams({
-          key: 'C# minor',
-          chordRoot: 'C#',
-          chordQuality: 'minor',
-          patternType: 'arp-3-up',
-          rhythmGrid: '1/12',
-          syncopation: 'none',
-          timingWarp: 'none',
-          timingIntensity: 0,
-          durationBars: 1,
-          instrumentPreset: 'gm_piano',
-        });
+      const legacyFields = [
+        { label: 'harmonyMode', key: 'harmonyMode' },
+        { label: 'chordRoot', key: 'chordRoot' },
+        { label: 'chordQuality', key: 'chordQuality' },
+        { label: 'chordNotes', key: 'chordNotes' },
+        { label: 'progressionPresetId', key: 'progressionPresetId' },
+        { label: 'progressionVariantId', key: 'progressionVariantId' },
+        { label: 'progressionLength', key: 'progressionLength' },
+        { label: 'chordsPerBar', key: 'chordsPerBar' },
+        { label: 'fillBehavior', key: 'fillBehavior' },
+        { label: 'progressionCustom', key: 'progressionCustom' },
+        { label: 'progressionCustomVariantStyle', key: 'progressionCustomVariantStyle' },
+        { label: 'notePatternId', key: 'notePatternId' },
+        { label: 'patternType', key: 'patternType' },
+        { label: 'rhythmGrid', key: 'rhythmGrid' },
+        { label: 'syncopation', key: 'syncopation' },
+        { label: 'timingWarp', key: 'timingWarp' },
+        { label: 'timingIntensity', key: 'timingIntensity', type: 'number' },
+        { label: 'registerMin', key: 'registerMin', type: 'number' },
+        { label: 'registerMax', key: 'registerMax', type: 'number' },
+        { label: 'instrumentSoundfont', key: 'instrumentSoundfont' },
+        { label: 'instrumentPreset', key: 'instrumentPreset' },
+        { label: 'melodyMode', key: 'melodyMode' },
+      ];
+      legacyFields.forEach((field) => {
+        body.appendChild(buildField({
+          label: field.label,
+          type: field.type || 'string',
+          value: params[field.key] ?? '',
+          onChange: value => updateParamsNormalized({ [field.key]: value }),
+        }));
       });
-      body.appendChild(moonlightButton);
-
-      return buildSection('Advanced', body, { collapsible: true, defaultOpen: false });
+      return buildSection('Legacy (v9.7)', body, { collapsible: true, defaultOpen: false });
     };
 
     const stack = document.createElement('div');
     stack.className = 'flow-inspector-form';
+    stack.appendChild(renderViewModeSection());
     stack.appendChild(renderThoughtCoreSection());
-    stack.appendChild(renderThoughtStyleSection());
-    stack.appendChild(renderThoughtStyleOptionsSection());
-    stack.appendChild(renderThoughtAdvancedSection());
+    stack.appendChild(renderThoughtStyleBasicsSection());
+    if (inspectorViewMode === 'simple') {
+      stack.appendChild(buildVoicePresetSection());
+    } else if (inspectorViewMode === 'advanced') {
+      stack.appendChild(renderThoughtAdvancedSection());
+    } else {
+      stack.appendChild(renderThoughtAdvancedSection());
+      stack.appendChild(renderThoughtExpertOverridesSection());
+      const legacySection = renderLegacySection();
+      if (legacySection) {
+        stack.appendChild(legacySection);
+      }
+    }
     return stack;
   };
 
