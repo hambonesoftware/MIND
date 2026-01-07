@@ -55,6 +55,8 @@ PATTERN_TYPE_BY_NOTE_ID = {
     "montuno_pattern": "arp-3-up",
     "travis_pick": "arp-3-down",
     "alberti_bass": "arp-3-up",
+    "ostinato_pulse": "arp-3-up",
+    "step_arp_octave": "arp-3-up",
 }
 
 
@@ -444,6 +446,187 @@ def _generate_walking_bass(
     return events
 
 
+def _generate_ostinato_pulse(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    accent_every = 2 if steps_per_bar >= 8 else 1
+    events: List[Event] = []
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitch = ordered[0]
+            velocity = 102 if step % accent_every == 0 else 90
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=velocity,
+                    durationBeats=step_len,
+                )
+            )
+    return events
+
+
+def _generate_walking_bass_simple(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    seed: int,
+    register_min: int,
+    register_max: int,
+) -> List[Event]:
+    events: List[Event] = []
+    pattern_roll = stable_seed(f"walking_simple:{seed}") % 2
+    for bar_index in range(bars):
+        for beat in range(4):
+            chord = harmony.chord_at_step(bar_index, beat * max(1, harmony.steps_per_bar // 4))
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            root = ordered[0]
+            fifth = ordered[min(2, len(ordered) - 1)] if len(ordered) > 2 else root + 7
+            pitch = root if (beat + pattern_roll) % 2 == 0 else fifth
+            while pitch < register_min:
+                pitch += 12
+            while pitch > register_max:
+                pitch -= 12
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + beat,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=92,
+                    durationBeats=1.0,
+                )
+            )
+    return events
+
+
+def _generate_comping_stabs(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    for bar_index in range(bars):
+        bar_seed = stable_seed(f"comping:{seed}:{bar_index}")
+        for step in range(steps_per_bar):
+            if step % 2 == 0:
+                continue
+            if bar_seed % 3 == 0 and step % 4 == 1:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitches = ordered[-3:] if len(ordered) >= 3 else ordered
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitches[0],
+                    pitches=pitches,
+                    velocity=88,
+                    durationBeats=step_len * 0.6,
+                )
+            )
+    return events
+
+
+def _generate_gate_mask(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            mask_roll = stable_seed(f"gate:{seed}:{bar_index}:{step}") % 100
+            if mask_roll < 45:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitches = ordered
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitches[0],
+                    pitches=pitches,
+                    velocity=80,
+                    durationBeats=step_len * 0.5,
+                )
+            )
+    return events
+
+
+def _generate_step_arp_octave(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    pattern = [0, 1, 2, 1]
+    octave_roll = stable_seed(f"octave_arp:{seed}") % 2
+    events: List[Event] = []
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            idx = min(pattern[step % len(pattern)], len(ordered) - 1)
+            pitch = ordered[idx]
+            if (step + octave_roll) % len(pattern) == len(pattern) - 1:
+                pitch += 12
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=95,
+                    durationBeats=step_len,
+                )
+            )
+    return events
+
+
 def _parse_custom_notes(raw: object) -> List[int]:
     tokens: List[str] = []
     if raw is None:
@@ -593,6 +776,7 @@ def _compile_thought_bar(
     style_seed = _coerce_number(params.get("styleSeed"), 0)
     combined_seed = _combined_seed(seed, style_seed, node.id)
     note_pattern_id = (params.get("notePatternId") or "").strip().lower()
+    pattern_seed = stable_seed(f"{combined_seed}:{note_pattern_id}") % 2147483647
     pattern_type = params.get("patternType") or PATTERN_TYPE_BY_NOTE_ID.get(note_pattern_id, "arp-3-up")
 
     if _normalize_harmony_mode(params) == "single":
@@ -607,14 +791,31 @@ def _compile_thought_bar(
         generated = _generate_walking_bass(
             harmony,
             bars=duration_bars,
-            seed=combined_seed,
+            seed=pattern_seed,
             register_min=bass_min,
             register_max=max(register_min, register_max),
         )
     elif note_pattern_id == "alberti_bass":
-        generated = _generate_alberti_bass(harmony, bars=duration_bars, grid=grid, seed=combined_seed)
+        generated = _generate_alberti_bass(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "ostinato_pulse":
+        generated = _generate_ostinato_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "walking_bass_simple":
+        bass_min = max(0, register_min - 12)
+        generated = _generate_walking_bass_simple(
+            harmony,
+            bars=duration_bars,
+            seed=pattern_seed,
+            register_min=bass_min,
+            register_max=max(register_min, register_max),
+        )
+    elif note_pattern_id == "comping_stabs":
+        generated = _generate_comping_stabs(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "gate_mask":
+        generated = _generate_gate_mask(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "step_arp_octave":
+        generated = _generate_step_arp_octave(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     else:
-        pattern_family = _pattern_family_for_type(pattern_type, seed=combined_seed)
+        pattern_family = _pattern_family_for_type(pattern_type, seed=pattern_seed)
         texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
         phrase = PhrasePlan(density_curve=(1.0,))
         generated = generate_events(
@@ -623,7 +824,7 @@ def _compile_thought_bar(
             phrase,
             bars=duration_bars,
             grid=grid,
-            seed=combined_seed,
+            seed=pattern_seed,
             piece_id=node.id,
         )
 

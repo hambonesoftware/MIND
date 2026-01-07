@@ -1,4 +1,4 @@
-import { STYLE_BY_ID, STYLE_CATALOG } from './styleCatalog.js';
+import { STYLE_BY_ID, STYLE_CATALOG, normalizeStyleId } from './styleCatalog.js';
 import { getMoodById, getMoodsForStyle, getDefaultMoodId } from './moodCatalog.js';
 import { HARMONY_PROGRESSIONS, HARMONY_BY_ID } from './harmonyCatalog.js';
 import { PATTERN_CATALOG, PATTERN_BY_ID, FALLBACK_PATTERNS } from './patternCatalog.js';
@@ -75,7 +75,8 @@ function stablePickId(candidates, rng) {
 }
 
 function normalizeStyle(styleId) {
-  return STYLE_BY_ID[styleId] || STYLE_BY_ID[DEFAULTS.styleId] || STYLE_CATALOG[0];
+  const normalizedId = normalizeStyleId(styleId);
+  return STYLE_BY_ID[normalizedId] || STYLE_BY_ID[DEFAULTS.styleId] || STYLE_CATALOG[0];
 }
 
 function resolveMoodId({ style, moodId, moodMode, styleSeed, nodeId }) {
@@ -139,13 +140,13 @@ function gatePatternsByCapability(patterns, capabilities) {
   });
 }
 
-function withFallbackPatterns(baseList, styleId, capabilities) {
+function withFallbackPatterns(baseList, styleId, capabilities, gateUnsupported = true) {
   const allIds = new Set(baseList.map(item => item.id));
   const fallbacks = FALLBACK_PATTERNS
     .map(id => PATTERN_BY_ID[id])
     .filter(Boolean)
     .filter(pattern => (pattern.styles || []).includes(styleId))
-    .filter(pattern => gatePatternsByCapability([pattern], capabilities).length > 0);
+    .filter(pattern => !gateUnsupported || gatePatternsByCapability([pattern], capabilities).length > 0);
   const merged = [...baseList];
   for (const pattern of fallbacks) {
     if (!allIds.has(pattern.id)) {
@@ -158,16 +159,12 @@ function withFallbackPatterns(baseList, styleId, capabilities) {
 
 function buildPatternSet(style, moodTags, styleTags, capabilities) {
   const raw = filterByStyle(PATTERN_CATALOG, style.id);
-  const gated = gatePatternsByCapability(raw, capabilities);
-  const allPatterns = withFallbackPatterns(gated, style.id, capabilities);
-  const sortedAll = sortByScoreAndId(allPatterns, [], []);
-  const recommended = sortByScoreAndId(allPatterns, moodTags, styleTags);
-  const recommendedEnsured = recommended.length >= 2 ? recommended : sortedAll;
-  const finalRecommended = recommendedEnsured.length >= 2
-    ? recommendedEnsured
-    : withFallbackPatterns(recommendedEnsured, style.id, capabilities);
+  const sortedAll = sortByScoreAndId(raw, [], []);
+  const supported = gatePatternsByCapability(raw, capabilities);
+  const recommended = sortByScoreAndId(supported, moodTags, styleTags);
+  const finalRecommended = withFallbackPatterns(recommended, style.id, capabilities, true);
   return {
-    all: dedupeById(withFallbackPatterns(sortedAll, style.id, capabilities)),
+    all: dedupeById(withFallbackPatterns(sortedAll, style.id, capabilities, false)),
     recommended: dedupeById(finalRecommended),
   };
 }
@@ -271,9 +268,10 @@ function resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moo
   const variantCandidates = progression?.variants || [];
   const variantSorted = sortByScoreAndId(variantCandidates, [...(progression?.tags || []), ...moodTags], styleTags || []);
   const variantIds = (variantSorted.length > 0 ? variantSorted : variantCandidates).map(variant => variant.id);
+  const progressionCustom = String(progression?.romanTemplate || '').trim().replace(/\s+/g, ' ');
 
   return {
-    harmonyMode: pickWithPriority({ field: 'harmonyMode', candidates: [DEFAULTS.harmonyMode], fallback: DEFAULTS.harmonyMode, locks, overrides, rng }),
+    harmonyMode: pickWithPriority({ field: 'harmonyMode', candidates: ['progression_custom'], fallback: 'progression_custom', locks, overrides, rng }),
     progressionPresetId: selectedPresetId,
     progressionVariantId: pickWithPriority({
       field: 'progressionVariantId',
@@ -283,9 +281,25 @@ function resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moo
       overrides,
       rng,
     }),
+    progressionCustom,
+    progressionCustomVariantStyle: pickWithPriority({
+      field: 'progressionCustomVariantStyle',
+      candidates: variantIds,
+      fallback: variantIds[0] || DEFAULTS.progressionVariantId,
+      locks,
+      overrides,
+      rng,
+    }),
     chordsPerBar: pickWithPriority({ field: 'chordsPerBar', candidates: [DEFAULTS.chordsPerBar], fallback: DEFAULTS.chordsPerBar, locks, overrides, rng }),
     fillBehavior: pickWithPriority({ field: 'fillBehavior', candidates: [DEFAULTS.fillBehavior], fallback: DEFAULTS.fillBehavior, locks, overrides, rng }),
-    progressionLength: pickWithPriority({ field: 'progressionLength', candidates: [DEFAULTS.progressionLength], fallback: DEFAULTS.progressionLength, locks, overrides, rng }),
+    progressionLength: pickWithPriority({
+      field: 'progressionLength',
+      candidates: [progression?.defaultLengthBars ?? DEFAULTS.progressionLength],
+      fallback: progression?.defaultLengthBars ?? DEFAULTS.progressionLength,
+      locks,
+      overrides,
+      rng,
+    }),
   };
 }
 

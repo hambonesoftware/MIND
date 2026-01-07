@@ -1,0 +1,396 @@
+{
+  "generatedAt": "2026-01-07T04:05:33.706Z",
+  "styles": {
+    "classical_film": {
+      "moods": [
+        "calm",
+        "romantic",
+        "ominous",
+        "triumphant",
+        "tender",
+        "mysterious",
+        "heroic",
+        "dread"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "skipping_arpeggio",
+        "alberti_bass",
+        "sustain_drone",
+        "airy_arp",
+        "string_pulse",
+        "pizzicato_stabs"
+      ],
+      "progressions": [
+        "classical_noble_cadence",
+        "classical_wistful_minor",
+        "classical_suspense_steps",
+        "classical_ostinato",
+        "classical_storybook",
+        "classical_romantic_swell",
+        "classical_mournful",
+        "classical_epic_lift",
+        "classical_pastoral",
+        "classical_twilight",
+        "classical_ominous_pedal",
+        "classical_chase"
+      ],
+      "feels": [
+        "classical_legato",
+        "classical_ostinato",
+        "classical_waltz",
+        "classical_brisk",
+        "classical_swell",
+        "classical_march",
+        "classical_chamber",
+        "classical_staccato"
+      ],
+      "instruments": [
+        "cine_strings",
+        "cine_piano",
+        "cine_brass",
+        "cine_harp",
+        "cine_choir",
+        "cine_flute",
+        "cine_oboe",
+        "cine_celesta",
+        "cine_bells",
+        "cine_bassoon"
+      ],
+      "registers": [
+        "wide_score",
+        "mid_ensemble",
+        "classical_high_strings",
+        "classical_low_brass",
+        "classical_chamber",
+        "classical_high_bells"
+      ]
+    },
+    "jazz_blues_funk": {
+      "moods": [
+        "cool",
+        "smoky",
+        "energetic",
+        "noir",
+        "hot",
+        "blue",
+        "late_night"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "skipping_arpeggio",
+        "offbeat_plucks",
+        "swing_response",
+        "walking_bass",
+        "comping_chords",
+        "funk_clav"
+      ],
+      "progressions": [
+        "jazz_ii_v_i",
+        "jazz_turnaround",
+        "jazz_blues_form",
+        "jazz_minor_vamp",
+        "jazz_call_response",
+        "jazz_rhythm_changes",
+        "jazz_minor_turnaround",
+        "jazz_funk_vamp",
+        "jazz_soulful",
+        "jazz_noir_walk",
+        "jazz_modal_dorian",
+        "jazz_shuffle_riff"
+      ],
+      "feels": [
+        "jazz_lazy",
+        "jazz_pocket",
+        "jazz_ballad",
+        "funk_push",
+        "jazz_noir_shuffle",
+        "jazz_smooth",
+        "jazz_fast_bop",
+        "jazz_slow_blues"
+      ],
+      "instruments": [
+        "jazz_piano",
+        "jazz_guitar",
+        "funk_ep",
+        "jazz_sax",
+        "jazz_trumpet",
+        "jazz_bass",
+        "jazz_organ",
+        "jazz_vibes",
+        "jazz_clarinet",
+        "jazz_trombone"
+      ],
+      "registers": [
+        "mid_ensemble",
+        "tight_combo",
+        "jazz_low",
+        "jazz_mid",
+        "jazz_high",
+        "jazz_wide"
+      ]
+    },
+    "pop_rock": {
+      "moods": [
+        "bright",
+        "anthemic",
+        "bittersweet",
+        "driving",
+        "melancholic",
+        "gritty",
+        "aggressive"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "skipping_arpeggio",
+        "offbeat_plucks",
+        "grit_riff",
+        "walking_bass",
+        "anthem_strum",
+        "power_chords"
+      ],
+      "progressions": [
+        "rock_anthem",
+        "rock_melancholy",
+        "rock_minor_power",
+        "rock_suspense",
+        "rock_drive",
+        "pop_bright_hook",
+        "pop_bittersweet",
+        "pop_drive",
+        "rock_grit_loop",
+        "rock_power_chorus",
+        "pop_sparkle",
+        "rock_noir"
+      ],
+      "feels": [
+        "rock_on_grid",
+        "rock_half_time",
+        "rock_drive",
+        "rock_grit",
+        "rock_stomp",
+        "rock_airy",
+        "pop_bounce",
+        "pop_midtempo"
+      ],
+      "instruments": [
+        "rock_stack",
+        "rock_clean",
+        "rock_synth",
+        "pop_piano",
+        "pop_synth_lead",
+        "pop_strings",
+        "pop_bass",
+        "pop_pluck",
+        "pop_pad",
+        "pop_chime"
+      ],
+      "registers": [
+        "rock_stack_register",
+        "rock_low",
+        "rock_mid",
+        "rock_high",
+        "rock_wide",
+        "rock_bass"
+      ]
+    },
+    "edm_electronic": {
+      "moods": [
+        "uplifting",
+        "euphoric",
+        "dark",
+        "chill",
+        "hypnotic",
+        "playful"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "skipping_arpeggio",
+        "sustain_drone",
+        "offbeat_plucks",
+        "airy_arp",
+        "sidechain_pulse",
+        "stutter_chops",
+        "poly_bounce"
+      ],
+      "progressions": [
+        "edm_euphoric",
+        "edm_dark_drive",
+        "edm_chillwave",
+        "edm_hypnotic",
+        "edm_anthemic",
+        "edm_uplift",
+        "edm_playful_bounce",
+        "edm_techno_vamp",
+        "edm_rainy_minor",
+        "edm_glow",
+        "edm_pulse",
+        "edm_sunrise"
+      ],
+      "feels": [
+        "edm_groove",
+        "edm_hypnotic",
+        "edm_float",
+        "edm_tight",
+        "edm_riser",
+        "edm_bounce",
+        "edm_darkstep",
+        "edm_chillstep"
+      ],
+      "instruments": [
+        "edm_pluck",
+        "edm_pad",
+        "edm_bass",
+        "edm_lead",
+        "edm_chord",
+        "edm_bell",
+        "edm_fx",
+        "edm_organ",
+        "edm_strings",
+        "edm_pluck_glass"
+      ],
+      "registers": [
+        "wide_score",
+        "edm_mid",
+        "edm_bass_range",
+        "edm_wide",
+        "edm_high",
+        "edm_pluck_range"
+      ]
+    },
+    "latin_afro_cuban": {
+      "moods": [
+        "sunny",
+        "fiery",
+        "suave",
+        "sultry_minor",
+        "driving",
+        "ceremonial"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "offbeat_plucks",
+        "latin_clave",
+        "montuno_pattern",
+        "cascara_ticks",
+        "bongo_rolls",
+        "tres_guajeo"
+      ],
+      "progressions": [
+        "latin_sunny_son",
+        "latin_tumbao",
+        "latin_cadence",
+        "latin_drive",
+        "latin_ceremonial",
+        "latin_salsa_turn",
+        "latin_bolero",
+        "latin_rumba",
+        "latin_fiery",
+        "latin_suave",
+        "latin_paseo",
+        "latin_cha_cha"
+      ],
+      "feels": [
+        "latin_sway",
+        "latin_drive",
+        "latin_minor",
+        "latin_ceremonial",
+        "latin_cha_cha",
+        "latin_rumba_flow",
+        "latin_bolero_sway",
+        "latin_fiesta"
+      ],
+      "instruments": [
+        "latin_piano",
+        "latin_steel",
+        "latin_brass",
+        "latin_guitar",
+        "latin_bass",
+        "latin_flute",
+        "latin_marimba",
+        "latin_accordion",
+        "latin_trumpet",
+        "latin_vibes"
+      ],
+      "registers": [
+        "tight_combo",
+        "latin_mid",
+        "latin_wide",
+        "latin_low",
+        "latin_high",
+        "latin_mid_low"
+      ]
+    },
+    "folk_country_bluegrass": {
+      "moods": [
+        "warm",
+        "lonesome",
+        "lively",
+        "nostalgic",
+        "campfire",
+        "dusty",
+        "bluegrass_drive",
+        "heartbreak"
+      ],
+      "patterns": [
+        "simple_arpeggio",
+        "descending_arpeggio",
+        "sustain_drone",
+        "folk_roll",
+        "travis_pick",
+        "boom_chuck",
+        "mandolin_chop",
+        "banjo_clawhammer"
+      ],
+      "progressions": [
+        "folk_circle",
+        "folk_heartbreak",
+        "bluegrass_drive",
+        "country_two_step",
+        "folk_minor_ballad",
+        "folk_warm_home",
+        "folk_lonesome",
+        "folk_nostalgic",
+        "folk_lively",
+        "folk_train",
+        "folk_moonlight",
+        "folk_gospel"
+      ],
+      "feels": [
+        "folk_simple",
+        "folk_shuffle",
+        "folk_drive",
+        "folk_waltz",
+        "folk_train_beat",
+        "folk_picker",
+        "folk_storyteller",
+        "folk_lively_drive"
+      ],
+      "instruments": [
+        "folk_acoustic",
+        "folk_banjo",
+        "folk_dulcimer",
+        "folk_fiddle",
+        "folk_mandolin",
+        "folk_harmonica",
+        "folk_piano",
+        "folk_bass",
+        "folk_accordion",
+        "folk_woodwinds"
+      ],
+      "registers": [
+        "folk_mid",
+        "folk_low",
+        "folk_high",
+        "folk_wide",
+        "folk_bass",
+        "folk_upper"
+      ]
+    }
+  }
+}
