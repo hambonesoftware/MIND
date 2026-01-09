@@ -8,6 +8,7 @@ import { STYLE_CATALOG } from '../music/styleCatalog.js';
 import { buildStyleOptionSets, resolveThoughtStyle } from '../music/styleResolver.js';
 import { PATTERN_BY_ID } from '../music/patternCatalog.js';
 import { normalizeMusicThoughtParams } from '../music/normalizeThought.js';
+import { PRESET_LIBRARY } from '../music/presetLibrary.js';
 import { insertMoonlightTrebleTemplate } from '../templates/moonlightTreble.js';
 import {
   buildPresetRhythmA,
@@ -28,6 +29,281 @@ const SOUND_FONTS = [
 const STYLE_DROPDOWN_VIEW_OPTIONS = [
   { value: 'recommended', label: 'Recommended (Style+Mood)' },
   { value: 'all', label: 'All in Style' },
+];
+
+const BEGINNER_DEFAULTS = {
+  role: 'verse',
+  voice: 'auto',
+  style: 'pop',
+  inst: 'auto',
+  pat: 'auto',
+  mood: 'warm',
+  energy: 'medium',
+  complexity: 'normal',
+  variation: 'similar',
+  len: '8',
+  reg: 'mid',
+  reroll: 0,
+};
+
+const BEGINNER_OPTIONS = {
+  role: [
+    { value: 'intro', label: 'Intro' },
+    { value: 'verse', label: 'Verse' },
+    { value: 'pre-chorus', label: 'Pre-Chorus' },
+    { value: 'chorus', label: 'Chorus' },
+    { value: 'bridge', label: 'Bridge' },
+    { value: 'outro', label: 'Outro' },
+    { value: 'fill', label: 'Fill/Transition' },
+  ],
+  voice: [
+    { value: 'auto', label: 'Auto' },
+    { value: 'lead', label: 'Lead' },
+    { value: 'harmony', label: 'Harmony' },
+    { value: 'bass', label: 'Bass' },
+    { value: 'drums', label: 'Drums' },
+    { value: 'fx', label: 'FX/Transitions' },
+  ],
+  style: [
+    { value: 'pop', label: 'Pop' },
+    { value: 'hip-hop', label: 'Hip-Hop' },
+    { value: 'electronic', label: 'Electronic' },
+    { value: 'lo-fi', label: 'Lo-Fi' },
+    { value: 'rock', label: 'Rock' },
+    { value: 'jazz', label: 'Jazz' },
+    { value: 'classical', label: 'Classical' },
+    { value: 'cinematic', label: 'Cinematic' },
+    { value: 'world', label: 'World' },
+    { value: 'experimental', label: 'Experimental' },
+  ],
+  mood: [
+    { value: 'bright', label: 'Bright' },
+    { value: 'warm', label: 'Warm' },
+    { value: 'dreamy', label: 'Dreamy' },
+    { value: 'dark', label: 'Dark' },
+    { value: 'mysterious', label: 'Mysterious' },
+    { value: 'tense', label: 'Tense' },
+    { value: 'epic', label: 'Epic' },
+    { value: 'playful', label: 'Playful' },
+  ],
+  energy: [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'peak', label: 'Peak' },
+  ],
+  complexity: [
+    { value: 'simple', label: 'Simple' },
+    { value: 'normal', label: 'Normal' },
+    { value: 'rich', label: 'Rich' },
+  ],
+  variation: [
+    { value: 'same', label: 'Same' },
+    { value: 'similar', label: 'Similar' },
+    { value: 'fresh', label: 'Fresh' },
+    { value: 'wild', label: 'Wild' },
+  ],
+  len: [
+    { value: '2', label: '2 bars' },
+    { value: '4', label: '4 bars' },
+    { value: '8', label: '8 bars' },
+    { value: '16', label: '16 bars' },
+  ],
+  reg: [
+    { value: 'low', label: 'Low' },
+    { value: 'mid', label: 'Mid' },
+    { value: 'high', label: 'High' },
+  ],
+};
+
+const BEGINNER_INSTRUMENTS = {
+  auto: [
+    { id: 'gm:0:0', label: 'Piano' },
+    { id: 'gm:0:48', label: 'Strings' },
+    { id: 'gm:0:80', label: 'Lead Synth' },
+  ],
+  lead: [
+    { id: 'gm:0:80', label: 'Lead Synth' },
+    { id: 'gm:0:56', label: 'Trumpet' },
+    { id: 'gm:0:0', label: 'Piano' },
+  ],
+  harmony: [
+    { id: 'gm:0:48', label: 'String Ensemble' },
+    { id: 'gm:0:52', label: 'Choir Aahs' },
+    { id: 'gm:0:0', label: 'Piano' },
+  ],
+  bass: [
+    { id: 'gm:0:32', label: 'Acoustic Bass' },
+  ],
+  drums: [
+    { id: 'gm_kick', label: 'Kick Drum' },
+    { id: 'gm_snare', label: 'Snare Drum' },
+    { id: 'gm_hat', label: 'Hi-Hat' },
+  ],
+  fx: [
+    { id: 'gm:0:52', label: 'Choir Aahs' },
+    { id: 'gm:0:56', label: 'Trumpet' },
+    { id: 'gm:0:48', label: 'String Ensemble' },
+  ],
+};
+
+const BEGINNER_PATTERN_FAMILIES = {
+  lead: [
+    { id: 'hook', label: 'Hook' },
+    { id: 'riff', label: 'Riff' },
+    { id: 'flowing_line', label: 'Flowing Line' },
+    { id: 'call_response', label: 'Call/Response' },
+    { id: 'light_fills', label: 'Runs/Fills (Light)' },
+    { id: 'arp_texture', label: 'Arp Texture', optional: true },
+  ],
+  harmony: [
+    { id: 'stabs', label: 'Stabs / Comping' },
+    { id: 'strum_roll', label: 'Strum/Roll' },
+    { id: 'pad_drone', label: 'Pad/Drone' },
+    { id: 'chops', label: 'Chops' },
+    { id: 'pulse', label: 'Pulse' },
+    { id: 'arp_texture', label: 'Arp Texture', optional: true },
+  ],
+  bass: [
+    { id: 'root_pulse', label: 'Root Pulse' },
+    { id: 'octave_bounce', label: 'Octave Bounce' },
+    { id: 'pedal_tone', label: 'Pedal Tone' },
+    { id: 'walking_bass', label: 'Walking', styles: ['jazz', 'cinematic'] },
+    { id: 'syncop_bass', label: 'Syncop Bass' },
+  ],
+  drums: [
+    { id: 'basic_groove', label: 'Basic Groove' },
+    { id: 'busy_groove', label: 'Busy Groove' },
+    { id: 'half_time', label: 'Half-time' },
+    { id: 'breakbeat', label: 'Breakbeat' },
+    { id: 'swing_groove', label: 'Swing/Shuffley', styles: ['jazz'] },
+    { id: 'fill_transition', label: 'Fill/Transition' },
+  ],
+  fx: [
+    { id: 'riser', label: 'Riser' },
+    { id: 'impact', label: 'Impact' },
+    { id: 'noise_sweep', label: 'Noise Sweep' },
+    { id: 'reverse', label: 'Reverse' },
+    { id: 'transition_fill', label: 'Transition Fill' },
+  ],
+};
+
+const ROLE_DEFAULTS = {
+  intro: { energy: 'low', variation: 'similar' },
+  verse: { energy: 'medium', variation: 'similar' },
+  'pre-chorus': { energy: 'high', variation: 'fresh' },
+  chorus: { energy: 'high', variation: 'fresh' },
+  bridge: { energy: 'medium', variation: 'wild' },
+  outro: { energy: 'low', variation: 'similar' },
+  fill: { energy: 'high', variation: 'fresh', len: '2' },
+};
+
+const ADVANCED_DEFAULTS = {
+  style: {
+    subtype: 'auto',
+    era: 'auto',
+    feelBias: 'auto',
+    avoidArps: 'auto',
+    avoidLeaps: 'auto',
+    avoidBusy: 'auto',
+    avoidChromatic: 'auto',
+  },
+  voice: {
+    articulation: 'auto',
+    tone: 'auto',
+    humanization: 'auto',
+    polyMode: 'auto',
+    layering: 'auto',
+  },
+  pattern: {
+    rhythmMask: 'auto',
+    density: 'auto',
+    accents: 'auto',
+    contour: 'auto',
+    repetition: 'auto',
+  },
+  mood: {
+    tension: 'auto',
+    brightness: 'auto',
+    resolution: 'auto',
+  },
+  energy: {
+    dynamics: 'auto',
+    drive: 'auto',
+    attack: 'auto',
+    peaks: 'auto',
+  },
+  complexity: {
+    harmony: 'auto',
+    melody: 'auto',
+    rhythm: 'auto',
+    ornamentation: 'auto',
+  },
+  variation: {
+    strategy: 'auto',
+    similarity: 'auto',
+    antiRepeat: 'auto',
+    seedMode: 'auto',
+  },
+  length: {
+    phrase: 'auto',
+    cadence: 'auto',
+  },
+  register: {
+    width: 'auto',
+    movement: 'auto',
+  },
+};
+
+const BEGINNER_VALUE_SETS = {
+  role: new Set(BEGINNER_OPTIONS.role.map(option => option.value)),
+  voice: new Set(BEGINNER_OPTIONS.voice.map(option => option.value)),
+  style: new Set(BEGINNER_OPTIONS.style.map(option => option.value)),
+  mood: new Set(BEGINNER_OPTIONS.mood.map(option => option.value)),
+  energy: new Set(BEGINNER_OPTIONS.energy.map(option => option.value)),
+  complexity: new Set(BEGINNER_OPTIONS.complexity.map(option => option.value)),
+  variation: new Set(BEGINNER_OPTIONS.variation.map(option => option.value)),
+  len: new Set(BEGINNER_OPTIONS.len.map(option => option.value)),
+  reg: new Set(BEGINNER_OPTIONS.reg.map(option => option.value)),
+};
+
+const PRESET_ADVANCED_FIELDS = [
+  { key: 'style_sub', path: ['style', 'subtype'] },
+  { key: 'style_era', path: ['style', 'era'] },
+  { key: 'style_feel', path: ['style', 'feelBias'] },
+  { key: 'avoid_arps', path: ['style', 'avoidArps'] },
+  { key: 'avoid_leaps', path: ['style', 'avoidLeaps'] },
+  { key: 'avoid_busy', path: ['style', 'avoidBusy'] },
+  { key: 'avoid_chromatic', path: ['style', 'avoidChromatic'] },
+  { key: 'voice_art', path: ['voice', 'articulation'] },
+  { key: 'voice_tone', path: ['voice', 'tone'] },
+  { key: 'voice_human', path: ['voice', 'humanization'] },
+  { key: 'voice_poly', path: ['voice', 'polyMode'] },
+  { key: 'voice_layer', path: ['voice', 'layering'] },
+  { key: 'pattern_mask', path: ['pattern', 'rhythmMask'] },
+  { key: 'pattern_density', path: ['pattern', 'density'] },
+  { key: 'pattern_accents', path: ['pattern', 'accents'] },
+  { key: 'pattern_contour', path: ['pattern', 'contour'] },
+  { key: 'pattern_repeat', path: ['pattern', 'repetition'] },
+  { key: 'mood_tension', path: ['mood', 'tension'] },
+  { key: 'mood_bright', path: ['mood', 'brightness'] },
+  { key: 'mood_resolve', path: ['mood', 'resolution'] },
+  { key: 'energy_dyn', path: ['energy', 'dynamics'] },
+  { key: 'energy_drive', path: ['energy', 'drive'] },
+  { key: 'energy_attack', path: ['energy', 'attack'] },
+  { key: 'energy_peaks', path: ['energy', 'peaks'] },
+  { key: 'complexity_harmony', path: ['complexity', 'harmony'] },
+  { key: 'complexity_melody', path: ['complexity', 'melody'] },
+  { key: 'complexity_rhythm', path: ['complexity', 'rhythm'] },
+  { key: 'complexity_orn', path: ['complexity', 'ornamentation'] },
+  { key: 'variation_strategy', path: ['variation', 'strategy'] },
+  { key: 'variation_similarity', path: ['variation', 'similarity'] },
+  { key: 'variation_window', path: ['variation', 'antiRepeat'] },
+  { key: 'variation_seedmode', path: ['variation', 'seedMode'] },
+  { key: 'length_phrase', path: ['length', 'phrase'] },
+  { key: 'length_cadence', path: ['length', 'cadence'] },
+  { key: 'register_width', path: ['register', 'width'] },
+  { key: 'register_move', path: ['register', 'movement'] },
 ];
 
 let currentFocusScope = '';
@@ -57,6 +333,240 @@ function debounce(fn, delay = 250) {
   return wrapped;
 }
 
+function getInstrumentOptions(voiceType, presets = []) {
+  const presetMap = new Map((presets || []).map(preset => [preset.id, preset.name]));
+  const curated = BEGINNER_INSTRUMENTS[voiceType] || BEGINNER_INSTRUMENTS.auto;
+  const baseOptions = curated.map(item => ({
+    value: item.id,
+    label: presetMap.get(item.id) || item.label || item.id,
+  }));
+  const options = [{ value: 'auto', label: 'Auto (curated)' }, ...baseOptions];
+  const seen = new Set();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
+
+function getPatternOptions(voiceType, styleId) {
+  const curated = BEGINNER_PATTERN_FAMILIES[voiceType] || [];
+  const filtered = curated.filter((item) => {
+    if (!item.styles || item.styles.length === 0) return true;
+    return item.styles.includes(styleId);
+  });
+  const options = filtered.map(item => ({
+    value: item.id,
+    label: item.label,
+  }));
+  return [{ value: 'auto', label: 'Auto (curated)' }, ...options];
+}
+
+function getDefaultInstrumentForVoice(voiceType) {
+  if (voiceType === 'auto') {
+    return 'auto';
+  }
+  const curated = BEGINNER_INSTRUMENTS[voiceType] || BEGINNER_INSTRUMENTS.auto;
+  return curated[0]?.id || 'auto';
+}
+
+function getDefaultPatternForVoice(voiceType, role) {
+  if (voiceType === 'auto') {
+    return 'auto';
+  }
+  if (role === 'fill') {
+    if (voiceType === 'drums') return 'fill_transition';
+    if (voiceType === 'fx') return 'transition_fill';
+    return 'light_fills';
+  }
+  switch (voiceType) {
+    case 'lead':
+      return 'hook';
+    case 'harmony':
+      return 'pad_drone';
+    case 'bass':
+      return 'root_pulse';
+    case 'drums':
+      return 'basic_groove';
+    case 'fx':
+      return 'riser';
+    default:
+      return 'auto';
+  }
+}
+
+function cloneAdvancedDefaults() {
+  return JSON.parse(JSON.stringify(ADVANCED_DEFAULTS));
+}
+
+function mergeAdvancedState(current, next) {
+  const base = cloneAdvancedDefaults();
+  const merged = { ...base, ...(current || {}) };
+  Object.keys(next || {}).forEach((sectionKey) => {
+    merged[sectionKey] = {
+      ...(merged[sectionKey] || {}),
+      ...(next[sectionKey] || {}),
+    };
+  });
+  return merged;
+}
+
+function getNestedValue(obj, path) {
+  return path.reduce((acc, key) => (acc ? acc[key] : undefined), obj);
+}
+
+function setNestedValue(obj, path, value) {
+  let cursor = obj;
+  for (let i = 0; i < path.length - 1; i += 1) {
+    const key = path[i];
+    if (!cursor[key] || typeof cursor[key] !== 'object') {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+  cursor[path[path.length - 1]] = value;
+}
+
+function parsePresetCode(code) {
+  const raw = String(code || '').trim();
+  if (!raw) {
+    return { ok: false, error: null };
+  }
+  const parts = raw.split('|');
+  if (parts.length < 4 || parts[0] !== 'MIND') {
+    return { ok: false, error: 'Preset Code must start with “MIND|PS#|GV#|”.' };
+  }
+  const schemaVersion = parts[1] || 'PS1';
+  const generatorVersion = parts[2] || 'GV1';
+  const body = parts.slice(3).join('|');
+  const entries = body.split(';').map(segment => segment.trim()).filter(Boolean);
+  const nextBeginner = { ...BEGINNER_DEFAULTS };
+  const nextAdvanced = cloneAdvancedDefaults();
+  const allowedKeys = new Set([
+    'role',
+    'voice',
+    'style',
+    'inst',
+    'pat',
+    'mood',
+    'energy',
+    'complexity',
+    'variation',
+    'len',
+    'reg',
+    'reroll',
+  ]);
+  const advancedKeyMap = new Map(PRESET_ADVANCED_FIELDS.map(field => [field.key, field]));
+
+  entries.forEach((entry) => {
+    const [rawKey, rawValue = ''] = entry.split('=');
+    const key = String(rawKey || '').trim().toLowerCase();
+    const value = String(rawValue || '').trim().toLowerCase();
+    const advancedField = advancedKeyMap.get(key);
+    if (advancedField) {
+      setNestedValue(nextAdvanced, advancedField.path, value || 'auto');
+      return;
+    }
+    if (!allowedKeys.has(key)) {
+      return;
+    }
+    if (key === 'inst' || key === 'pat') {
+      if (value) {
+        nextBeginner[key] = value;
+      }
+      return;
+    }
+    if (key === 'reroll') {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        nextBeginner.reroll = parsed;
+      }
+      return;
+    }
+    if (key === 'len') {
+      const normalized = value;
+      if (BEGINNER_VALUE_SETS.len.has(normalized)) {
+        nextBeginner.len = normalized;
+      }
+      return;
+    }
+    const allowed = BEGINNER_VALUE_SETS[key];
+    if (allowed && allowed.has(value)) {
+      nextBeginner[key] = value;
+    }
+  });
+
+  const normalized = buildPresetCodeFromBeginner(nextBeginner, {
+    schemaVersion: 'PS2',
+    generatorVersion,
+    advanced: nextAdvanced,
+  });
+  return {
+    ok: true,
+    beginner: nextBeginner,
+    advanced: nextAdvanced,
+    normalized,
+    schemaVersion,
+    generatorVersion,
+  };
+}
+
+function hashStringToSeed(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = (hash + (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24)) >>> 0;
+  }
+  return hash;
+}
+
+function compilePresetCode(code) {
+  const parsed = parsePresetCode(code);
+  if (!parsed.ok) {
+    return { ok: false, error: parsed.error || 'Invalid Preset Code.' };
+  }
+  const normalized = parsed.normalized;
+  const seed = hashStringToSeed(`${normalized}|${parsed.generatorVersion}`);
+  return {
+    ok: true,
+    presetCode: normalized,
+    beginner: parsed.beginner,
+    advanced: parsed.advanced,
+    compiledArtifact: {
+      presetCode: normalized,
+      generatorVersion: parsed.generatorVersion,
+      seed,
+    },
+  };
+}
+
+function buildPresetCodeFromBeginner(beginner, { schemaVersion = 'PS2', generatorVersion = 'GV1', advanced = null } = {}) {
+  const normalized = { ...BEGINNER_DEFAULTS, ...(beginner || {}) };
+  const fields = [
+    ['role', normalized.role],
+    ['voice', normalized.voice],
+    ['style', normalized.style],
+    ['inst', normalized.inst],
+    ['pat', normalized.pat],
+    ['mood', normalized.mood],
+    ['energy', normalized.energy],
+    ['complexity', normalized.complexity],
+    ['variation', normalized.variation],
+    ['len', normalized.len],
+    ['reg', normalized.reg],
+    ['reroll', Number.isFinite(Number(normalized.reroll)) ? Number(normalized.reroll) : 0],
+  ];
+  if (schemaVersion === 'PS2') {
+    const advancedState = mergeAdvancedState(advanced, {});
+    PRESET_ADVANCED_FIELDS.forEach((field) => {
+      const value = getNestedValue(advancedState, field.path) ?? 'auto';
+      fields.push([field.key, value || 'auto']);
+    });
+  }
+  const pairs = fields.map(([key, value]) => `${key}=${value}`);
+  return `MIND|${schemaVersion}|${generatorVersion}|${pairs.join(';')}`;
+}
+
 let presetCache = null;
 let presetCachePromise = null;
 
@@ -79,6 +589,49 @@ async function loadPresets() {
 
 const customMelodyState = new Map();
 let customMelodyClipboard = null;
+
+const STORAGE_KEYS = {
+  recent: 'mindRecentPresets',
+  saved: 'mindSavedPresets',
+};
+
+function readPresetStorage(key) {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function writePresetStorage(key, value) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    // ignore storage errors
+  }
+}
+
+function addRecentPreset(entry) {
+  const list = readPresetStorage(STORAGE_KEYS.recent);
+  const filtered = list.filter(item => item.code !== entry.code);
+  filtered.unshift(entry);
+  writePresetStorage(STORAGE_KEYS.recent, filtered.slice(0, 10));
+}
+
+function addSavedPreset(entry) {
+  const list = readPresetStorage(STORAGE_KEYS.saved);
+  const filtered = list.filter(item => item.name !== entry.name);
+  filtered.unshift(entry);
+  writePresetStorage(STORAGE_KEYS.saved, filtered.slice(0, 20));
+}
 
 function buildField({ label, type, value, onChange, placeholder, helper, focusKey, commitDelay = 250 }) {
   const wrapper = document.createElement('label');
@@ -635,6 +1188,57 @@ export function createFlowInspector({ store } = {}) {
         },
       });
     };
+    const beginnerState = { ...BEGINNER_DEFAULTS, ...(params.beginner || {}) };
+    const advancedState = mergeAdvancedState(params.advanced, {});
+    let presetCodeValue = params.presetCode || '';
+    if (!presetCodeValue || !String(presetCodeValue).startsWith('MIND|')) {
+      const generated = buildPresetCodeFromBeginner(beginnerState, { advanced: advancedState });
+      if (presetCodeValue !== generated) {
+        updateParams({
+          presetCode: generated,
+          advanced: advancedState,
+          beginner: beginnerState,
+        });
+      }
+      presetCodeValue = generated;
+    } else {
+      const migrated = parsePresetCode(presetCodeValue);
+      if (migrated.ok && migrated.normalized !== presetCodeValue) {
+        updateParams({
+          presetCode: migrated.normalized,
+          beginner: migrated.beginner,
+          advanced: mergeAdvancedState(migrated.advanced, {}),
+        });
+        presetCodeValue = migrated.normalized;
+      }
+    }
+    const parsedPresetCode = parsePresetCode(presetCodeValue);
+    const presetCodeError = parsedPresetCode?.error || null;
+    const compiledPresetCode = params.compiledPresetCode || '';
+    const isDirtyPreset = presetCodeValue !== compiledPresetCode;
+    const compiledParsed = compiledPresetCode ? parsePresetCode(compiledPresetCode) : null;
+    const rebuildChanges = (() => {
+      if (!compiledParsed?.ok) return [];
+      const fields = [
+        ['role', 'Role'],
+        ['voice', 'Voice'],
+        ['style', 'Style'],
+        ['inst', 'Instrument'],
+        ['pat', 'Pattern'],
+        ['mood', 'Mood'],
+        ['energy', 'Energy'],
+        ['complexity', 'Complexity'],
+        ['variation', 'Variation'],
+        ['len', 'Length'],
+        ['reg', 'Register'],
+      ];
+      return fields
+        .filter(([key]) => compiledParsed.beginner?.[key] !== beginnerState[key])
+        .map(([, label]) => label);
+    })();
+    const rebuildSummary = rebuildChanges.length
+      ? `Updated: ${rebuildChanges.slice(0, 3).join(' + ')}`
+      : 'Up to date.';
     const coerceSeed = (value, fallback = 1) => (
       Number.isFinite(value) ? Number(value) : fallback
     );
@@ -806,7 +1410,7 @@ export function createFlowInspector({ store } = {}) {
       return wrapper;
     };
 
-    const inspectorViewMode = canon.dropdownViewPrefs?.inspectorView || 'simple';
+    const inspectorViewMode = canon.dropdownViewPrefs?.inspectorView || 'beginner';
 
     const renderViewModeSection = () => {
       const body = document.createElement('div');
@@ -815,6 +1419,7 @@ export function createFlowInspector({ store } = {}) {
         label: 'View',
         value: inspectorViewMode,
         options: [
+          { value: 'beginner', label: 'Beginner' },
           { value: 'simple', label: 'Simple' },
           { value: 'advanced', label: 'Advanced' },
           { value: 'expert', label: 'Expert' },
@@ -822,6 +1427,627 @@ export function createFlowInspector({ store } = {}) {
         onChange: value => updateDropdownPrefs('inspectorView', value),
       }));
       return buildSection('Inspector Mode', body);
+    };
+
+    const updateBeginnerState = (next) => {
+      let merged = { ...beginnerState, ...next };
+      const roleChanged = Object.prototype.hasOwnProperty.call(next, 'role')
+        && next.role !== beginnerState.role;
+      const voiceChanged = Object.prototype.hasOwnProperty.call(next, 'voice')
+        && next.voice !== beginnerState.voice;
+      const styleChanged = Object.prototype.hasOwnProperty.call(next, 'style')
+        && next.style !== beginnerState.style;
+
+      if (roleChanged) {
+        const defaults = ROLE_DEFAULTS[merged.role] || {};
+        Object.entries(defaults).forEach(([key, value]) => {
+          if (!Object.prototype.hasOwnProperty.call(next, key)) {
+            merged[key] = value;
+          }
+        });
+        if (merged.role === 'fill' && !Object.prototype.hasOwnProperty.call(next, 'pat')) {
+          merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
+        }
+      }
+
+      if (voiceChanged) {
+        if (!Object.prototype.hasOwnProperty.call(next, 'inst')) {
+          merged.inst = getDefaultInstrumentForVoice(merged.voice);
+        }
+        if (!Object.prototype.hasOwnProperty.call(next, 'pat')) {
+          merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
+        }
+      }
+
+      if (styleChanged && merged.voice === 'bass') {
+        const styleOptions = getPatternOptions(merged.voice, merged.style);
+        if (!styleOptions.some(option => option.value === merged.pat)) {
+          merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
+        }
+      }
+
+      const instrumentOptions = getInstrumentOptions(merged.voice, presetCache || []);
+      if (!instrumentOptions.some(option => option.value === merged.inst)) {
+        merged.inst = getDefaultInstrumentForVoice(merged.voice);
+      }
+
+      const patternOptions = getPatternOptions(merged.voice, merged.style);
+      if (!patternOptions.some(option => option.value === merged.pat)) {
+        merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
+      }
+
+      updateParams({
+        beginner: merged,
+        presetCode: buildPresetCodeFromBeginner(merged, { advanced: advancedState }),
+      });
+    };
+
+    const updateAdvancedState = (nextSection) => {
+      const mergedAdvanced = mergeAdvancedState(advancedState, nextSection);
+      updateParams({
+        advanced: mergedAdvanced,
+        presetCode: buildPresetCodeFromBeginner(beginnerState, { advanced: mergedAdvanced }),
+      });
+    };
+
+    const buildPresetCodeHeader = () => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flow-preset-header';
+
+      const field = document.createElement('div');
+      field.className = 'flow-preset-field';
+
+      const label = document.createElement('div');
+      label.className = 'flow-field-label';
+      label.textContent = 'Preset Code';
+      field.appendChild(label);
+
+      const inputRow = document.createElement('div');
+      inputRow.className = 'flow-preset-input-row';
+
+      const input = document.createElement('input');
+      input.className = 'flow-field-input flow-preset-input';
+      input.type = 'text';
+      input.value = presetCodeValue;
+      input.placeholder = 'MIND|PS1|GV1|...';
+      input.dataset.focusKey = currentFocusScope ? `${currentFocusScope}:presetCode` : 'presetCode';
+      input.addEventListener('input', () => {
+        updateParams({ presetCode: input.value });
+      });
+      const applyPresetCode = () => {
+        const parsed = parsePresetCode(input.value);
+        if (!parsed.ok) {
+          return;
+        }
+        updateParams({
+          presetCode: parsed.normalized,
+          beginner: parsed.beginner,
+          advanced: mergeAdvancedState(parsed.advanced, {}),
+        });
+      };
+      input.addEventListener('blur', applyPresetCode);
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          applyPresetCode();
+        }
+      });
+      inputRow.appendChild(input);
+
+      const actions = document.createElement('div');
+      actions.className = 'flow-preset-actions';
+
+      const rerollButton = document.createElement('button');
+      rerollButton.type = 'button';
+      rerollButton.className = 'flow-secondary';
+      rerollButton.textContent = 'Reroll';
+      rerollButton.addEventListener('click', () => {
+        const nextReroll = (Number(beginnerState.reroll) || 0) + 1;
+        const nextBeginner = { ...beginnerState, reroll: nextReroll };
+        updateParams({
+          beginner: nextBeginner,
+          presetCode: buildPresetCodeFromBeginner(nextBeginner, { advanced: advancedState }),
+        });
+      });
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'flow-secondary';
+      copyButton.textContent = 'Copy';
+      copyButton.addEventListener('click', async () => {
+        if (navigator?.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(input.value);
+          } catch (error) {
+            // ignore clipboard errors
+          }
+        }
+      });
+
+      const pasteButton = document.createElement('button');
+      pasteButton.type = 'button';
+      pasteButton.className = 'flow-secondary';
+      pasteButton.textContent = 'Paste';
+      pasteButton.addEventListener('click', async () => {
+        if (navigator?.clipboard?.readText) {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (typeof text === 'string') {
+              updateParams({ presetCode: text.trim() });
+              input.value = text.trim();
+              applyPresetCode();
+            }
+          } catch (error) {
+            // ignore clipboard errors
+          }
+        }
+      });
+
+      actions.appendChild(copyButton);
+      actions.appendChild(pasteButton);
+      actions.appendChild(rerollButton);
+      inputRow.appendChild(actions);
+      field.appendChild(inputRow);
+
+      if (presetCodeError) {
+        const error = document.createElement('div');
+        error.className = 'flow-field-error';
+        error.textContent = presetCodeError;
+        field.appendChild(error);
+      }
+
+      wrapper.appendChild(field);
+
+      const status = document.createElement('div');
+      status.className = `flow-preset-status ${isDirtyPreset ? 'flow-preset-status-dirty' : ''}`;
+      status.textContent = isDirtyPreset ? '⚠️ Needs rebuild' : '✅ Up to date';
+      const statusNote = document.createElement('div');
+      statusNote.className = 'flow-preset-status-note';
+      statusNote.textContent = rebuildSummary;
+      wrapper.appendChild(status);
+      wrapper.appendChild(statusNote);
+
+      const rebuildButton = document.createElement('button');
+      rebuildButton.type = 'button';
+      rebuildButton.className = 'flow-primary';
+      rebuildButton.textContent = 'Rebuild';
+      rebuildButton.addEventListener('click', () => {
+        const compiled = compilePresetCode(input.value);
+        if (!compiled.ok) {
+          return;
+        }
+        updateParams({
+          presetCode: compiled.presetCode,
+          compiledPresetCode: compiled.presetCode,
+          compiledArtifact: compiled.compiledArtifact,
+          beginner: compiled.beginner,
+          advanced: mergeAdvancedState(compiled.advanced, {}),
+        });
+        input.value = compiled.presetCode;
+      });
+      wrapper.appendChild(rebuildButton);
+
+      return wrapper;
+    };
+
+    const renderBeginnerPanel = () => {
+      const instrumentOptions = getInstrumentOptions(beginnerState.voice, presetCache || []);
+      const patternOptions = getPatternOptions(beginnerState.voice, beginnerState.style);
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+
+      body.appendChild(buildSection('Identity', (() => {
+        const section = document.createElement('div');
+        section.className = 'flow-section-body';
+        section.appendChild(buildSelect({
+          label: 'Role',
+          value: beginnerState.role,
+          options: BEGINNER_OPTIONS.role,
+          onChange: value => updateBeginnerState({ role: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Voice Type',
+          value: beginnerState.voice,
+          options: BEGINNER_OPTIONS.voice,
+          onChange: value => updateBeginnerState({ voice: value }),
+        }));
+        return section;
+      })()));
+
+      body.appendChild(buildSection('Sound', (() => {
+        const section = document.createElement('div');
+        section.className = 'flow-section-body';
+        section.appendChild(buildSelect({
+          label: 'Style',
+          value: beginnerState.style,
+          options: BEGINNER_OPTIONS.style,
+          onChange: value => updateBeginnerState({ style: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Instrument',
+          value: beginnerState.inst,
+          options: instrumentOptions,
+          onChange: value => updateBeginnerState({ inst: value }),
+        }));
+        return section;
+      })()));
+
+      body.appendChild(buildSection('Motion', (() => {
+        const section = document.createElement('div');
+        section.className = 'flow-section-body';
+        section.appendChild(buildSelect({
+          label: 'Pattern',
+          value: beginnerState.pat,
+          options: patternOptions,
+          onChange: value => updateBeginnerState({ pat: value }),
+        }));
+        return section;
+      })()));
+
+      body.appendChild(buildSection('Feel', (() => {
+        const section = document.createElement('div');
+        section.className = 'flow-section-body';
+        section.appendChild(buildSelect({
+          label: 'Mood',
+          value: beginnerState.mood,
+          options: BEGINNER_OPTIONS.mood,
+          onChange: value => updateBeginnerState({ mood: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Energy',
+          value: beginnerState.energy,
+          options: BEGINNER_OPTIONS.energy,
+          onChange: value => updateBeginnerState({ energy: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Complexity',
+          value: beginnerState.complexity,
+          options: BEGINNER_OPTIONS.complexity,
+          onChange: value => updateBeginnerState({ complexity: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Variation',
+          value: beginnerState.variation,
+          options: BEGINNER_OPTIONS.variation,
+          onChange: value => updateBeginnerState({ variation: value }),
+        }));
+        return section;
+      })()));
+
+      body.appendChild(buildSection('Size', (() => {
+        const section = document.createElement('div');
+        section.className = 'flow-section-body';
+        section.appendChild(buildSelect({
+          label: 'Length',
+          value: beginnerState.len,
+          options: BEGINNER_OPTIONS.len,
+          onChange: value => updateBeginnerState({ len: value }),
+        }));
+        section.appendChild(buildSelect({
+          label: 'Register',
+          value: beginnerState.reg,
+          options: BEGINNER_OPTIONS.reg,
+          onChange: value => updateBeginnerState({ reg: value }),
+        }));
+        return section;
+      })()));
+
+      const explainer = document.createElement('div');
+      explainer.className = 'flow-section-body';
+      const roleLabel = BEGINNER_OPTIONS.role.find(option => option.value === beginnerState.role)?.label || beginnerState.role;
+      const voiceLabel = BEGINNER_OPTIONS.voice.find(option => option.value === beginnerState.voice)?.label || beginnerState.voice;
+      const patternLabel = patternOptions.find(option => option.value === beginnerState.pat)?.label || beginnerState.pat;
+      const energyLabel = BEGINNER_OPTIONS.energy.find(option => option.value === beginnerState.energy)?.label || beginnerState.energy;
+      const complexityLabel = BEGINNER_OPTIONS.complexity.find(option => option.value === beginnerState.complexity)?.label || beginnerState.complexity;
+      const lines = [
+        `Role intention: ${roleLabel}`,
+        `Voice behavior: ${voiceLabel}`,
+        `Pattern family: ${patternLabel}`,
+        `Energy/Complexity: ${energyLabel} · ${complexityLabel}`,
+      ];
+      lines.forEach((text) => {
+        const line = document.createElement('div');
+        line.className = 'flow-field-help';
+        line.textContent = text;
+        explainer.appendChild(line);
+      });
+      body.appendChild(buildSection('What you’re hearing', explainer));
+
+      return buildSection('Beginner', body);
+    };
+
+    const applyPresetEntry = (entry) => {
+      if (!entry?.code) return;
+      const parsed = parsePresetCode(entry.code);
+      if (!parsed.ok) return;
+      updateParams({
+        presetCode: parsed.normalized,
+        beginner: parsed.beginner,
+        advanced: mergeAdvancedState(parsed.advanced, {}),
+      });
+      addRecentPreset({
+        name: entry.name || 'Preset',
+        code: parsed.normalized,
+      });
+    };
+
+    const renderPresetList = (title, presets, { allowSave = false } = {}) => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      if (!presets.length) {
+        const empty = document.createElement('div');
+        empty.className = 'flow-field-help';
+        empty.textContent = 'No presets available yet.';
+        body.appendChild(empty);
+        return buildSection(title, body, { collapsible: true, defaultOpen: false });
+      }
+      presets.forEach((preset) => {
+        const row = document.createElement('div');
+        row.className = 'flow-inline-actions';
+        const name = document.createElement('div');
+        name.className = 'flow-section-title';
+        name.textContent = preset.name || preset.id || 'Preset';
+        row.appendChild(name);
+        if (preset.description) {
+          const desc = document.createElement('div');
+          desc.className = 'flow-field-help';
+          desc.textContent = preset.description;
+          row.appendChild(desc);
+        }
+        const actionRow = document.createElement('div');
+        actionRow.className = 'flow-seed-actions';
+        const applyButton = document.createElement('button');
+        applyButton.type = 'button';
+        applyButton.textContent = 'Apply';
+        applyButton.addEventListener('click', () => applyPresetEntry(preset));
+        actionRow.appendChild(applyButton);
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.textContent = 'Copy Code';
+        copyButton.addEventListener('click', async () => {
+          if (navigator?.clipboard?.writeText) {
+            try {
+              await navigator.clipboard.writeText(preset.code || '');
+            } catch (error) {
+              // ignore copy errors
+            }
+          }
+        });
+        actionRow.appendChild(copyButton);
+        if (allowSave) {
+          const saveButton = document.createElement('button');
+          saveButton.type = 'button';
+          saveButton.textContent = 'Save';
+          saveButton.addEventListener('click', () => {
+            const nameValue = window.prompt('Save preset as:', preset.name || '');
+            if (!nameValue) return;
+            addSavedPreset({
+              name: nameValue,
+              code: preset.code,
+            });
+          });
+          actionRow.appendChild(saveButton);
+        }
+        row.appendChild(actionRow);
+        body.appendChild(row);
+      });
+      return buildSection(title, body, { collapsible: true, defaultOpen: false });
+    };
+
+    const renderPresetLibraryPanel = () => {
+      const savedPresets = readPresetStorage(STORAGE_KEYS.saved);
+      const recentPresets = readPresetStorage(STORAGE_KEYS.recent);
+      const curated = PRESET_LIBRARY.map((preset) => ({
+        ...preset,
+      }));
+      const sections = document.createElement('div');
+      sections.className = 'flow-section-body';
+      sections.appendChild(renderPresetList('Curated Presets', curated, { allowSave: true }));
+      sections.appendChild(renderPresetList('Saved Presets', savedPresets));
+      sections.appendChild(renderPresetList('Recent Presets', recentPresets));
+      return buildSection('Preset Library', sections, { collapsible: true, defaultOpen: false });
+    };
+
+    const renderAdvancedControls = () => {
+      const buildAdvancedSelect = (label, sectionKey, fieldKey, options) => (
+        buildSelect({
+          label,
+          value: advancedState[sectionKey]?.[fieldKey] ?? 'auto',
+          options,
+          onChange: value => updateAdvancedState({
+            [sectionKey]: {
+              ...advancedState[sectionKey],
+              [fieldKey]: value,
+            },
+          }),
+        })
+      );
+
+      const autoIntensityOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+      ];
+      const autoToggleOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'avoid', label: 'Avoid' },
+        { value: 'allow', label: 'Allow' },
+      ];
+      const feelBiasOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'straight', label: 'Straight' },
+        { value: 'swing', label: 'Swing' },
+        { value: 'shuffle', label: 'Shuffle' },
+      ];
+      const polyOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'mono', label: 'Mono' },
+        { value: 'poly', label: 'Poly' },
+        { value: 'choke', label: 'Choke' },
+      ];
+      const variationStrategyOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'repeat', label: 'Repeat' },
+        { value: 'mutate', label: 'Mutate' },
+        { value: 'contrast', label: 'Contrast' },
+      ];
+      const seedModeOptions = [
+        { value: 'auto', label: 'Auto' },
+        { value: 'locked', label: 'Locked' },
+        { value: 'reroll', label: 'Reroll' },
+      ];
+
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+
+      const styleSection = document.createElement('div');
+      styleSection.className = 'flow-section-body';
+      styleSection.appendChild(buildAdvancedSelect('Subtype', 'style', 'subtype', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'classic', label: 'Classic' },
+        { value: 'modern', label: 'Modern' },
+        { value: 'hybrid', label: 'Hybrid' },
+      ]));
+      styleSection.appendChild(buildAdvancedSelect('Era/Flavor', 'style', 'era', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'vintage', label: 'Vintage' },
+        { value: 'current', label: 'Current' },
+        { value: 'future', label: 'Future' },
+      ]));
+      styleSection.appendChild(buildAdvancedSelect('Feel Bias', 'style', 'feelBias', feelBiasOptions));
+      styleSection.appendChild(buildAdvancedSelect('Avoid Arps', 'style', 'avoidArps', autoToggleOptions));
+      styleSection.appendChild(buildAdvancedSelect('Avoid Leaps', 'style', 'avoidLeaps', autoToggleOptions));
+      styleSection.appendChild(buildAdvancedSelect('Avoid Busy', 'style', 'avoidBusy', autoToggleOptions));
+      styleSection.appendChild(buildAdvancedSelect('Avoid Chromatic', 'style', 'avoidChromatic', autoToggleOptions));
+      body.appendChild(buildSection('Style (Advanced)', styleSection));
+
+      const voiceSection = document.createElement('div');
+      voiceSection.className = 'flow-section-body';
+      voiceSection.appendChild(buildAdvancedSelect('Articulation', 'voice', 'articulation', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'legato', label: 'Legato' },
+        { value: 'staccato', label: 'Staccato' },
+        { value: 'accented', label: 'Accented' },
+      ]));
+      voiceSection.appendChild(buildAdvancedSelect('Tone', 'voice', 'tone', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'soft', label: 'Soft' },
+        { value: 'neutral', label: 'Neutral' },
+        { value: 'bright', label: 'Bright' },
+      ]));
+      voiceSection.appendChild(buildAdvancedSelect('Humanization', 'voice', 'humanization', autoIntensityOptions));
+      voiceSection.appendChild(buildAdvancedSelect('Poly Mode', 'voice', 'polyMode', polyOptions));
+      voiceSection.appendChild(buildAdvancedSelect('Layering', 'voice', 'layering', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'single', label: 'Single' },
+        { value: 'double', label: 'Double' },
+        { value: 'stack', label: 'Stack' },
+      ]));
+      body.appendChild(buildSection('Voice (Advanced)', voiceSection));
+
+      const patternSection = document.createElement('div');
+      patternSection.className = 'flow-section-body';
+      patternSection.appendChild(buildAdvancedSelect('Rhythm Mask', 'pattern', 'rhythmMask', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'straight', label: 'Straight' },
+        { value: 'syncopated', label: 'Syncopated' },
+        { value: 'sparse', label: 'Sparse' },
+      ]));
+      patternSection.appendChild(buildAdvancedSelect('Density', 'pattern', 'density', autoIntensityOptions));
+      patternSection.appendChild(buildAdvancedSelect('Accents', 'pattern', 'accents', autoIntensityOptions));
+      patternSection.appendChild(buildAdvancedSelect('Contour', 'pattern', 'contour', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'flat', label: 'Flat' },
+        { value: 'rising', label: 'Rising' },
+        { value: 'falling', label: 'Falling' },
+      ]));
+      patternSection.appendChild(buildAdvancedSelect('Repetition', 'pattern', 'repetition', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'looped', label: 'Looped' },
+        { value: 'evolving', label: 'Evolving' },
+        { value: 'staggered', label: 'Staggered' },
+      ]));
+      body.appendChild(buildSection('Pattern (Advanced)', patternSection));
+
+      const moodSection = document.createElement('div');
+      moodSection.className = 'flow-section-body';
+      moodSection.appendChild(buildAdvancedSelect('Tension', 'mood', 'tension', autoIntensityOptions));
+      moodSection.appendChild(buildAdvancedSelect('Brightness', 'mood', 'brightness', autoIntensityOptions));
+      moodSection.appendChild(buildAdvancedSelect('Resolution', 'mood', 'resolution', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'open', label: 'Open' },
+        { value: 'resolved', label: 'Resolved' },
+        { value: 'suspended', label: 'Suspended' },
+      ]));
+      body.appendChild(buildSection('Mood (Advanced)', moodSection));
+
+      const energySection = document.createElement('div');
+      energySection.className = 'flow-section-body';
+      energySection.appendChild(buildAdvancedSelect('Dynamics', 'energy', 'dynamics', autoIntensityOptions));
+      energySection.appendChild(buildAdvancedSelect('Drive', 'energy', 'drive', autoIntensityOptions));
+      energySection.appendChild(buildAdvancedSelect('Attack', 'energy', 'attack', autoIntensityOptions));
+      energySection.appendChild(buildAdvancedSelect('Peaks', 'energy', 'peaks', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'steady', label: 'Steady' },
+        { value: 'waves', label: 'Waves' },
+        { value: 'bursts', label: 'Bursts' },
+      ]));
+      body.appendChild(buildSection('Energy (Advanced)', energySection));
+
+      const complexitySection = document.createElement('div');
+      complexitySection.className = 'flow-section-body';
+      complexitySection.appendChild(buildAdvancedSelect('Harmony', 'complexity', 'harmony', autoIntensityOptions));
+      complexitySection.appendChild(buildAdvancedSelect('Melody', 'complexity', 'melody', autoIntensityOptions));
+      complexitySection.appendChild(buildAdvancedSelect('Rhythm', 'complexity', 'rhythm', autoIntensityOptions));
+      complexitySection.appendChild(buildAdvancedSelect('Ornamentation', 'complexity', 'ornamentation', autoIntensityOptions));
+      body.appendChild(buildSection('Complexity (Advanced)', complexitySection));
+
+      const variationSection = document.createElement('div');
+      variationSection.className = 'flow-section-body';
+      variationSection.appendChild(buildAdvancedSelect('Strategy', 'variation', 'strategy', variationStrategyOptions));
+      variationSection.appendChild(buildAdvancedSelect('Similarity Target', 'variation', 'similarity', autoIntensityOptions));
+      variationSection.appendChild(buildAdvancedSelect('Anti-repeat Window', 'variation', 'antiRepeat', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'short', label: 'Short' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'long', label: 'Long' },
+      ]));
+      variationSection.appendChild(buildAdvancedSelect('Seed Mode', 'variation', 'seedMode', seedModeOptions));
+      body.appendChild(buildSection('Variation (Advanced)', variationSection));
+
+      const lengthSection = document.createElement('div');
+      lengthSection.className = 'flow-section-body';
+      lengthSection.appendChild(buildAdvancedSelect('Phrase Structure', 'length', 'phrase', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'tight', label: 'Tight' },
+        { value: 'balanced', label: 'Balanced' },
+        { value: 'stretched', label: 'Stretched' },
+      ]));
+      lengthSection.appendChild(buildAdvancedSelect('Cadence Placement', 'length', 'cadence', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'early', label: 'Early' },
+        { value: 'center', label: 'Center' },
+        { value: 'late', label: 'Late' },
+      ]));
+      body.appendChild(buildSection('Length (Advanced)', lengthSection));
+
+      const registerSection = document.createElement('div');
+      registerSection.className = 'flow-section-body';
+      registerSection.appendChild(buildAdvancedSelect('Range Width', 'register', 'width', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'narrow', label: 'Narrow' },
+        { value: 'mid', label: 'Mid' },
+        { value: 'wide', label: 'Wide' },
+      ]));
+      registerSection.appendChild(buildAdvancedSelect('Range Movement', 'register', 'movement', [
+        { value: 'auto', label: 'Auto' },
+        { value: 'static', label: 'Static' },
+        { value: 'drift', label: 'Drift' },
+        { value: 'sweep', label: 'Sweep' },
+      ]));
+      body.appendChild(buildSection('Register (Advanced)', registerSection));
+
+      return buildSection('Advanced', body, { collapsible: true, defaultOpen: false });
     };
 
     const getStyleDefinition = () => styleContext?.style || STYLE_CATALOG[0] || null;
@@ -2058,19 +3284,26 @@ export function createFlowInspector({ store } = {}) {
 
     const stack = document.createElement('div');
     stack.className = 'flow-inspector-form';
+    stack.appendChild(buildPresetCodeHeader());
     stack.appendChild(renderViewModeSection());
-    stack.appendChild(renderThoughtCoreSection());
-    stack.appendChild(renderThoughtStyleBasicsSection());
-    if (inspectorViewMode === 'simple') {
-      stack.appendChild(buildVoicePresetSection());
-    } else if (inspectorViewMode === 'advanced') {
-      stack.appendChild(renderThoughtAdvancedSection());
+    if (inspectorViewMode === 'beginner') {
+      stack.appendChild(renderBeginnerPanel());
+      stack.appendChild(renderAdvancedControls());
+      stack.appendChild(renderPresetLibraryPanel());
     } else {
-      stack.appendChild(renderThoughtAdvancedSection());
-      stack.appendChild(renderThoughtExpertOverridesSection());
-      const legacySection = renderLegacySection();
-      if (legacySection) {
-        stack.appendChild(legacySection);
+      stack.appendChild(renderThoughtCoreSection());
+      stack.appendChild(renderThoughtStyleBasicsSection());
+      if (inspectorViewMode === 'simple') {
+        stack.appendChild(buildVoicePresetSection());
+      } else if (inspectorViewMode === 'advanced') {
+        stack.appendChild(renderThoughtAdvancedSection());
+      } else {
+        stack.appendChild(renderThoughtAdvancedSection());
+        stack.appendChild(renderThoughtExpertOverridesSection());
+        const legacySection = renderLegacySection();
+        if (legacySection) {
+          stack.appendChild(legacySection);
+        }
       }
     }
     return stack;

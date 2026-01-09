@@ -691,6 +691,11 @@ label.mute-label {
   line-height: 1.2;
 }
 
+.flow-field-error {
+  font-size: 0.75rem;
+  color: #b91c1c;
+}
+
 .flow-field-textarea {
   min-height: 72px;
   resize: vertical;
@@ -757,6 +762,54 @@ label.mute-label {
   border: 1px solid #d1d5db;
   background: #f3f4f6;
   cursor: pointer;
+}
+
+.flow-preset-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.flow-preset-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flow-preset-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.flow-preset-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-preset-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.flow-preset-status {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #16a34a;
+}
+
+.flow-preset-status-note {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.flow-preset-status.flow-preset-status-dirty {
+  color: #b45309;
 }
 
 .flow-toggle {
