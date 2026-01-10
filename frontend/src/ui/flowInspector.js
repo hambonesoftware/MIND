@@ -1215,6 +1215,11 @@ export function createFlowInspector({ store } = {}) {
     const updateParamsNormalized = (next) => {
       const merged = { ...params, ...next };
       const normalized = normalizeMusicThoughtParams(merged);
+      console.log('Normalized pattern params', {
+        patternGeneratedId: normalized.pattern?.generated?.id,
+        notePatternId: normalized.notePatternId,
+        patternType: normalized.patternType,
+      });
       store.updateNode(node.id, {
         params: {
           ...params,
@@ -1478,6 +1483,8 @@ export function createFlowInspector({ store } = {}) {
         && next.voice !== beginnerState.voice;
       const styleChanged = Object.prototype.hasOwnProperty.call(next, 'style')
         && next.style !== beginnerState.style;
+      const patChanged = Object.prototype.hasOwnProperty.call(next, 'pat')
+        && next.pat !== beginnerState.pat;
 
       if (roleChanged) {
         const defaults = ROLE_DEFAULTS[merged.role] || {};
@@ -1524,6 +1531,10 @@ export function createFlowInspector({ store } = {}) {
       const patternOptions = getPatternOptions(merged.voice, merged.style);
       if (!patternOptions.some(option => option.value === merged.pat)) {
         merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
+      }
+
+      if (patChanged || merged.pat !== beginnerState.pat) {
+        console.log('Beginner pattern changed', { value: merged.pat, nodeId: node?.id });
       }
 
       updateParams({
@@ -2666,6 +2677,7 @@ export function createFlowInspector({ store } = {}) {
           value: canon.pattern.generated.id || patternOptions[0]?.value || '',
           options: patternOptions,
           onChange: (value) => {
+            console.log('Pattern selection changed', { value, nodeId: node?.id });
             updateParamsNormalized({
               pattern: {
                 ...canon.pattern,
