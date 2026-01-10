@@ -8,11 +8,8 @@ from typing import List
 from ..determinism import stable_seed
 from ...models import Diagnostic, Event, FlowGraphNode
 from ..music_elements.harmony_plan import HarmonyPlan
-from ..music_elements.phrase_plan import PhrasePlan
-from ..music_elements.texture_engine import generate_events
-from ..music_elements.texture_recipe import TextureRecipe
 from ..notes import note_name_to_midi
-from .constants import ALLOWED_GRIDS, PATTERN_TYPE_BY_NOTE_ID
+from .constants import ALLOWED_GRIDS
 from .harmony import _apply_register, _build_chord_pitches, _normalize_harmony_mode, _resolve_progression_harmony
 from .patterns import (
     _generate_alberti_bass,
@@ -72,7 +69,6 @@ from .utils import (
     _combined_seed,
     _coerce_number,
     _intensity_to_velocity,
-    _pattern_family_for_type,
     _slice_events_to_bar,
     _steps_per_bar_for_grid,
 )
@@ -262,8 +258,8 @@ def _compile_thought_bar(
     register_max = _coerce_number(params.get("registerMax"), 84)
     style_seed = _coerce_number(params.get("styleSeed"), 0)
     combined_seed = _combined_seed(seed, style_seed, node.id)
-    note_pattern_id = (params.get("notePatternId") or "").strip().lower()
-    supported_note_pattern_ids = _EXPLICIT_NOTE_PATTERN_IDS | set(PATTERN_TYPE_BY_NOTE_ID)
+    note_pattern_id = (params.get("notePatternId") or "simple_arpeggio").strip().lower()
+    supported_note_pattern_ids = _EXPLICIT_NOTE_PATTERN_IDS
     if note_pattern_id and note_pattern_id not in supported_note_pattern_ids:
         diagnostics.append(
             Diagnostic(
@@ -275,11 +271,9 @@ def _compile_thought_bar(
         )
         return []
     pattern_seed = stable_seed(f"{combined_seed}:{note_pattern_id}") % 2147483647
-    pattern_type = params.get("patternType") or PATTERN_TYPE_BY_NOTE_ID.get(note_pattern_id, "arp-3-up")
     logger.info(
-        "thought pattern selection note_pattern_id=%s pattern_type=%s pattern_seed=%s",
+        "thought pattern selection note_pattern_id=%s pattern_seed=%s",
         note_pattern_id,
-        pattern_type,
         pattern_seed,
     )
 
@@ -530,23 +524,16 @@ def _compile_thought_bar(
         logger.info("pattern=impact: generator=_generate_impact")
         generated = _generate_impact(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     else:
-        pattern_family = _pattern_family_for_type(pattern_type, seed=pattern_seed)
-        logger.info(
-            "pattern=fallback: generator=generate_events pattern_type=%s pattern_family=%s",
-            pattern_type,
-            pattern_family,
+        diagnostics.append(
+            Diagnostic(
+                level="error",
+                message=f"Thought '{node.id}': note pattern id '{note_pattern_id}' has no generator.",
+                line=1,
+                col=1,
+            )
         )
-        texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
-        phrase = PhrasePlan(density_curve=(1.0,))
-        generated = generate_events(
-            harmony,
-            texture,
-            phrase,
-            bars=duration_bars,
-            grid=grid,
-            seed=pattern_seed,
-            piece_id=node.id,
-        )
+        logger.warning("pattern=missing: note_pattern_id=%s", note_pattern_id)
+        return []
 
     events = _slice_events_to_bar(generated, bar_offset=bar_offset)
 
