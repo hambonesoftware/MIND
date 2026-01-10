@@ -6,8 +6,11 @@ from typing import List
 
 from ...models import Event
 from ..music_elements.harmony_plan import HarmonyPlan
+from ..music_elements.phrase_plan import PhrasePlan
+from ..music_elements.texture_engine import generate_events
+from ..music_elements.texture_recipe import TextureRecipe
 from ..determinism import stable_seed
-from .utils import _steps_per_bar_for_grid
+from .utils import _pattern_family_for_type, _steps_per_bar_for_grid
 from .patterns_extra import (
     _generate_strum_roll,
     _generate_riff,
@@ -41,6 +44,246 @@ from .patterns_extra_more import (
     _generate_banjo_clawhammer,
 )
 
+
+def _generate_pattern_type(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    pattern_type: str,
+    piece_id: str,
+    sustain_policy: str = "hold_until_change",
+) -> List[Event]:
+    pattern_family = _pattern_family_for_type(pattern_type, seed=seed)
+    texture = TextureRecipe(pattern_family=pattern_family, sustain_policy=sustain_policy)
+    phrase = PhrasePlan(density_curve=(1.0,))
+    return generate_events(
+        harmony,
+        texture,
+        phrase,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        piece_id=piece_id,
+    )
+
+
+def _generate_simple_arpeggio(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_descending_arpeggio(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-down",
+        piece_id=piece_id,
+    )
+
+
+def _generate_skipping_arpeggio(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-skip",
+        piece_id=piece_id,
+    )
+
+
+def _generate_sustain_drone(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-down",
+        piece_id=piece_id,
+        sustain_policy="hold_until_change",
+    )
+
+
+def _generate_offbeat_plucks(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_swing_response(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-down",
+        piece_id=piece_id,
+    )
+
+
+def _generate_latin_clave(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_folk_roll(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_airy_arp(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_grit_riff(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-skip",
+        piece_id=piece_id,
+    )
+
+
+def _generate_montuno_pattern(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-up",
+        piece_id=piece_id,
+    )
+
+
+def _generate_travis_pick(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+    piece_id: str,
+) -> List[Event]:
+    return _generate_pattern_type(
+        harmony,
+        bars=bars,
+        grid=grid,
+        seed=seed,
+        pattern_type="arp-3-down",
+        piece_id=piece_id,
+    )
 
 
 def _generate_alberti_bass(
@@ -451,4 +694,3 @@ def _generate_pulse(
                 )
             )
     return events
-
