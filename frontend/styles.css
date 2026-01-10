@@ -1378,6 +1378,51 @@ button {
   color: #0b1220;
 }
 
+.flow-node-badge-role {
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.flow-node-role-intro {
+  background: #c7d2fe;
+  color: #1e1b4b;
+}
+
+.flow-node-role-verse {
+  background: #bae6fd;
+  color: #0c4a6e;
+}
+
+.flow-node-role-pre-chorus {
+  background: #fbcfe8;
+  color: #831843;
+}
+
+.flow-node-role-chorus {
+  background: #fde68a;
+  color: #92400e;
+}
+
+.flow-node-role-bridge {
+  background: #bbf7d0;
+  color: #14532d;
+}
+
+.flow-node-role-outro {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.flow-node-role-fill {
+  background: #ddd6fe;
+  color: #4c1d95;
+}
+
+.flow-node-role-harmony {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .flow-bottom {
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.25));
 }
