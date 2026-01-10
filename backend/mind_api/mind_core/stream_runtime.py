@@ -4,6 +4,7 @@ Token-based stream runtime for V9 flow graphs.
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, Iterable, List, Optional
 
 from ..models import (
@@ -27,6 +28,9 @@ from .notes import note_name_to_midi, parse_notes_spec
 from .progression_presets import get_progression_preset
 from .theory import parse_key, resolve_roman_chord
 
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 LANE_TO_MIDI_NOTE = {
     "kick": 36,
@@ -778,6 +782,12 @@ def _compile_thought_bar(
     note_pattern_id = (params.get("notePatternId") or "").strip().lower()
     pattern_seed = stable_seed(f"{combined_seed}:{note_pattern_id}") % 2147483647
     pattern_type = params.get("patternType") or PATTERN_TYPE_BY_NOTE_ID.get(note_pattern_id, "arp-3-up")
+    logger.info(
+        "thought pattern selection note_pattern_id=%s pattern_type=%s pattern_seed=%s",
+        note_pattern_id,
+        pattern_type,
+        pattern_seed,
+    )
 
     if _normalize_harmony_mode(params) == "single":
         chord = _build_chord_pitches(params)
@@ -787,6 +797,7 @@ def _compile_thought_bar(
         harmony = _resolve_progression_harmony(params, duration_bars, grid)
     generated: List[Event]
     if note_pattern_id == "walking_bass":
+        logger.info("pattern=walking_bass: generator=_generate_walking_bass")
         bass_min = max(0, register_min - 12)
         generated = _generate_walking_bass(
             harmony,
@@ -796,10 +807,13 @@ def _compile_thought_bar(
             register_max=max(register_min, register_max),
         )
     elif note_pattern_id == "alberti_bass":
+        logger.info("pattern=alberti_bass: generator=_generate_alberti_bass")
         generated = _generate_alberti_bass(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "ostinato_pulse":
+        logger.info("pattern=ostinato_pulse: generator=_generate_ostinato_pulse")
         generated = _generate_ostinato_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "walking_bass_simple":
+        logger.info("pattern=walking_bass_simple: generator=_generate_walking_bass_simple")
         bass_min = max(0, register_min - 12)
         generated = _generate_walking_bass_simple(
             harmony,
@@ -809,13 +823,21 @@ def _compile_thought_bar(
             register_max=max(register_min, register_max),
         )
     elif note_pattern_id == "comping_stabs":
+        logger.info("pattern=comping_stabs: generator=_generate_comping_stabs")
         generated = _generate_comping_stabs(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "gate_mask":
+        logger.info("pattern=gate_mask: generator=_generate_gate_mask")
         generated = _generate_gate_mask(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "step_arp_octave":
+        logger.info("pattern=step_arp_octave: generator=_generate_step_arp_octave")
         generated = _generate_step_arp_octave(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     else:
         pattern_family = _pattern_family_for_type(pattern_type, seed=pattern_seed)
+        logger.info(
+            "pattern=fallback: generator=generate_events pattern_type=%s pattern_family=%s",
+            pattern_type,
+            pattern_family,
+        )
         texture = TextureRecipe(pattern_family=pattern_family, sustain_policy="hold_until_change")
         phrase = PhrasePlan(density_curve=(1.0,))
         generated = generate_events(
