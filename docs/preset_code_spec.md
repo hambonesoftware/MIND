@@ -80,8 +80,8 @@ PS2 extends PS1 by appending advanced fields in the following order:
 36. `register_move`
 
 ## Field definitions
-- `role`: intro | verse | pre-chorus | chorus | bridge | outro | fill
-- `voice`: auto | lead | harmony | bass | drums | fx
+- `role`: intro | verse | pre-chorus | chorus | bridge | outro | fill (UI label "Fill/Transition")
+- `voice`: auto | lead | harmony | bass | drums | fx (UI label "FX/Transitions")
 - `style`: pop | hip-hop | electronic | lo-fi | rock | jazz | classical | cinematic | world | experimental
 - `inst`: **curated slug** per voice type (or `auto`)
 - `pat`: **curated slug** per voice type (or `auto`)

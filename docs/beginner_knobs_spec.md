@@ -9,11 +9,13 @@ Values are **case-insensitive** in UI, but the **canonical** serialized form is 
    - **Values:** intro, verse, pre-chorus, chorus, bridge, outro, fill
    - **Default:** verse
    - **Meaning:** the musical function of the thought in the song graph.
+   - **UI label:** "Fill/Transition" serializes as `fill`.
 
 2. **Voice Type**
    - **Values:** auto, lead, harmony, bass, drums, fx
    - **Default:** auto
    - **Meaning:** the musical role for arrangement/voicing and menu filtering.
+   - **UI label:** "FX/Transitions" serializes as `fx`.
 
 3. **Style**
    - **Values:** pop, hip-hop, electronic, lo-fi, rock, jazz, classical, cinematic, world, experimental
