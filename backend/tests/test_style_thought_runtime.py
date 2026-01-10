@@ -81,8 +81,6 @@ def test_note_pattern_id_routes_to_distinct_generators() -> None:
         "registerMax": 64,
         "rhythmGrid": "1/8",
     }
-    walking_params = {**base_params, "notePatternId": "walking_bass", "patternType": "arp-3-down"}
-    alberti_params = {**base_params, "notePatternId": "alberti_bass", "patternType": "arp-3-up"}
 
     def _compile(thought_params):
         graph = _graph(
@@ -96,9 +94,35 @@ def test_note_pattern_id_routes_to_distinct_generators() -> None:
         res = run_stream_runtime(CompileRequest(flowGraph=graph, barIndex=0, bpm=110, seed=5))
         return _sequence(res.events)
 
-    walking_seq = _compile(walking_params)
-    alberti_seq = _compile(alberti_params)
-    assert walking_seq != alberti_seq, "notePatternId is not honored by backend; patterns collapse to arpeggios."
+    pattern_ids = [
+        "walking_bass",
+        "hook",
+        "pad_drone",
+        "root_pulse",
+        "swing_groove",
+        "strum_roll",
+        "busy_groove",
+        "riser",
+        "call_response",
+        "fill_transition",
+        "riff",
+        "noise_sweep",
+        "pulse",
+        "chops",
+        "half_time",
+        "pedal_tone",
+        "light_fills",
+        "impact",
+    ]
+    sequences = {}
+    for pattern_id in pattern_ids:
+        sequences[pattern_id] = tuple(
+            _compile({**base_params, "notePatternId": pattern_id, "patternType": "arp-3-up"})
+        )
+        assert sequences[pattern_id], f"{pattern_id} should generate events."
+
+    unique_sequences = {seq for seq in sequences.values()}
+    assert len(unique_sequences) == len(pattern_ids), "notePatternId is not honored by backend; patterns collapse."
 
 
 def test_style_seed_controls_deterministic_output() -> None:
