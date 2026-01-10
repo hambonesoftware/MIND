@@ -631,6 +631,647 @@ def _generate_step_arp_octave(
     return events
 
 
+def _generate_pad_drone(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    events: List[Event] = []
+    sustain_roll = stable_seed(f"pad_drone:{seed}") % 3
+    sustain_len = 4.0 if sustain_roll == 0 else 3.5
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        pitches = ordered[-4:] if len(ordered) > 4 else ordered
+        events.append(
+            Event(
+                tBeat=bar_index * 4.0,
+                lane="note",
+                note=pitches[0],
+                pitches=pitches,
+                velocity=70,
+                durationBeats=sustain_len,
+            )
+        )
+        if sustain_roll == 2 and steps_per_bar >= 8:
+            shimmer_step = int(steps_per_bar * 0.75)
+            shimmer_pitch = pitches[-1] + 12
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + shimmer_step * (4.0 / steps_per_bar),
+                    lane="note",
+                    note=shimmer_pitch,
+                    pitches=[shimmer_pitch],
+                    velocity=62,
+                    durationBeats=4.0 / steps_per_bar,
+                )
+            )
+    return events
+
+
+def _generate_pedal_tone(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    events: List[Event] = []
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    octave_roll = stable_seed(f"pedal:{seed}") % 2
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        pitch = ordered[0] + (12 if octave_roll == 1 else 0)
+        events.append(
+            Event(
+                tBeat=bar_index * 4.0,
+                lane="note",
+                note=pitch,
+                pitches=[pitch],
+                velocity=68,
+                durationBeats=4.0 - step_len * 0.5,
+            )
+        )
+    return events
+
+
+def _generate_root_pulse(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    pulse_roll = stable_seed(f"root_pulse:{seed}") % 2
+    for bar_index in range(bars):
+        for step in range(0, steps_per_bar, max(1, steps_per_bar // 4)):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitch = ordered[0]
+            velocity = 100 if (step // max(1, steps_per_bar // 4)) % 2 == pulse_roll else 88
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=velocity,
+                    durationBeats=step_len * 0.8,
+                )
+            )
+    return events
+
+
+def _generate_pulse(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    offset = stable_seed(f"pulse:{seed}") % 2
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            if step % 2 != offset:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            idx = step % len(ordered)
+            pitch = ordered[idx]
+            velocity = 98 if step % 4 == 0 else 84
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=velocity,
+                    durationBeats=step_len * 0.9,
+                )
+            )
+    return events
+
+
+def _generate_strum_roll(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    direction = stable_seed(f"strum:{seed}") % 2
+    events: List[Event] = []
+    steps_per_beat = max(1, steps_per_bar // 4)
+    for bar_index in range(bars):
+        for beat in range(4):
+            chord = harmony.chord_at_step(bar_index, beat * steps_per_beat)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            roll = ordered if direction == 0 else list(reversed(ordered))
+            for idx, pitch in enumerate(roll):
+                if idx >= steps_per_beat:
+                    break
+                events.append(
+                    Event(
+                        tBeat=bar_index * 4.0 + (beat * steps_per_beat + idx) * step_len,
+                        lane="note",
+                        note=pitch,
+                        pitches=[pitch],
+                        velocity=96,
+                        durationBeats=step_len * 0.7,
+                    )
+                )
+    return events
+
+
+def _generate_riff(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    riff_patterns = [
+        [0, 2, 3, 5, 7],
+        [0, 3, 4, 6],
+        [1, 3, 5, 6],
+    ]
+    riff = riff_patterns[stable_seed(f"riff:{seed}") % len(riff_patterns)]
+    events: List[Event] = []
+    for bar_index in range(bars):
+        for idx, step in enumerate(riff):
+            if step >= steps_per_bar:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitch = ordered[idx % len(ordered)] + (12 if idx % 3 == 2 else 0)
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=104,
+                    durationBeats=step_len * 0.6,
+                )
+            )
+    return events
+
+
+def _generate_hook(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    contour = [0, 1, 2, 3, 2, 1]
+    contour_shift = stable_seed(f"hook:{seed}") % len(contour)
+    events: List[Event] = []
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        for step in range(0, steps_per_bar, max(1, steps_per_bar // 6)):
+            contour_idx = (step // max(1, steps_per_bar // 6) + contour_shift) % len(contour)
+            idx = min(contour[contour_idx], len(ordered) - 1)
+            pitch = ordered[idx] + (12 if contour_idx >= len(contour) // 2 else 0)
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=108 if contour_idx == 0 else 94,
+                    durationBeats=step_len * 0.9,
+                )
+            )
+    return events
+
+
+def _generate_call_response(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    call_steps = [0, 2, 4]
+    response_steps = [6, 7]
+    call_shift = stable_seed(f"call:{seed}") % 2
+    events: List[Event] = []
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        for idx, step in enumerate(call_steps):
+            if step >= steps_per_bar:
+                continue
+            pitch = ordered[(idx + call_shift) % len(ordered)]
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=100,
+                    durationBeats=step_len * 0.7,
+                )
+            )
+        for idx, step in enumerate(response_steps):
+            if step >= steps_per_bar:
+                continue
+            pitch = ordered[-1] - (idx * 2)
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=88,
+                    durationBeats=step_len * 0.7,
+                )
+            )
+    return events
+
+
+def _generate_chops(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    offset = stable_seed(f"chops:{seed}") % 2
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            if (step + offset) % 2 != 1:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitches = ordered[-3:] if len(ordered) >= 3 else ordered
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitches[0],
+                    pitches=pitches,
+                    velocity=104,
+                    durationBeats=step_len * 0.4,
+                )
+            )
+    return events
+
+
+def _generate_light_fills(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    fill_steps = max(2, steps_per_bar // 4)
+    events: List[Event] = []
+    fill_shift = stable_seed(f"light_fill:{seed}") % 2
+    for bar_index in range(bars):
+        start = steps_per_bar - fill_steps
+        for idx, step in enumerate(range(start, steps_per_bar)):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            shift_idx = (idx + fill_shift) % len(ordered)
+            pitch = ordered[shift_idx] + (12 if (idx + fill_shift) % 2 == 1 else 0)
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=90,
+                    durationBeats=step_len * 0.5,
+                )
+            )
+    return events
+
+
+def _generate_fill_transition(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    fill_len = max(3, steps_per_bar // 3)
+    for bar_index in range(bars):
+        start = steps_per_bar - fill_len
+        for idx, step in enumerate(range(start, steps_per_bar)):
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitch = ordered[(idx + stable_seed(f"fill:{seed}") % len(ordered)) % len(ordered)]
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=110,
+                    durationBeats=step_len * 0.4,
+                )
+            )
+    return events
+
+
+def _generate_half_time(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    events: List[Event] = []
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    beat_positions = [0.0, 2.0]
+    accent_roll = stable_seed(f"half_time:{seed}") % 2
+    for bar_index in range(bars):
+        for idx, beat in enumerate(beat_positions):
+            chord = harmony.chord_at_step(bar_index, int(beat))
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitches = ordered[-3:] if len(ordered) >= 3 else ordered
+            velocity = 112 if idx == accent_roll else 98
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + beat,
+                    lane="note",
+                    note=pitches[0],
+                    pitches=pitches,
+                    velocity=velocity,
+                    durationBeats=step_len * max(1, steps_per_bar // 2),
+                )
+            )
+    return events
+
+
+def _generate_swing_groove(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    if steps_per_bar >= 12:
+        swing_steps = [0, 3, 6, 9]
+    else:
+        swing_steps = [0, 3, 5, 7]
+    roll = stable_seed(f"swing:{seed}") % 2
+    events: List[Event] = []
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        for idx, step in enumerate(swing_steps):
+            if step >= steps_per_bar:
+                continue
+            pitch = ordered[(idx + roll) % len(ordered)]
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=92,
+                    durationBeats=step_len * 0.8,
+                )
+            )
+    return events
+
+
+def _generate_busy_groove(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    density_roll = stable_seed(f"busy:{seed}") % 4
+    for bar_index in range(bars):
+        for step in range(steps_per_bar):
+            if step % 4 == density_roll:
+                continue
+            chord = harmony.chord_at_step(bar_index, step)
+            if not chord:
+                continue
+            ordered = sorted(chord)
+            if not ordered:
+                continue
+            pitch = ordered[step % len(ordered)]
+            velocity = 100 if step % 2 == 0 else 86
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=velocity,
+                    durationBeats=step_len * 0.45,
+                )
+            )
+    return events
+
+
+def _generate_riser(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    octave_shift = stable_seed(f"riser:{seed}") % 2
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        base_offset = 12 if octave_shift == 1 else 0
+        tones = [pitch + base_offset for pitch in ordered] + [
+            ordered[-1] + base_offset + 12,
+            ordered[-1] + base_offset + 24,
+        ]
+        for step in range(steps_per_bar):
+            idx = int(round((step / max(1, steps_per_bar - 1)) * (len(tones) - 1)))
+            pitch = tones[idx]
+            events.append(
+                Event(
+                    tBeat=bar_index * 4.0 + step * step_len,
+                    lane="note",
+                    note=pitch,
+                    pitches=[pitch],
+                    velocity=80 + int(30 * (step / max(1, steps_per_bar - 1))),
+                    durationBeats=step_len,
+                )
+            )
+    return events
+
+
+def _generate_noise_sweep(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    events: List[Event] = []
+    rise_roll = stable_seed(f"noise:{seed}") % 2
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        start_pitch = ordered[0] + (12 if rise_roll == 1 else 0)
+        end_pitch = ordered[-1] + 12
+        events.append(
+            Event(
+                tBeat=bar_index * 4.0,
+                lane="note",
+                note=start_pitch,
+                pitches=[start_pitch],
+                velocity=60,
+                durationBeats=4.0 - step_len,
+            )
+        )
+        events.append(
+            Event(
+                tBeat=bar_index * 4.0 + (steps_per_bar - 1) * step_len,
+                lane="note",
+                note=end_pitch,
+                pitches=[end_pitch],
+                velocity=84,
+                durationBeats=step_len,
+            )
+        )
+    return events
+
+
+def _generate_impact(
+    harmony: HarmonyPlan,
+    *,
+    bars: int,
+    grid: str,
+    seed: int,
+) -> List[Event]:
+    events: List[Event] = []
+    steps_per_bar = _steps_per_bar_for_grid(grid)
+    step_len = 4.0 / max(1, steps_per_bar)
+    velocity = 114 + (stable_seed(f"impact:{seed}") % 8)
+    for bar_index in range(bars):
+        chord = harmony.chord_at_step(bar_index, 0)
+        if not chord:
+            continue
+        ordered = sorted(chord)
+        if not ordered:
+            continue
+        pitches = ordered[-4:] if len(ordered) > 4 else ordered
+        events.append(
+            Event(
+                tBeat=bar_index * 4.0,
+                lane="note",
+                note=pitches[0],
+                pitches=pitches,
+                velocity=velocity,
+                durationBeats=step_len * 2,
+            )
+        )
+    return events
+
+
 def _parse_custom_notes(raw: object) -> List[int]:
     tokens: List[str] = []
     if raw is None:
@@ -831,6 +1472,57 @@ def _compile_thought_bar(
     elif note_pattern_id == "step_arp_octave":
         logger.info("pattern=step_arp_octave: generator=_generate_step_arp_octave")
         generated = _generate_step_arp_octave(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "pad_drone":
+        logger.info("pattern=pad_drone: generator=_generate_pad_drone")
+        generated = _generate_pad_drone(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "pedal_tone":
+        logger.info("pattern=pedal_tone: generator=_generate_pedal_tone")
+        generated = _generate_pedal_tone(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "root_pulse":
+        logger.info("pattern=root_pulse: generator=_generate_root_pulse")
+        generated = _generate_root_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "pulse":
+        logger.info("pattern=pulse: generator=_generate_pulse")
+        generated = _generate_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "strum_roll":
+        logger.info("pattern=strum_roll: generator=_generate_strum_roll")
+        generated = _generate_strum_roll(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "riff":
+        logger.info("pattern=riff: generator=_generate_riff")
+        generated = _generate_riff(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "hook":
+        logger.info("pattern=hook: generator=_generate_hook")
+        generated = _generate_hook(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "call_response":
+        logger.info("pattern=call_response: generator=_generate_call_response")
+        generated = _generate_call_response(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "chops":
+        logger.info("pattern=chops: generator=_generate_chops")
+        generated = _generate_chops(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "light_fills":
+        logger.info("pattern=light_fills: generator=_generate_light_fills")
+        generated = _generate_light_fills(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "fill_transition":
+        logger.info("pattern=fill_transition: generator=_generate_fill_transition")
+        generated = _generate_fill_transition(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "half_time":
+        logger.info("pattern=half_time: generator=_generate_half_time")
+        generated = _generate_half_time(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "swing_groove":
+        logger.info("pattern=swing_groove: generator=_generate_swing_groove")
+        generated = _generate_swing_groove(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "busy_groove":
+        logger.info("pattern=busy_groove: generator=_generate_busy_groove")
+        generated = _generate_busy_groove(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "riser":
+        logger.info("pattern=riser: generator=_generate_riser")
+        generated = _generate_riser(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "noise_sweep":
+        logger.info("pattern=noise_sweep: generator=_generate_noise_sweep")
+        generated = _generate_noise_sweep(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "impact":
+        logger.info("pattern=impact: generator=_generate_impact")
+        generated = _generate_impact(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     else:
         pattern_family = _pattern_family_for_type(pattern_type, seed=pattern_seed)
         logger.info(
