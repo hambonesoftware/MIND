@@ -161,7 +161,7 @@ function isStartPlayable(nodes, edges, startNodeId) {
 
 function buildThoughtParams(node) {
   const styleMetadata = normalizeStyleMetadata(node.params, { legacyFallback: true });
-  const patternType = node.params?.patternType || 'arp-3-up';
+  const patternType = node.params?.patternType;
   const notePatternId = node.params?.notePatternId || patternType || '';
   return {
     label: node.params?.label || node.type || 'Thought',
@@ -179,7 +179,7 @@ function buildThoughtParams(node) {
     progressionCustom: node.params?.progressionCustom || '',
     progressionCustomVariantStyle: node.params?.progressionCustomVariantStyle || 'triads',
     notePatternId,
-    patternType,
+    ...(patternType ? { patternType } : {}),
     rhythmGrid: node.params?.rhythmGrid || '1/12',
     syncopation: node.params?.syncopation || 'none',
     timingWarp: node.params?.timingWarp || 'none',

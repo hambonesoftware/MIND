@@ -76,7 +76,7 @@ const nodeRegistry = {
       progressionCustom: { type: 'string' },
       progressionCustomVariantStyle: { type: 'string' },
       notePatternId: { type: 'string' },
-      // Legacy: patternType remains for backward compatibility (Phase 1).
+      // Legacy: patternType remains for backward compatibility (Phase 1 migration only).
       patternType: { type: 'string' },
       rhythmGrid: { type: 'string' },
       syncopation: { type: 'string' },
@@ -127,7 +127,6 @@ const nodeRegistry = {
       progressionCustom: '',
       progressionCustomVariantStyle: 'triads',
       notePatternId: '',
-      patternType: 'arp-3-up',
       rhythmGrid: '1/12',
       syncopation: 'none',
       timingWarp: 'none',
