@@ -1,0 +1,79 @@
+{
+  "protocolVersion": "1.0",
+  "graphVersion": "9.11",
+  "resolverVersion": "9.11.0",
+  "metadata": {
+    "title": "Medium Protocol Example",
+    "author": "MIND",
+    "description": "Three-node flow with a switch."
+  },
+  "extensions": {
+    "vendor": {
+      "preset": "lofi"
+    }
+  },
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "params": {
+        "label": "Start"
+      },
+      "ui": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "switch-1",
+      "type": "switch",
+      "params": {
+        "label": "Switch",
+        "defaultBranch": "default",
+        "branchCount": 2
+      },
+      "ui": {
+        "x": 220,
+        "y": -40
+      }
+    },
+    {
+      "id": "thought-1",
+      "type": "thought",
+      "params": {
+        "label": "Thought",
+        "durationBars": 2,
+        "key": "C# minor",
+        "chordQuality": "minor"
+      },
+      "ui": {
+        "x": 480,
+        "y": 20
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": {
+        "nodeId": "start-1",
+        "portId": "flow"
+      },
+      "to": {
+        "nodeId": "switch-1",
+        "portId": "in"
+      }
+    },
+    {
+      "id": "edge-2",
+      "from": {
+        "nodeId": "switch-1",
+        "portId": "default"
+      },
+      "to": {
+        "nodeId": "thought-1",
+        "portId": "in"
+      }
+    }
+  ]
+}
