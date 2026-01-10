@@ -62,6 +62,8 @@ export function normalizeMusicThoughtParams(rawParams = {}) {
   const params = rawParams || {};
   const durationBars = params.durationBars ?? LEGACY_DEFAULTS.durationBars;
   const key = params.key ?? LEGACY_DEFAULTS.key;
+  const intent = isObject(params.intent) ? { ...params.intent } : undefined;
+  const compiled = isObject(params.compiled) ? { ...params.compiled } : undefined;
 
   const legacyCustomMelody = {
     grid: params.customMelody?.grid ?? LEGACY_DEFAULTS.customMelody.grid,
@@ -248,6 +250,8 @@ export function normalizeMusicThoughtParams(rawParams = {}) {
     : (params.patternType ?? LEGACY_DEFAULTS.patternType);
 
   return {
+    intent,
+    compiled,
     durationBars,
     key,
     style,

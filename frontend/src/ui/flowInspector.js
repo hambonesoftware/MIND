@@ -1570,7 +1570,7 @@ export function createFlowInspector({ store } = {}) {
       input.className = 'flow-field-input flow-preset-input';
       input.type = 'text';
       input.value = presetCodeValue;
-      input.placeholder = 'MIND|PS1|GV1|...';
+      input.placeholder = 'MIND|PS2|GV1|role=verse;voice=auto;style=pop;inst=auto;pat=auto;mood=warm;energy=medium;complexity=normal;variation=similar;len=8;reg=mid;reroll=0;style_sub=auto;style_era=auto;style_feel=auto;avoid_arps=auto;avoid_leaps=auto;avoid_busy=auto;avoid_chromatic=auto;voice_art=auto;voice_tone=auto;voice_human=auto;voice_poly=auto;voice_layer=auto;pattern_mask=auto;pattern_density=auto;pattern_accents=auto;pattern_contour=auto;pattern_repeat=auto;mood_tension=auto;mood_bright=auto;mood_resolve=auto;energy_dyn=auto;energy_drive=auto;energy_attack=auto;energy_peaks=auto;complexity_harmony=auto;complexity_melody=auto;complexity_rhythm=auto;complexity_orn=auto;variation_strategy=auto;variation_similarity=auto;variation_window=auto;variation_seedmode=auto;length_phrase=auto;length_cadence=auto;register_width=auto;register_move=auto';
       input.dataset.focusKey = currentFocusScope ? `${currentFocusScope}:presetCode` : 'presetCode';
       input.addEventListener('input', () => {
         updateParams({ presetCode: input.value });
