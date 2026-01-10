@@ -1,0 +1,54 @@
+{
+  "contract": "mind.thought.compiled",
+  "version": 1,
+  "immutableKeys": true,
+  "description": "Machine-resolved choices derived deterministically from mind.thought.intent plus resolver version.",
+  "required": [
+    "resolverVersion",
+    "notePatternId",
+    "rhythmGrid",
+    "syncopation",
+    "timingWarp",
+    "timingIntensity",
+    "instrumentPreset",
+    "registerMin",
+    "registerMax"
+  ],
+  "properties": {
+    "resolverVersion": {
+      "type": "string"
+    },
+    "notePatternId": {
+      "type": "string"
+    },
+    "rhythmGrid": {
+      "type": "string"
+    },
+    "syncopation": {
+      "type": "string"
+    },
+    "timingWarp": {
+      "type": "string"
+    },
+    "timingIntensity": {
+      "type": "number"
+    },
+    "instrumentPreset": {
+      "type": "string"
+    },
+    "registerMin": {
+      "type": "number"
+    },
+    "registerMax": {
+      "type": "number"
+    },
+    "presetCode": {
+      "type": "string",
+      "default": ""
+    },
+    "artifact": {
+      "type": "object",
+      "default": {}
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "contract": "mind.thought.intent",
+  "version": 1,
+  "immutableKeys": true,
+  "extensibleEnums": true,
+  "description": "Human-facing intent for a Thought node. Written by the guided wizard. Must be stable for protocol export.",
+  "required": [
+    "goal",
+    "role",
+    "styleId",
+    "moodId",
+    "motionId",
+    "density",
+    "seed",
+    "locks"
+  ],
+  "properties": {
+    "goal": {
+      "type": "string",
+      "description": "High-level intent label (e.g., driving_groove, dreamy_texture)."
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "lead",
+        "harmony",
+        "bass",
+        "drums",
+        "fx"
+      ]
+    },
+    "styleId": {
+      "type": "string"
+    },
+    "moodId": {
+      "type": "string"
+    },
+    "motionId": {
+      "type": "string"
+    },
+    "density": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "harmonyBehavior": {
+      "type": "string",
+      "default": "auto"
+    },
+    "soundColor": {
+      "type": "string",
+      "default": "auto"
+    },
+    "seed": {
+      "type": "number",
+      "description": "Deterministic seed for resolving compiled choices."
+    },
+    "locks": {
+      "type": "object",
+      "description": "Per-field locks (true/false) used by reroll logic.",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    }
+  },
+  "defaults": {
+    "goal": "driving_groove",
+    "role": "harmony",
+    "styleId": "classical_film",
+    "moodId": "default",
+    "motionId": "flowing",
+    "density": 0.5,
+    "harmonyBehavior": "auto",
+    "soundColor": "auto",
+    "seed": 1,
+    "locks": {}
+  }
+}
