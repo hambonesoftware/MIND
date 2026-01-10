@@ -1,0 +1,89 @@
+{
+  "graphVersion": 9,
+  "description": "Minimal start-to-thought canary graph for v9.11 baseline checks.",
+  "expectedBehavior": "Start triggers Thought A, which triggers Thought End.",
+  "successCriteria": [
+    "Thought A emits events",
+    "Thought End emits events"
+  ],
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "params": { "label": "Start" },
+      "ui": { "x": 40, "y": 80 },
+      "ports": {
+        "inputs": [],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-a",
+      "type": "thought",
+      "params": {
+        "label": "Thought A",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-up",
+        "rhythmGrid": "1/12",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_piano",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 240, "y": 80 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": [{ "id": "out", "label": "Out", "type": "flow" }]
+      }
+    },
+    {
+      "id": "thought-end",
+      "type": "thought",
+      "params": {
+        "label": "Thought End",
+        "durationBars": 1,
+        "key": "C minor",
+        "chordRoot": "C",
+        "chordQuality": "minor",
+        "patternType": "arp-3-up",
+        "rhythmGrid": "1/12",
+        "syncopation": "none",
+        "timingWarp": "none",
+        "timingIntensity": 0,
+        "registerMin": 48,
+        "registerMax": 84,
+        "instrumentSoundfont": "/assets/soundfonts/General-GS.sf2",
+        "instrumentPreset": "gm_piano",
+        "thoughtStatus": "draft",
+        "thoughtVersion": 1
+      },
+      "ui": { "x": 440, "y": 80 },
+      "ports": {
+        "inputs": [{ "id": "in", "label": "In", "type": "flow", "required": true }],
+        "outputs": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-start-a",
+      "from": { "nodeId": "start-1", "portId": "out" },
+      "to": { "nodeId": "thought-a", "portId": "in" }
+    },
+    {
+      "id": "edge-a-end",
+      "from": { "nodeId": "thought-a", "portId": "out" },
+      "to": { "nodeId": "thought-end", "portId": "in" }
+    }
+  ],
+  "selection": { "nodes": [], "edges": [] },
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}
