@@ -54,6 +54,7 @@ export const STYLE_BY_ID = STYLE_CATALOG.reduce((acc, style) => {
 }, {});
 
 export const STYLE_ALIASES = {
+  pop: 'pop_rock',
   rock_pop_metal: 'pop_rock',
   latin_afrocuban: 'latin_afro_cuban',
 };

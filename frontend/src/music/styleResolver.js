@@ -5,6 +5,7 @@ import { PATTERN_CATALOG, PATTERN_BY_ID, FALLBACK_PATTERNS } from './patternCata
 import { FEEL_PRESETS, FEEL_BY_ID } from './feelCatalog.js';
 import { INSTRUMENT_SUGGESTIONS, REGISTER_SUGGESTIONS, INSTRUMENT_BY_ID, REGISTER_BY_ID } from './instrumentCatalog.js';
 import { CAPABILITIES, capabilityEnabled } from './capabilities.js';
+import { MOTION_BY_ID } from './motionCatalog.js';
 
 const DEFAULTS = {
   harmonyMode: 'progression_preset',
@@ -118,6 +119,8 @@ function ensureMinimum(list, fallback, minCount) {
   return fallback;
 }
 
+const MIN_ROLE_MOTION_CANDIDATES = 6;
+
 function dedupeById(list) {
   const seen = new Set();
   const result = [];
@@ -128,6 +131,27 @@ function dedupeById(list) {
     }
   }
   return result;
+}
+
+function filterPatternsByRoleMotion(patterns, role, motionId) {
+  return (patterns || []).filter((pattern) => {
+    const roles = pattern.roles || [];
+    const motions = pattern.motions || [];
+    const roleMatch = !role || roles.length === 0 || roles.includes(role);
+    const motionMatch = !motionId || motions.length === 0 || motions.includes(motionId);
+    return roleMatch && motionMatch;
+  });
+}
+
+function isArpPattern(pattern) {
+  const id = String(pattern?.id || '').toLowerCase();
+  const label = String(pattern?.label || '').toLowerCase();
+  return id.includes('arp') || label.includes('arp');
+}
+
+function motionAllowsArps(motionId) {
+  if (!motionId) return false;
+  return Boolean(MOTION_BY_ID[motionId]?.allowArps);
 }
 
 function gatePatternsByCapability(patterns, capabilities) {
@@ -303,12 +327,20 @@ function resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moo
   };
 }
 
-function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides }) {
+function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides, role, motionId }) {
   const rng = mulberry32(makeSubSeed(seed, nodeId, `pattern:${style.id}`));
   const patternCandidates = optionSets.patterns?.recommended?.length
     ? optionSets.patterns.recommended
     : optionSets.patterns?.all || [];
-  const patternIds = patternCandidates.map(item => item.id);
+  let filteredCandidates = filterPatternsByRoleMotion(patternCandidates, role, motionId);
+  filteredCandidates = ensureMinimum(filteredCandidates, patternCandidates, MIN_ROLE_MOTION_CANDIDATES);
+  if ((role === 'bass' || role === 'harmony') && !motionAllowsArps(motionId)) {
+    const nonArpCandidates = filteredCandidates.filter(pattern => !isArpPattern(pattern));
+    if (nonArpCandidates.length > 0) {
+      filteredCandidates = nonArpCandidates;
+    }
+  }
+  const patternIds = filteredCandidates.map(item => item.id);
   const selectedPatternId = pickWithPriority({
     field: 'notePatternId',
     candidates: patternIds,
@@ -317,7 +349,7 @@ function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides }) {
     overrides,
     rng,
   });
-  const pattern = PATTERN_BY_ID[selectedPatternId] || patternCandidates[0];
+  const pattern = PATTERN_BY_ID[selectedPatternId] || filteredCandidates[0];
   const patternType = pattern?.mapsToPatternType || selectedPatternId || DEFAULTS.patternType;
   return {
     notePatternId: selectedPatternId,
@@ -416,6 +448,8 @@ export function resolveThoughtStyle({
   moodMode = 'override',
   moodId = DEFAULTS.moodId,
   capabilities = CAPABILITIES,
+  role = null,
+  motionId = null,
 } = {}) {
   const style = normalizeStyle(styleId);
   const seed = toUint32(styleSeed);
@@ -424,7 +458,7 @@ export function resolveThoughtStyle({
   const styleTags = tagContext?.styleTags || [];
 
   const harmony = resolveHarmony({ style, optionSets, seed, nodeId, locks, overrides, moodTags, styleTags });
-  const pattern = resolvePattern({ style, optionSets, seed, nodeId, locks, overrides });
+  const pattern = resolvePattern({ style, optionSets, seed, nodeId, locks, overrides, role, motionId });
   const feel = resolveFeel({ style, optionSets, seed, nodeId, locks, overrides });
   const instrument = resolveInstrument({ style, optionSets, seed, nodeId, locks, overrides });
 
