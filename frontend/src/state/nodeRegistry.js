@@ -1,5 +1,7 @@
 // frontend/src/state/nodeRegistry.js
 
+import { RESOLVER_VERSION } from '../music/immutables.js';
+
 const PORT_TYPES = {
   FLOW: 'flow',
   EVENTS: 'events',
@@ -40,6 +42,31 @@ const STYLE_METADATA_LEGACY_DEFAULTS = {
   styleOptionLocks: {},
   styleOptionOverrides: {},
   dropdownViewPrefs: {},
+};
+const THOUGHT_INTENT_DEFAULTS = {
+  goal: 'driving_groove',
+  role: 'harmony',
+  styleId: DEFAULT_STYLE_ID,
+  moodId: STYLE_METADATA_DEFAULTS.moodId,
+  motionId: 'flowing',
+  density: 0.5,
+  harmonyBehavior: 'auto',
+  soundColor: 'auto',
+  seed: DEFAULT_STYLE_SEED,
+  locks: {},
+};
+const THOUGHT_COMPILED_DEFAULTS = {
+  resolverVersion: RESOLVER_VERSION,
+  notePatternId: '',
+  rhythmGrid: '1/12',
+  syncopation: 'none',
+  timingWarp: 'none',
+  timingIntensity: 0,
+  instrumentPreset: 'gm:0:0',
+  registerMin: 48,
+  registerMax: 84,
+  presetCode: '',
+  artifact: {},
 };
 
 const nodeRegistry = {
@@ -91,6 +118,8 @@ const nodeRegistry = {
       presetCode: { type: 'string' },
       compiledPresetCode: { type: 'string' },
       compiledArtifact: { type: 'object' },
+      intent: { type: 'object' },
+      compiled: { type: 'object' },
       beginner: { type: 'object' },
       advanced: { type: 'object' },
       thoughtStatus: { type: 'string' },
@@ -147,6 +176,8 @@ const nodeRegistry = {
         generatorVersion: 'GV1',
         seed: 0,
       },
+      intent: THOUGHT_INTENT_DEFAULTS,
+      compiled: THOUGHT_COMPILED_DEFAULTS,
       beginner: {
         role: 'verse',
         voice: 'auto',

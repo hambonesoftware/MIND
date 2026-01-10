@@ -1,4 +1,6 @@
 import { resolveThoughtStyle } from './styleResolver.js';
+import { normalizeThoughtIntent } from './thoughtIntentNormalize.js';
+import { RESOLVER_VERSION } from './immutables.js';
 
 const normalizeHarmonyMode = (mode) => {
   if (mode === 'progression_preset') {
@@ -17,15 +19,16 @@ export function resolveMusicThought(canon, { nodeId = 'node' } = {}) {
   const style = canon.style || {};
   const mood = style.mood || {};
   const resolution = style.resolution || {};
+  const intent = normalizeThoughtIntent(canon);
   const resolvedStyle = resolveThoughtStyle({
-    styleId: style.id,
-    styleSeed: style.seed,
+    styleId: intent.styleId,
+    styleSeed: intent.seed,
     nodeId,
-    locks: resolution.locks || {},
+    locks: intent.locks || resolution.locks || {},
     overrides: resolution.overrides || {},
     modes: resolution.modes || {},
     moodMode: mood.mode || 'override',
-    moodId: mood.id || 'none',
+    moodId: intent.moodId,
   });
 
   const harmonyMode = normalizeHarmonyMode(resolvedStyle.harmonyMode);
@@ -98,6 +101,20 @@ export function resolveMusicThought(canon, { nodeId = 'node' } = {}) {
     voice: resolvedVoice,
   };
 
+  const compiled = {
+    resolverVersion: RESOLVER_VERSION,
+    notePatternId: resolvedStyle.notePatternId,
+    rhythmGrid: resolvedStyle.rhythmGrid,
+    syncopation: resolvedStyle.syncopation,
+    timingWarp: resolvedStyle.timingWarp,
+    timingIntensity: resolvedStyle.timingIntensity,
+    instrumentPreset: resolvedStyle.instrumentPreset,
+    registerMin: resolvedStyle.registerMin,
+    registerMax: resolvedStyle.registerMax,
+    presetCode: canon.compiled?.presetCode ?? canon.compiledPresetCode ?? canon.presetCode ?? '',
+    artifact: canon.compiled?.artifact ?? canon.compiledArtifact ?? {},
+  };
+
   return {
     resolved,
     flat: {
@@ -122,5 +139,7 @@ export function resolveMusicThought(canon, { nodeId = 'node' } = {}) {
       registerMin: resolvedStyle.registerMin,
       registerMax: resolvedStyle.registerMax,
     },
+    intent,
+    compiled,
   };
 }

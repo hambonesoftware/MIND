@@ -10,12 +10,14 @@ const normalizeFlowGraph = (flowGraph) => {
       return node;
     }
     const canon = normalizeMusicThoughtParams(node.params || {});
-    const { resolved, flat } = resolveMusicThought(canon, { nodeId: node.id });
+    const { resolved, flat, intent, compiled } = resolveMusicThought(canon, { nodeId: node.id });
     return {
       ...node,
       params: {
         ...canon,
         ...flat,
+        intent,
+        compiled,
         resolved,
       },
     };
