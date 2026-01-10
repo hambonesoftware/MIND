@@ -1,0 +1,813 @@
+import { parseScript } from '../api/client.js';
+
+export class NodeCard {
+  constructor({ lane, displayName, presets, onGraphChange = null }) {
+    this.lane = lane;
+    this.displayName = displayName;
+    this.presets = presets;
+    this.onGraphChange = onGraphChange;
+    const defaultPattern = lane === 'kick'
+      ? '9...'
+      : lane === 'snare'
+      ? '.9..'
+      : lane === 'hat'
+      ? '....'
+      : '....';
+    const defaultPreset = resolveDefaultPreset(lane, presets);
+    this.latchedText = buildDefaultScript(lane, defaultPattern, defaultPreset);
+    this.pendingText = null;
+    this.status = 'Latched';
+    this.lastParsedGrid = '1/4';
+    // Build DOM elements
+    this.element = document.createElement('div');
+    this.element.className = 'node-card';
+    // Header
+    const header = document.createElement('div');
+    header.className = 'node-header';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'node-name';
+    nameSpan.textContent = displayName;
+    header.appendChild(nameSpan);
+    this.statusPill = document.createElement('span');
+    this.statusPill.className = 'status-pill status-latched';
+    this.statusPill.textContent = 'Latched';
+    header.appendChild(this.statusPill);
+    // Mute checkbox
+    const muteLabel = document.createElement('label');
+    muteLabel.className = 'mute-label';
+    this.muteCheckbox = document.createElement('input');
+    this.muteCheckbox.type = 'checkbox';
+    this.muteCheckbox.addEventListener('change', () => {
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    muteLabel.appendChild(this.muteCheckbox);
+    muteLabel.appendChild(document.createTextNode(' Mute'));
+    header.appendChild(muteLabel);
+    this.element.appendChild(header);
+    // Body
+    const body = document.createElement('div');
+    body.className = 'node-body';
+    this.scriptInput = document.createElement('textarea');
+    this.scriptInput.className = 'script-input';
+    this.scriptInput.value = this.latchedText;
+    body.appendChild(this.scriptInput);
+    // Step strip
+    this.stepStrip = document.createElement('div');
+    this.stepStrip.className = 'step-strip';
+    // Playhead indicator
+    this.playhead = document.createElement('div');
+    this.playhead.className = 'playhead';
+    this.stepStrip.appendChild(this.playhead);
+    body.appendChild(this.stepStrip);
+    this.element.appendChild(body);
+    // Preset row
+    const presetRow = document.createElement('div');
+    presetRow.className = 'preset-row';
+    const presetLabel = document.createElement('label');
+    presetLabel.textContent = 'Preset: ';
+    this.presetSelect = document.createElement('select');
+    for (const preset of presets) {
+      const opt = document.createElement('option');
+      opt.value = preset.id;
+      opt.textContent = preset.name;
+      if (preset.id === defaultPreset) {
+        opt.selected = true;
+      }
+      this.presetSelect.appendChild(opt);
+    }
+    presetLabel.appendChild(this.presetSelect);
+    presetRow.appendChild(presetLabel);
+    this.element.appendChild(presetRow);
+    // Event listeners
+    this.scriptInput.addEventListener('input', () => {
+      this.onScriptChange();
+    });
+    this.presetSelect.addEventListener('change', () => {
+      this.onPresetChange(this.presetSelect.value);
+    });
+  }
+
+  onScriptChange() {
+    // Store pending text and update parse status
+    this.pendingText = this.scriptInput.value;
+    this.updateStatus('Pending');
+    // parse script to check validity
+    parseScript(this.pendingText)
+      .then(res => {
+        if (res.ok) {
+          this.lastParsedGrid = res.ast?.grid || '1/4';
+          this.updateStatus('Pending');
+        } else {
+          this.updateStatus('Error');
+        }
+      })
+      .catch(() => {
+        this.updateStatus('Error');
+      });
+  }
+
+  onPresetChange(presetId) {
+    // Update the script to include or replace the preset argument
+    const script = this.pendingText || this.latchedText;
+    const presetRe = /(preset\s*=\s*")[^"]*(")/i;
+    let updated;
+    if (presetRe.test(script)) {
+      updated = script.replace(presetRe, `$1${presetId}$2`);
+    } else {
+      // Insert before closing parenthesis
+      const idx = script.lastIndexOf(')');
+      if (idx !== -1) {
+        const before = script.slice(0, idx);
+        const after = script.slice(idx);
+        updated = `${before}, preset="${presetId}"${after}`;
+      } else {
+        updated = script;
+      }
+    }
+    this.scriptInput.value = updated;
+    this.onScriptChange();
+  }
+
+  updateStatus(newStatus) {
+    this.status = newStatus;
+    this.statusPill.textContent = newStatus;
+    this.statusPill.classList.remove('status-latched', 'status-pending', 'status-error');
+    if (newStatus === 'Latched') {
+      this.statusPill.classList.add('status-latched');
+    } else if (newStatus === 'Pending') {
+      this.statusPill.classList.add('status-pending');
+    } else if (newStatus === 'Error') {
+      this.statusPill.classList.add('status-error');
+    }
+  }
+
+  /**
+   * Latch the pending script if it is currently pending (not error).
+   */
+  latch() {
+    if (this.status === 'Pending' && this.pendingText) {
+      this.latchedText = this.pendingText;
+      this.pendingText = null;
+      this.updateStatus('Latched');
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    }
+  }
+
+  /**
+   * Build a NodeInput object for compilation.
+   */
+  toNodeInput() {
+    return {
+      id: this.lane,
+      text: this.latchedText,
+      enabled: !this.muteCheckbox.checked,
+    };
+  }
+
+  toGraphNode() {
+    return {
+      id: this.lane,
+      kind: 'theory',
+      enabled: !this.muteCheckbox.checked,
+      text: this.latchedText,
+    };
+  }
+
+  /**
+   * Update the visual step strip based on compiled events.
+   * @param {Array} events - events for this lane
+   */
+  updateSteps(events) {
+    // Determine step count from grid
+    const grid = this.lastParsedGrid || '1/4';
+    const steps = { '1/4': 4, '1/8': 8, '1/12': 12, '1/16': 16, '1/24': 24 }[grid] || 4;
+    // Create or update step boxes
+    // Remove existing boxes except playhead
+    // Keep playhead as first child; remove others
+    while (this.stepStrip.children.length > 1) {
+      this.stepStrip.removeChild(this.stepStrip.lastChild);
+    }
+    // Create boxes
+    const activeIndices = new Set();
+    for (const ev of events) {
+      // tBeat 0..4 -> step index
+      const idx = Math.floor((ev.tBeat / 4) * steps + 1e-6);
+      activeIndices.add(idx);
+    }
+    for (let i = 0; i < steps; i++) {
+      const box = document.createElement('div');
+      box.className = 'step-box';
+      if (activeIndices.has(i)) {
+        box.classList.add('on');
+      }
+      this.stepStrip.appendChild(box);
+    }
+  }
+
+  /**
+   * Move the playhead indicator according to progress (0–1) across the bar.
+   */
+  updatePlayhead(progress) {
+    const pct = Math.max(0, Math.min(1, progress));
+    this.playhead.style.left = `${pct * 100}%`;
+  }
+}
+
+export class NoteWorkspaceCard {
+  constructor({ displayName, presets, onGraphChange = null }) {
+    this.lane = 'note';
+    this.displayName = displayName;
+    this.presets = presets;
+    this.onGraphChange = onGraphChange;
+    this.blockCounter = 1;
+    this.blocks = [];
+    this.lastParsedGrid = '1/4';
+    const defaultPreset = resolveDefaultPreset('note', presets);
+    this.element = document.createElement('div');
+    this.element.className = 'node-card';
+    const header = document.createElement('div');
+    header.className = 'node-header';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'node-name';
+    nameSpan.textContent = displayName;
+    header.appendChild(nameSpan);
+    this.statusPill = document.createElement('span');
+    this.statusPill.className = 'status-pill status-latched';
+    this.statusPill.textContent = 'Workspace';
+    header.appendChild(this.statusPill);
+    const muteLabel = document.createElement('label');
+    muteLabel.className = 'mute-label';
+    this.muteCheckbox = document.createElement('input');
+    this.muteCheckbox.type = 'checkbox';
+    muteLabel.appendChild(this.muteCheckbox);
+    muteLabel.appendChild(document.createTextNode(' Mute'));
+    header.appendChild(muteLabel);
+    this.element.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'node-body';
+    this.workspace = document.createElement('div');
+    this.workspace.className = 'workspace';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'workspace-toolbar';
+    const addTheoryButton = document.createElement('button');
+    addTheoryButton.textContent = '+ Theory Block';
+    const addRenderButton = document.createElement('button');
+    addRenderButton.textContent = '+ Render Block';
+    toolbar.appendChild(addTheoryButton);
+    toolbar.appendChild(addRenderButton);
+    this.workspace.appendChild(toolbar);
+    this.workspaceList = document.createElement('div');
+    this.workspaceList.className = 'workspace-list';
+    this.workspace.appendChild(this.workspaceList);
+    this.activeHint = document.createElement('div');
+    this.activeHint.className = 'workspace-hint';
+    this.workspace.appendChild(this.activeHint);
+    body.appendChild(this.workspace);
+
+    this.stepStrip = document.createElement('div');
+    this.stepStrip.className = 'step-strip';
+    this.playhead = document.createElement('div');
+    this.playhead.className = 'playhead';
+    this.stepStrip.appendChild(this.playhead);
+    body.appendChild(this.stepStrip);
+    this.element.appendChild(body);
+
+    const presetRow = document.createElement('div');
+    presetRow.className = 'preset-row';
+    const presetLabel = document.createElement('label');
+    presetLabel.textContent = 'Preset: ';
+    this.presetSelect = document.createElement('select');
+    for (const preset of presets) {
+      const opt = document.createElement('option');
+      opt.value = preset.id;
+      opt.textContent = preset.name;
+      if (preset.id === defaultPreset) {
+        opt.selected = true;
+      }
+      this.presetSelect.appendChild(opt);
+    }
+    presetLabel.appendChild(this.presetSelect);
+    presetRow.appendChild(presetLabel);
+    this.element.appendChild(presetRow);
+
+    addTheoryButton.addEventListener('click', () => this.addTheoryBlock());
+    addRenderButton.addEventListener('click', () => this.addRenderBlock());
+    this.presetSelect.addEventListener('change', () => {
+      this.updatePresetAcrossTheoryBlocks(this.presetSelect.value);
+    });
+
+    this.addTheoryBlock(defaultPreset);
+    this.renderWorkspace();
+  }
+
+  addTheoryBlock(defaultPresetOverride = null) {
+    const presetId = defaultPresetOverride || this.presetSelect?.value || '';
+    const block = {
+      id: `theory-${this.blockCounter++}`,
+      kind: 'theory',
+      title: `Theory ${this.blockCounter - 1}`,
+      enabled: true,
+      latchedText: buildDefaultScript('note', '....', presetId),
+      pendingText: null,
+      status: 'Latched',
+      lastParsedGrid: '1/4',
+    };
+    this.blocks.push(block);
+    this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
+  }
+
+  addRenderBlock() {
+    const block = {
+      id: `render-${this.blockCounter++}`,
+      kind: 'render',
+      title: `Render ${this.blockCounter - 1}`,
+      enabled: true,
+      render: {
+        strumEnabled: false,
+        spreadMs: 20,
+        direction: 'DUDUDUDU',
+        percEnabled: false,
+        hatPattern: '........',
+        kickPattern: '........',
+        snarePattern: '........',
+      },
+      childId: null,
+    };
+    this.blocks.push(block);
+    this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
+  }
+
+  getBlockById(id) {
+    return this.blocks.find(block => block.id === id) || null;
+  }
+
+  getRootBlocks() {
+    const childIds = new Set(
+      this.blocks
+        .filter(block => block.kind === 'render' && block.childId)
+        .map(block => block.childId),
+    );
+    return this.blocks.filter(block => !childIds.has(block.id));
+  }
+
+  getActiveTheoryBlock() {
+    const renderWithChild = this.blocks.find(
+      block => block.kind === 'render' && block.enabled && block.childId,
+    );
+    if (renderWithChild) {
+      return this.getBlockById(renderWithChild.childId);
+    }
+    const firstEnabledTheory = this.blocks.find(
+      block => block.kind === 'theory' && block.enabled,
+    );
+    return firstEnabledTheory || this.blocks.find(block => block.kind === 'theory') || null;
+  }
+
+  updateActiveHint() {
+    const active = this.getActiveTheoryBlock();
+    if (active) {
+      this.activeHint.textContent = `Using Theory Block ${active.title} for playback.`;
+    } else {
+      this.activeHint.textContent = 'Add a Theory block to enable playback.';
+    }
+  }
+
+  updatePresetAcrossTheoryBlocks(presetId) {
+    const presetRe = /(preset\s*=\s*")[^"]*(")/i;
+    for (const block of this.blocks) {
+      if (block.kind !== 'theory') {
+        continue;
+      }
+      const script = block.pendingText || block.latchedText;
+      let updated = script;
+      if (presetRe.test(script)) {
+        updated = script.replace(presetRe, `$1${presetId}$2`);
+      } else {
+        const idx = script.lastIndexOf(')');
+        if (idx !== -1) {
+          updated = `${script.slice(0, idx)}, preset="${presetId}"${script.slice(idx)}`;
+        }
+      }
+      if (block.pendingText) {
+        block.pendingText = updated;
+        block.status = 'Pending';
+      } else {
+        block.latchedText = updated;
+      }
+    }
+    this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
+  }
+
+  renderWorkspace() {
+    this.workspaceList.innerHTML = '';
+    const rootBlocks = this.getRootBlocks();
+    for (const block of rootBlocks) {
+      if (block.kind === 'theory') {
+        this.workspaceList.appendChild(this.renderTheoryBlock(block));
+      } else {
+        this.workspaceList.appendChild(this.renderRenderBlock(block));
+      }
+    }
+    this.updateActiveHint();
+  }
+
+  renderTheoryBlock(block) {
+    const card = document.createElement('div');
+    card.className = 'block-card';
+    const header = document.createElement('div');
+    header.className = 'block-card-header';
+    header.draggable = true;
+    header.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('text/plain', block.id);
+      event.dataTransfer.effectAllowed = 'move';
+    });
+    const title = document.createElement('span');
+    title.textContent = block.title;
+    header.appendChild(title);
+    const status = document.createElement('span');
+    status.className = `status-pill ${block.status === 'Error'
+      ? 'status-error'
+      : block.status === 'Pending'
+      ? 'status-pending'
+      : 'status-latched'}`;
+    status.textContent = block.status;
+    header.appendChild(status);
+    const enabledLabel = document.createElement('label');
+    enabledLabel.className = 'block-toggle';
+    const enabledInput = document.createElement('input');
+    enabledInput.type = 'checkbox';
+    enabledInput.checked = block.enabled;
+    enabledInput.addEventListener('change', () => {
+      block.enabled = enabledInput.checked;
+      this.updateActiveHint();
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    enabledLabel.appendChild(enabledInput);
+    enabledLabel.appendChild(document.createTextNode(' Enabled'));
+    header.appendChild(enabledLabel);
+    card.appendChild(header);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'script-input';
+    textarea.value = block.pendingText || block.latchedText;
+    textarea.addEventListener('input', () => {
+      block.pendingText = textarea.value;
+      block.status = 'Pending';
+      status.textContent = 'Pending';
+      status.className = 'status-pill status-pending';
+      parseScript(block.pendingText)
+        .then(res => {
+          if (res.ok) {
+            block.lastParsedGrid = res.ast?.grid || block.lastParsedGrid || '1/4';
+            block.status = 'Pending';
+            status.textContent = 'Pending';
+            status.className = 'status-pill status-pending';
+          } else {
+            block.status = 'Error';
+            status.textContent = 'Error';
+            status.className = 'status-pill status-error';
+          }
+        })
+        .catch(() => {
+          block.status = 'Error';
+          status.textContent = 'Error';
+          status.className = 'status-pill status-error';
+        });
+    });
+    card.appendChild(textarea);
+    return card;
+  }
+
+  renderRenderBlock(block) {
+    const card = document.createElement('div');
+    card.className = 'block-card';
+    const header = document.createElement('div');
+    header.className = 'block-card-header';
+    const title = document.createElement('span');
+    title.textContent = block.title;
+    header.appendChild(title);
+    const enabledLabel = document.createElement('label');
+    enabledLabel.className = 'block-toggle';
+    const enabledInput = document.createElement('input');
+    enabledInput.type = 'checkbox';
+    enabledInput.checked = block.enabled;
+    enabledInput.addEventListener('change', () => {
+      block.enabled = enabledInput.checked;
+      this.updateActiveHint();
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    enabledLabel.appendChild(enabledInput);
+    enabledLabel.appendChild(document.createTextNode(' Enabled'));
+    header.appendChild(enabledLabel);
+    card.appendChild(header);
+
+    const controls = document.createElement('div');
+    controls.className = 'render-controls';
+    const strumLabel = document.createElement('label');
+    const strumInput = document.createElement('input');
+    strumInput.type = 'checkbox';
+    strumInput.checked = block.render.strumEnabled;
+    strumInput.addEventListener('change', () => {
+      block.render.strumEnabled = strumInput.checked;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    strumLabel.appendChild(strumInput);
+    strumLabel.appendChild(document.createTextNode(' Strum'));
+    controls.appendChild(strumLabel);
+
+    const spreadLabel = document.createElement('label');
+    spreadLabel.textContent = 'Spread (ms)';
+    const spreadInput = document.createElement('input');
+    spreadInput.type = 'range';
+    spreadInput.min = '0';
+    spreadInput.max = '120';
+    spreadInput.value = String(block.render.spreadMs);
+    const spreadValue = document.createElement('span');
+    spreadValue.textContent = ` ${block.render.spreadMs}`;
+    spreadInput.addEventListener('input', () => {
+      block.render.spreadMs = parseInt(spreadInput.value, 10);
+      spreadValue.textContent = ` ${block.render.spreadMs}`;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    spreadLabel.appendChild(spreadInput);
+    spreadLabel.appendChild(spreadValue);
+    controls.appendChild(spreadLabel);
+
+    const directionLabel = document.createElement('label');
+    directionLabel.textContent = 'Direction';
+    const directionInput = document.createElement('input');
+    directionInput.type = 'text';
+    directionInput.value = block.render.direction;
+    directionInput.addEventListener('input', () => {
+      block.render.direction = directionInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    directionLabel.appendChild(directionInput);
+    controls.appendChild(directionLabel);
+
+    const percLabel = document.createElement('label');
+    const percInput = document.createElement('input');
+    percInput.type = 'checkbox';
+    percInput.checked = block.render.percEnabled;
+    percInput.addEventListener('change', () => {
+      block.render.percEnabled = percInput.checked;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    percLabel.appendChild(percInput);
+    percLabel.appendChild(document.createTextNode(' Perc'));
+    controls.appendChild(percLabel);
+
+    const hatLabel = document.createElement('label');
+    hatLabel.textContent = 'Hat';
+    const hatInput = document.createElement('input');
+    hatInput.type = 'text';
+    hatInput.value = block.render.hatPattern;
+    hatInput.addEventListener('input', () => {
+      block.render.hatPattern = hatInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    hatLabel.appendChild(hatInput);
+    controls.appendChild(hatLabel);
+
+    const kickLabel = document.createElement('label');
+    kickLabel.textContent = 'Kick';
+    const kickInput = document.createElement('input');
+    kickInput.type = 'text';
+    kickInput.value = block.render.kickPattern;
+    kickInput.addEventListener('input', () => {
+      block.render.kickPattern = kickInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    kickLabel.appendChild(kickInput);
+    controls.appendChild(kickLabel);
+
+    const snareLabel = document.createElement('label');
+    snareLabel.textContent = 'Snare';
+    const snareInput = document.createElement('input');
+    snareInput.type = 'text';
+    snareInput.value = block.render.snarePattern;
+    snareInput.addEventListener('input', () => {
+      block.render.snarePattern = snareInput.value;
+      if (typeof this.onGraphChange === 'function') {
+        this.onGraphChange();
+      }
+    });
+    snareLabel.appendChild(snareInput);
+    controls.appendChild(snareLabel);
+    card.appendChild(controls);
+
+    const dropzone = document.createElement('div');
+    dropzone.className = 'dropzone';
+    dropzone.textContent = 'Drop a Theory block here';
+    dropzone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+    dropzone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropzone.classList.remove('dragover');
+      const droppedId = event.dataTransfer.getData('text/plain');
+      const droppedBlock = this.getBlockById(droppedId);
+      if (droppedBlock && droppedBlock.kind === 'theory') {
+        block.childId = droppedBlock.id;
+        this.renderWorkspace();
+        if (typeof this.onGraphChange === 'function') {
+          this.onGraphChange();
+        }
+      }
+    });
+    if (block.childId) {
+      const child = this.getBlockById(block.childId);
+      if (child) {
+        dropzone.textContent = '';
+        const nested = document.createElement('div');
+        nested.className = 'nested-child';
+        const nestedTitle = document.createElement('span');
+        nestedTitle.textContent = `${child.title} (${child.status})`;
+        nested.appendChild(nestedTitle);
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'Remove child';
+        removeButton.addEventListener('click', () => {
+          block.childId = null;
+          this.renderWorkspace();
+          if (typeof this.onGraphChange === 'function') {
+            this.onGraphChange();
+          }
+        });
+        nested.appendChild(removeButton);
+        dropzone.appendChild(nested);
+      }
+    }
+    card.appendChild(dropzone);
+    return card;
+  }
+
+  latch() {
+    for (const block of this.blocks) {
+      if (block.kind !== 'theory') {
+        continue;
+      }
+      if (block.status === 'Pending' && block.pendingText) {
+        block.latchedText = block.pendingText;
+        block.pendingText = null;
+        block.status = 'Latched';
+      }
+    }
+    this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
+  }
+
+  toNodeInput() {
+    const active = this.getActiveTheoryBlock();
+    if (active) {
+      this.lastParsedGrid = active.lastParsedGrid || this.lastParsedGrid;
+    }
+    return {
+      id: this.lane,
+      text: active ? active.latchedText : '',
+      enabled: !this.muteCheckbox.checked && Boolean(active),
+    };
+  }
+
+  toGraphNodes() {
+    return this.blocks
+      .slice()
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((block) => {
+        if (block.kind === 'theory') {
+          return {
+            id: block.id,
+            kind: 'theory',
+            enabled: block.enabled,
+            text: block.latchedText,
+          };
+        }
+        return {
+          id: block.id,
+          kind: 'render',
+          enabled: block.enabled,
+          childId: block.childId || null,
+          render: {
+            strum: {
+              enabled: block.render.strumEnabled,
+              spreadMs: block.render.spreadMs,
+              directionByStep: block.render.direction,
+            },
+            perc: {
+              enabled: block.render.percEnabled,
+              hat: block.render.hatPattern,
+              kick: block.render.kickPattern,
+              snare: block.render.snarePattern,
+            },
+          },
+        };
+      });
+  }
+
+  toGraphEdges() {
+    return this.blocks
+      .filter(block => block.kind === 'render' && block.childId)
+      .map(block => ({
+        id: `edge-${block.id}-${block.childId}`,
+        from: { nodeId: block.id },
+        to: { nodeId: block.childId },
+      }));
+  }
+
+  loadWorkspace(workspace) {
+    this.blocks = workspace.blocks.map(block => ({
+      ...block,
+      pendingText: null,
+      status: 'Latched',
+      lastParsedGrid: block.lastParsedGrid || '1/4',
+    }));
+    const maxIndex = this.blocks
+      .map(block => parseInt(block.id.split('-')[1], 10))
+      .filter(Number.isFinite)
+      .reduce((max, value) => Math.max(max, value), 0);
+    this.blockCounter = maxIndex + 1;
+    this.renderWorkspace();
+    if (typeof this.onGraphChange === 'function') {
+      this.onGraphChange();
+    }
+  }
+
+  updateSteps(events) {
+    const grid = this.lastParsedGrid || '1/4';
+    const steps = { '1/4': 4, '1/8': 8, '1/12': 12, '1/16': 16, '1/24': 24 }[grid] || 4;
+    while (this.stepStrip.children.length > 1) {
+      this.stepStrip.removeChild(this.stepStrip.lastChild);
+    }
+    const activeIndices = new Set();
+    for (const ev of events) {
+      const idx = Math.floor((ev.tBeat / 4) * steps + 1e-6);
+      activeIndices.add(idx);
+    }
+    for (let i = 0; i < steps; i++) {
+      const box = document.createElement('div');
+      box.className = 'step-box';
+      if (activeIndices.has(i)) {
+        box.classList.add('on');
+      }
+      this.stepStrip.appendChild(box);
+    }
+  }
+
+  updatePlayhead(progress) {
+    const pct = Math.max(0, Math.min(1, progress));
+    this.playhead.style.left = `${pct * 100}%`;
+  }
+}
+
+function resolveDefaultPreset(lane, presets) {
+  let defaultPreset = '';
+  if (lane === 'note') {
+    defaultPreset = presets.find(p => p.id.toLowerCase().includes('piano'))?.id || '';
+  }
+  if (!defaultPreset) {
+    defaultPreset = presets.find(p => p.id.toLowerCase().includes(lane))?.id || presets[0]?.id || '';
+  }
+  return defaultPreset;
+}
+
+function buildDefaultScript(lane, defaultPattern, defaultPreset) {
+  if (lane === 'note') {
+    return `beat(${lane}, "${defaultPattern}", grid="1/4", bars="1-16", preset="${defaultPreset}", notes="C4")`;
+  }
+  return `beat(${lane}, "${defaultPattern}", grid="1/4", bars="1-16", preset="${defaultPreset}")`;
+}
