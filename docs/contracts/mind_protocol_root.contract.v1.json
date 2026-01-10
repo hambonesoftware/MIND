@@ -1,0 +1,38 @@
+{
+  "contract": "mind.protocol.root",
+  "version": 1,
+  "immutableKeys": true,
+  "description": "Root object for exported MIND Protocol songs/graphs.",
+  "required": [
+    "protocolVersion",
+    "graphVersion",
+    "resolverVersion",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string"
+    },
+    "graphVersion": {
+      "type": "string"
+    },
+    "resolverVersion": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "default": {}
+    },
+    "extensions": {
+      "type": "object",
+      "default": {}
+    },
+    "nodes": {
+      "type": "array"
+    },
+    "edges": {
+      "type": "array"
+    }
+  }
+}

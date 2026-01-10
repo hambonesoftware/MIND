@@ -1,0 +1,44 @@
+{
+  "contract": "mind.pattern",
+  "version": 1,
+  "immutableKeys": true,
+  "extensibleEnums": true,
+  "description": "Pattern catalog entry used by the resolver.",
+  "required": [
+    "id",
+    "label",
+    "roles",
+    "motions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "motions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "mapsToPatternType": {
+      "type": "string",
+      "default": ""
+    }
+  }
+}
