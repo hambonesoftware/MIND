@@ -52,6 +52,33 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
+_EXPLICIT_NOTE_PATTERN_IDS = {
+    "walking_bass",
+    "alberti_bass",
+    "ostinato_pulse",
+    "walking_bass_simple",
+    "comping_stabs",
+    "gate_mask",
+    "step_arp_octave",
+    "pad_drone",
+    "pedal_tone",
+    "root_pulse",
+    "pulse",
+    "strum_roll",
+    "riff",
+    "hook",
+    "call_response",
+    "chops",
+    "light_fills",
+    "fill_transition",
+    "half_time",
+    "swing_groove",
+    "busy_groove",
+    "riser",
+    "noise_sweep",
+    "impact",
+}
+
 
 def _parse_custom_notes(raw: object) -> List[int]:
     tokens: List[str] = []
@@ -182,6 +209,17 @@ def _compile_thought_bar(
     style_seed = _coerce_number(params.get("styleSeed"), 0)
     combined_seed = _combined_seed(seed, style_seed, node.id)
     note_pattern_id = (params.get("notePatternId") or "").strip().lower()
+    supported_note_pattern_ids = _EXPLICIT_NOTE_PATTERN_IDS | set(PATTERN_TYPE_BY_NOTE_ID)
+    if note_pattern_id and note_pattern_id not in supported_note_pattern_ids:
+        diagnostics.append(
+            Diagnostic(
+                level="error",
+                message=f"Thought '{node.id}': note pattern id '{note_pattern_id}' has no generator.",
+                line=1,
+                col=1,
+            )
+        )
+        return []
     pattern_seed = stable_seed(f"{combined_seed}:{note_pattern_id}") % 2147483647
     pattern_type = params.get("patternType") or PATTERN_TYPE_BY_NOTE_ID.get(note_pattern_id, "arp-3-up")
     logger.info(
