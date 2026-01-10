@@ -192,10 +192,36 @@ const ROLE_DEFAULTS = {
   intro: { energy: 'low', variation: 'similar' },
   verse: { energy: 'medium', variation: 'similar' },
   'pre-chorus': { energy: 'high', variation: 'fresh' },
-  chorus: { energy: 'high', variation: 'fresh' },
+  chorus: { energy: 'peak', variation: 'fresh' },
   bridge: { energy: 'medium', variation: 'wild' },
   outro: { energy: 'low', variation: 'similar' },
   fill: { energy: 'high', variation: 'fresh', len: '2' },
+};
+
+const ROLE_VOICE_DEFAULTS = {
+  intro: {
+    harmony: { pat: 'pad_drone' },
+    bass: { pat: 'pedal_tone' },
+    drums: { pat: 'half_time' },
+  },
+  chorus: {
+    lead: { pat: 'hook' },
+    drums: { pat: 'busy_groove' },
+  },
+  bridge: {
+    lead: { pat: 'call_response' },
+    harmony: { pat: 'chops' },
+    bass: { pat: 'syncop_bass' },
+  },
+  outro: {
+    harmony: { pat: 'pad_drone' },
+    bass: { pat: 'pedal_tone' },
+    drums: { pat: 'half_time' },
+  },
+  fill: {
+    drums: { pat: 'fill_transition' },
+    fx: { pat: 'transition_fill' },
+  },
 };
 
 const ADVANCED_DEFAULTS = {
@@ -438,6 +464,12 @@ function parsePresetCode(code) {
   }
   const schemaVersion = parts[1] || 'PS1';
   const generatorVersion = parts[2] || 'GV1';
+  if (!['PS1', 'PS2'].includes(schemaVersion)) {
+    return { ok: false, error: `Unsupported preset schema version: ${schemaVersion}.` };
+  }
+  if (!/^GV\d+$/i.test(generatorVersion)) {
+    return { ok: false, error: `Invalid generator version: ${generatorVersion}.` };
+  }
   const body = parts.slice(3).join('|');
   const entries = body.split(';').map(segment => segment.trim()).filter(Boolean);
   const nextBeginner = { ...BEGINNER_DEFAULTS };
@@ -496,9 +528,10 @@ function parsePresetCode(code) {
     }
   });
 
+  const targetSchemaVersion = schemaVersion === 'PS1' ? 'PS2' : schemaVersion;
   const normalized = buildPresetCodeFromBeginner(nextBeginner, {
-    schemaVersion: 'PS2',
-    generatorVersion,
+    schemaVersion: targetSchemaVersion,
+    generatorVersion: generatorVersion.toUpperCase(),
     advanced: nextAdvanced,
   });
   return {
@@ -506,8 +539,8 @@ function parsePresetCode(code) {
     beginner: nextBeginner,
     advanced: nextAdvanced,
     normalized,
-    schemaVersion,
-    generatorVersion,
+    schemaVersion: targetSchemaVersion,
+    generatorVersion: generatorVersion.toUpperCase(),
   };
 }
 
@@ -589,6 +622,7 @@ async function loadPresets() {
 
 const customMelodyState = new Map();
 let customMelodyClipboard = null;
+const rebuildNoticeByNode = new Map();
 
 const STORAGE_KEYS = {
   recent: 'mindRecentPresets',
@@ -1194,8 +1228,11 @@ export function createFlowInspector({ store } = {}) {
     if (!presetCodeValue || !String(presetCodeValue).startsWith('MIND|')) {
       const generated = buildPresetCodeFromBeginner(beginnerState, { advanced: advancedState });
       if (presetCodeValue !== generated) {
+        const compiled = compilePresetCode(generated);
         updateParams({
           presetCode: generated,
+          compiledPresetCode: compiled.ok ? compiled.presetCode : '',
+          compiledArtifact: compiled.ok ? compiled.compiledArtifact : null,
           advanced: advancedState,
           beginner: beginnerState,
         });
@@ -1239,6 +1276,10 @@ export function createFlowInspector({ store } = {}) {
     const rebuildSummary = rebuildChanges.length
       ? `Updated: ${rebuildChanges.slice(0, 3).join(' + ')}`
       : 'Up to date.';
+    const rebuildNotice = rebuildNoticeByNode.get(node.id) || '';
+    if (rebuildNotice) {
+      rebuildNoticeByNode.delete(node.id);
+    }
     const coerceSeed = (value, fallback = 1) => (
       Number.isFinite(value) ? Number(value) : fallback
     );
@@ -1445,12 +1486,21 @@ export function createFlowInspector({ store } = {}) {
             merged[key] = value;
           }
         });
-        if (merged.role === 'fill' && !Object.prototype.hasOwnProperty.call(next, 'pat')) {
-          merged.pat = getDefaultPatternForVoice(merged.voice, merged.role);
-        }
+        const roleVoiceDefaults = ROLE_VOICE_DEFAULTS[merged.role]?.[merged.voice] || {};
+        Object.entries(roleVoiceDefaults).forEach(([key, value]) => {
+          if (!Object.prototype.hasOwnProperty.call(next, key)) {
+            merged[key] = value;
+          }
+        });
       }
 
       if (voiceChanged) {
+        const roleVoiceDefaults = ROLE_VOICE_DEFAULTS[merged.role]?.[merged.voice] || {};
+        Object.entries(roleVoiceDefaults).forEach(([key, value]) => {
+          if (!Object.prototype.hasOwnProperty.call(next, key)) {
+            merged[key] = value;
+          }
+        });
         if (!Object.prototype.hasOwnProperty.call(next, 'inst')) {
           merged.inst = getDefaultInstrumentForVoice(merged.voice);
         }
@@ -1602,7 +1652,7 @@ export function createFlowInspector({ store } = {}) {
       status.textContent = isDirtyPreset ? '⚠️ Needs rebuild' : '✅ Up to date';
       const statusNote = document.createElement('div');
       statusNote.className = 'flow-preset-status-note';
-      statusNote.textContent = rebuildSummary;
+      statusNote.textContent = rebuildNotice || rebuildSummary;
       wrapper.appendChild(status);
       wrapper.appendChild(statusNote);
 
@@ -1615,6 +1665,10 @@ export function createFlowInspector({ store } = {}) {
         if (!compiled.ok) {
           return;
         }
+        const summary = rebuildChanges.length
+          ? `Updated: ${rebuildChanges.slice(0, 3).join(' + ')}`
+          : 'Updated.';
+        rebuildNoticeByNode.set(node.id, summary);
         updateParams({
           presetCode: compiled.presetCode,
           compiledPresetCode: compiled.presetCode,
@@ -2047,6 +2101,30 @@ export function createFlowInspector({ store } = {}) {
       ]));
       body.appendChild(buildSection('Register (Advanced)', registerSection));
 
+      return buildSection('Advanced', body, { collapsible: true, defaultOpen: false });
+    };
+
+    const renderAdvancedShell = () => {
+      const body = document.createElement('div');
+      body.className = 'flow-section-body';
+      const placeholderText = 'Placeholder controls are coming in Phase 05.';
+      const placeholders = [
+        'Advanced Style',
+        'Advanced Voice',
+        'Advanced Pattern',
+        'Advanced Feel',
+        'Advanced Variation',
+        'Advanced Timing',
+      ];
+      placeholders.forEach((title) => {
+        const sectionBody = document.createElement('div');
+        sectionBody.className = 'flow-section-body';
+        const help = document.createElement('div');
+        help.className = 'flow-field-help';
+        help.textContent = placeholderText;
+        sectionBody.appendChild(help);
+        body.appendChild(buildSection(title, sectionBody, { collapsible: true, defaultOpen: false }));
+      });
       return buildSection('Advanced', body, { collapsible: true, defaultOpen: false });
     };
 
@@ -3288,7 +3366,7 @@ export function createFlowInspector({ store } = {}) {
     stack.appendChild(renderViewModeSection());
     if (inspectorViewMode === 'beginner') {
       stack.appendChild(renderBeginnerPanel());
-      stack.appendChild(renderAdvancedControls());
+      stack.appendChild(renderAdvancedShell());
       stack.appendChild(renderPresetLibraryPanel());
     } else {
       stack.appendChild(renderThoughtCoreSection());
