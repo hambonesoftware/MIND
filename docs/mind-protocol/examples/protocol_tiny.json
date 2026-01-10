@@ -1,0 +1,55 @@
+{
+  "protocolVersion": "1.0",
+  "graphVersion": "9.11",
+  "resolverVersion": "9.11.0",
+  "metadata": {
+    "title": "Tiny Protocol Example",
+    "author": "MIND"
+  },
+  "extensions": {
+    "vendor": {
+      "note": "keep-me"
+    }
+  },
+  "extraRoot": {
+    "notes": "unknown root data should persist"
+  },
+  "nodes": [
+    {
+      "id": "start-1",
+      "type": "start",
+      "params": {
+        "label": "Start"
+      },
+      "ui": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "thought-1",
+      "type": "thought",
+      "params": {
+        "label": "Thought",
+        "durationBars": 1
+      },
+      "ui": {
+        "x": 240,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": {
+        "nodeId": "start-1",
+        "portId": "flow"
+      },
+      "to": {
+        "nodeId": "thought-1",
+        "portId": "in"
+      }
+    }
+  ]
+}

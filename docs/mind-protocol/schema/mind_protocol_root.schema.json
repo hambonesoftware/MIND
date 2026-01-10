@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MIND Protocol Root",
+  "type": "object",
+  "required": [
+    "protocolVersion",
+    "graphVersion",
+    "resolverVersion",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "type": "string"
+    },
+    "graphVersion": {
+      "type": "string"
+    },
+    "resolverVersion": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "default": {}
+    },
+    "extensions": {
+      "type": "object",
+      "default": {}
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true
+}
