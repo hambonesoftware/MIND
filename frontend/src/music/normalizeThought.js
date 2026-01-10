@@ -243,6 +243,9 @@ export function normalizeMusicThoughtParams(rawParams = {}) {
   const timingIntensity = feel.mode === 'manual'
     ? feel.manual.intensity
     : (params.timingIntensity ?? LEGACY_DEFAULTS.timingIntensity);
+  const legacyPatternType = pattern.generated.id
+    ? undefined
+    : (params.patternType ?? LEGACY_DEFAULTS.patternType);
 
   return {
     durationBars,
@@ -266,7 +269,7 @@ export function normalizeMusicThoughtParams(rawParams = {}) {
     progressionCustomVariantStyle: harmony.custom.variantStyle ?? LEGACY_DEFAULTS.progressionCustomVariantStyle,
     notePatternId: pattern.generated.id ?? LEGACY_DEFAULTS.notePatternId,
     // Legacy: patternType remains internal for compatibility.
-    patternType: params.patternType ?? pattern.generated.id ?? LEGACY_DEFAULTS.patternType,
+    patternType: legacyPatternType,
     rhythmGrid: rhythmGrid ?? LEGACY_DEFAULTS.rhythmGrid,
     syncopation: syncopation ?? LEGACY_DEFAULTS.syncopation,
     timingWarp: timingWarp ?? LEGACY_DEFAULTS.timingWarp,
