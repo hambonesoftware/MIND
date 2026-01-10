@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, Iterable, List, Optional
 
-from ..models import (
+from ...models import (
     CompileRequest,
     CompileResponse,
     Diagnostic,

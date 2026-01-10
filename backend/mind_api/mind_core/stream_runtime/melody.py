@@ -6,7 +6,7 @@ import logging
 from typing import List
 
 from ..determinism import stable_seed
-from ..models import Diagnostic, Event, FlowGraphNode
+from ...models import Diagnostic, Event, FlowGraphNode
 from ..music_elements.harmony_plan import HarmonyPlan
 from ..music_elements.phrase_plan import PhrasePlan
 from ..music_elements.texture_engine import generate_events
