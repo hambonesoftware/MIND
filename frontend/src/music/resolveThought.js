@@ -29,6 +29,8 @@ export function resolveMusicThought(canon, { nodeId = 'node' } = {}) {
     modes: resolution.modes || {},
     moodMode: mood.mode || 'override',
     moodId: intent.moodId,
+    role: intent.role,
+    motionId: intent.motionId,
   });
 
   const harmonyMode = normalizeHarmonyMode(resolvedStyle.harmonyMode);
