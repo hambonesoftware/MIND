@@ -12,7 +12,12 @@ function groupByCategory(types) {
   }, {});
 }
 
-export function createFlowPalette({ store, onAddNode, onClearWorkspace } = {}) {
+export function createFlowPalette({
+  store,
+  onAddNode,
+  onClearWorkspace,
+  onOpenThoughtWizard,
+} = {}) {
   const panel = document.createElement('section');
   panel.className = 'flow-panel flow-palette';
 
@@ -85,10 +90,19 @@ export function createFlowPalette({ store, onAddNode, onClearWorkspace } = {}) {
           button.className = 'flow-palette-item';
           button.textContent = definition?.label || type;
           button.addEventListener('click', () => {
+            let node = null;
             if (typeof onAddNode === 'function') {
-              onAddNode(type);
+              node = onAddNode(type);
             } else if (store) {
-              store.addNode(type);
+              node = store.addNode(type);
+            }
+            if (type === 'thought' && typeof onOpenThoughtWizard === 'function') {
+              const nodeId = node?.id
+                || store?.getState?.().nodes?.slice(-1)?.[0]?.id
+                || null;
+              if (nodeId) {
+                onOpenThoughtWizard(nodeId, { isNew: true });
+              }
             }
           });
           section.appendChild(button);

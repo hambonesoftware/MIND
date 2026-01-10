@@ -9,6 +9,7 @@ import { createExecutionsPanel } from './ui/executionsPanel.js';
 import { createFlowCanvas } from './ui/flowCanvas.js';
 import { createFlowInspector } from './ui/flowInspector.js';
 import { createFlowPalette } from './ui/flowPalette.js';
+import { createThoughtWizardModal } from './ui/thoughtWizard/thoughtWizardModal.js';
 import { createToastManager } from './ui/toast.js';
 import { createRivuletLab } from './ui/rivuletLab.js';
 
@@ -1225,6 +1226,15 @@ async function main() {
 
     const flowStore = createFlowGraphStore();
     flowStore.load();
+    const thoughtWizard = createThoughtWizardModal({ store: flowStore });
+    document.body.appendChild(thoughtWizard.element);
+    const openThoughtWizard = (nodeId, { isNew = false } = {}) => {
+      if (!nodeId) {
+        return;
+      }
+      flowStore.setSelection({ nodes: [nodeId], edges: [] });
+      thoughtWizard.open({ nodeId, isNew });
+    };
     const updatePlayButtonState = (state) => {
       const nextState = state || flowStore.getState?.() || {};
       const startId = nextState.runtime?.activeStartNodeId
@@ -1256,6 +1266,7 @@ async function main() {
       toast,
       onStartPlayback: (startNodeId) => startFlowPlayback(startNodeId),
       onStopPlayback: () => stopFlowPlayback(),
+      onEditThought: (nodeId) => openThoughtWizard(nodeId, { isNew: false }),
     });
     if (flowCanvasMount) {
       const rivuletLab = createRivuletLab({ store: flowStore, audioEngine: audioEngineRef.current });
@@ -1264,17 +1275,21 @@ async function main() {
     }
     const addNodeAtCenter = (type) => {
       const center = flowCanvas.getViewportCenter();
-      flowStore.addNode(type, { ui: center });
+      return flowStore.addNode(type, { ui: center });
     };
     const flowPalette = createFlowPalette({
       store: flowStore,
       onAddNode: addNodeAtCenter,
       onClearWorkspace: handleClearWorkspace,
+      onOpenThoughtWizard: (nodeId, { isNew } = {}) => openThoughtWizard(nodeId, { isNew }),
     });
     if (flowPaletteMount) {
       flowPaletteMount.appendChild(flowPalette.element);
     }
-    const flowInspector = createFlowInspector({ store: flowStore });
+    const flowInspector = createFlowInspector({
+      store: flowStore,
+      onEditThought: (nodeId) => openThoughtWizard(nodeId, { isNew: false }),
+    });
     if (flowInspectorMount) {
       flowInspectorMount.appendChild(flowInspector.element);
     }

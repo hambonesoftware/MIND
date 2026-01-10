@@ -25,6 +25,7 @@ export function createFlowCanvas({
   toast,
   onStartPlayback,
   onStopPlayback,
+  onEditThought,
 } = {}) {
   const container = document.createElement('div');
   container.className = 'flow-canvas';
@@ -513,6 +514,20 @@ export function createFlowCanvas({
           rhythmBadge.textContent = `${pattern} • ${rhythm}`;
           badgeContainer.appendChild(presetBadge);
           badgeContainer.appendChild(rhythmBadge);
+          if (typeof onEditThought === 'function') {
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'flow-node-edit';
+            editButton.textContent = 'Edit';
+            editButton.addEventListener('pointerdown', (event) => {
+              event.stopPropagation();
+            });
+            editButton.addEventListener('click', (event) => {
+              event.stopPropagation();
+              onEditThought(node.id);
+            });
+            badgeContainer.appendChild(editButton);
+          }
         }
         if (node.type === 'counter') {
           const value = runtimeState.counters?.[node.id];
