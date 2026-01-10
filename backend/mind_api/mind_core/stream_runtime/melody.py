@@ -17,6 +17,7 @@ from .harmony import _apply_register, _build_chord_pitches, _normalize_harmony_m
 from .patterns import (
     _generate_alberti_bass,
     _generate_anthem_strum,
+    _generate_airy_arp,
     _generate_banjo_clawhammer,
     _generate_bongo_rolls,
     _generate_boom_chuck,
@@ -26,15 +27,21 @@ from .patterns import (
     _generate_chops,
     _generate_comping_chords,
     _generate_comping_stabs,
+    _generate_descending_arpeggio,
     _generate_fill_transition,
+    _generate_folk_roll,
     _generate_funk_clav,
     _generate_gate_mask,
+    _generate_grit_riff,
     _generate_half_time,
     _generate_hook,
     _generate_impact,
     _generate_light_fills,
+    _generate_latin_clave,
     _generate_mandolin_chop,
+    _generate_montuno_pattern,
     _generate_noise_sweep,
+    _generate_offbeat_plucks,
     _generate_ostinato_pulse,
     _generate_pad_drone,
     _generate_pedal_tone,
@@ -46,11 +53,16 @@ from .patterns import (
     _generate_riser,
     _generate_root_pulse,
     _generate_sidechain_pulse,
+    _generate_simple_arpeggio,
+    _generate_skipping_arpeggio,
     _generate_step_arp_octave,
     _generate_string_pulse,
     _generate_stutter_chops,
     _generate_strum_roll,
+    _generate_sustain_drone,
     _generate_swing_groove,
+    _generate_swing_response,
+    _generate_travis_pick,
     _generate_tres_guajeo,
     _generate_walking_bass,
     _generate_walking_bass_simple,
@@ -68,8 +80,18 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 _EXPLICIT_NOTE_PATTERN_IDS = {
+    "simple_arpeggio",
+    "descending_arpeggio",
+    "skipping_arpeggio",
     "walking_bass",
     "alberti_bass",
+    "sustain_drone",
+    "offbeat_plucks",
+    "swing_response",
+    "latin_clave",
+    "folk_roll",
+    "airy_arp",
+    "grit_riff",
     "ostinato_pulse",
     "walking_bass_simple",
     "comping_stabs",
@@ -107,6 +129,8 @@ _EXPLICIT_NOTE_PATTERN_IDS = {
     "riser",
     "noise_sweep",
     "impact",
+    "montuno_pattern",
+    "travis_pick",
 }
 
 
@@ -266,7 +290,115 @@ def _compile_thought_bar(
     else:
         harmony = _resolve_progression_harmony(params, duration_bars, grid)
     generated: List[Event]
-    if note_pattern_id == "walking_bass":
+    if note_pattern_id == "simple_arpeggio":
+        logger.info("pattern=simple_arpeggio: generator=_generate_simple_arpeggio")
+        generated = _generate_simple_arpeggio(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "descending_arpeggio":
+        logger.info("pattern=descending_arpeggio: generator=_generate_descending_arpeggio")
+        generated = _generate_descending_arpeggio(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "skipping_arpeggio":
+        logger.info("pattern=skipping_arpeggio: generator=_generate_skipping_arpeggio")
+        generated = _generate_skipping_arpeggio(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "sustain_drone":
+        logger.info("pattern=sustain_drone: generator=_generate_sustain_drone")
+        generated = _generate_sustain_drone(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "offbeat_plucks":
+        logger.info("pattern=offbeat_plucks: generator=_generate_offbeat_plucks")
+        generated = _generate_offbeat_plucks(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "swing_response":
+        logger.info("pattern=swing_response: generator=_generate_swing_response")
+        generated = _generate_swing_response(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "latin_clave":
+        logger.info("pattern=latin_clave: generator=_generate_latin_clave")
+        generated = _generate_latin_clave(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "folk_roll":
+        logger.info("pattern=folk_roll: generator=_generate_folk_roll")
+        generated = _generate_folk_roll(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "airy_arp":
+        logger.info("pattern=airy_arp: generator=_generate_airy_arp")
+        generated = _generate_airy_arp(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "grit_riff":
+        logger.info("pattern=grit_riff: generator=_generate_grit_riff")
+        generated = _generate_grit_riff(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "montuno_pattern":
+        logger.info("pattern=montuno_pattern: generator=_generate_montuno_pattern")
+        generated = _generate_montuno_pattern(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "travis_pick":
+        logger.info("pattern=travis_pick: generator=_generate_travis_pick")
+        generated = _generate_travis_pick(
+            harmony,
+            bars=duration_bars,
+            grid=grid,
+            seed=pattern_seed,
+            piece_id=node.id,
+        )
+    elif note_pattern_id == "walking_bass":
         logger.info("pattern=walking_bass: generator=_generate_walking_bass")
         bass_min = max(0, register_min - 12)
         generated = _generate_walking_bass(

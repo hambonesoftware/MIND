@@ -334,6 +334,17 @@ function resolvePattern({ optionSets, seed, style, nodeId, locks, overrides, rol
     : optionSets.patterns?.all || [];
   let filteredCandidates = filterPatternsByRoleMotion(patternCandidates, role, motionId);
   filteredCandidates = ensureMinimum(filteredCandidates, patternCandidates, MIN_ROLE_MOTION_CANDIDATES);
+  if (motionId === 'arpeggiate') {
+    const arpCandidates = filteredCandidates.filter(pattern => isArpPattern(pattern));
+    if (arpCandidates.length > 0) {
+      filteredCandidates = arpCandidates;
+    } else {
+      const globalArpCandidates = patternCandidates.filter(pattern => isArpPattern(pattern));
+      if (globalArpCandidates.length > 0) {
+        filteredCandidates = globalArpCandidates;
+      }
+    }
+  }
   if ((role === 'bass' || role === 'harmony') && !motionAllowsArps(motionId)) {
     const nonArpCandidates = filteredCandidates.filter(pattern => !isArpPattern(pattern));
     if (nonArpCandidates.length > 0) {
