@@ -1,5 +1,7 @@
 import { getNodeDefinition, validateConnection } from '../state/nodeRegistry.js';
 import { isStartPlayable } from '../state/flowGraph.js';
+import { normalizeMusicThoughtParams } from '../music/normalizeThought.js';
+import { normalizeThoughtIntent } from '../music/thoughtIntentNormalize.js';
 
 const EDGE_COLOR = '#7dd3fc';
 const EDGE_COLOR_MUTED = '#334155';
@@ -19,6 +21,19 @@ function buildPortLabel(port) {
   }
   return port.label || port.id;
 }
+
+const formatChipLabel = (value) => (
+  String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+);
+
+const titleCase = (value) => (
+  formatChipLabel(value)
+    .split(' ')
+    .map(word => (word ? `${word[0].toUpperCase()}${word.slice(1)}` : ''))
+    .join(' ')
+);
 
 export function createFlowCanvas({
   store,
@@ -503,17 +518,35 @@ export function createFlowCanvas({
           badgeContainer.appendChild(playButton);
         }
         if (node.type === 'thought') {
-          const preset = node.params?.instrumentPreset || 'preset';
-          const rhythm = node.params?.rhythmGrid || '1/12';
-          const pattern = node.params?.patternType || 'arp';
-          const presetBadge = document.createElement('span');
-          presetBadge.className = 'flow-node-badge';
-          presetBadge.textContent = preset;
-          const rhythmBadge = document.createElement('span');
-          rhythmBadge.className = 'flow-node-badge';
-          rhythmBadge.textContent = `${pattern} • ${rhythm}`;
-          badgeContainer.appendChild(presetBadge);
-          badgeContainer.appendChild(rhythmBadge);
+          const canon = normalizeMusicThoughtParams(node.params || {});
+          const intent = normalizeThoughtIntent(canon);
+          const role = intent.role || 'role';
+          const roleClass = String(role).trim().replace(/\s+/g, '-');
+          const roleBadge = document.createElement('span');
+          roleBadge.className = `flow-node-badge flow-node-badge-role flow-node-role-${roleClass}`;
+          roleBadge.textContent = titleCase(role);
+          badgeContainer.appendChild(roleBadge);
+
+          const chips = [
+            { value: intent.styleId },
+            { value: intent.moodId },
+            { value: intent.motionId },
+            {
+              value: Number.isFinite(intent.density)
+                ? `Density ${Math.round(intent.density * 100)}%`
+                : null,
+            },
+            { value: intent.harmonyBehavior },
+          ];
+          chips.forEach((chip) => {
+            if (!chip.value) {
+              return;
+            }
+            const chipEl = document.createElement('span');
+            chipEl.className = 'flow-node-badge';
+            chipEl.textContent = formatChipLabel(chip.value);
+            badgeContainer.appendChild(chipEl);
+          });
           if (typeof onEditThought === 'function') {
             const editButton = document.createElement('button');
             editButton.type = 'button';
