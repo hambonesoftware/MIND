@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List
 
-from ..models import Event
+from ...models import Event
 from ..music_elements.harmony_plan import HarmonyPlan
 from ..determinism import stable_seed
 from .utils import _steps_per_bar_for_grid
