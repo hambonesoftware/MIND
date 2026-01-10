@@ -16,27 +16,42 @@ from .constants import ALLOWED_GRIDS, PATTERN_TYPE_BY_NOTE_ID
 from .harmony import _apply_register, _build_chord_pitches, _normalize_harmony_mode, _resolve_progression_harmony
 from .patterns import (
     _generate_alberti_bass,
+    _generate_anthem_strum,
+    _generate_banjo_clawhammer,
+    _generate_bongo_rolls,
+    _generate_boom_chuck,
     _generate_busy_groove,
     _generate_call_response,
+    _generate_cascara_ticks,
     _generate_chops,
+    _generate_comping_chords,
     _generate_comping_stabs,
     _generate_fill_transition,
+    _generate_funk_clav,
     _generate_gate_mask,
     _generate_half_time,
     _generate_hook,
     _generate_impact,
     _generate_light_fills,
+    _generate_mandolin_chop,
     _generate_noise_sweep,
     _generate_ostinato_pulse,
     _generate_pad_drone,
     _generate_pedal_tone,
+    _generate_pizzicato_stabs,
+    _generate_poly_bounce,
     _generate_pulse,
+    _generate_power_chords,
     _generate_riff,
     _generate_riser,
     _generate_root_pulse,
+    _generate_sidechain_pulse,
     _generate_step_arp_octave,
+    _generate_string_pulse,
+    _generate_stutter_chops,
     _generate_strum_roll,
     _generate_swing_groove,
+    _generate_tres_guajeo,
     _generate_walking_bass,
     _generate_walking_bass_simple,
 )
@@ -58,17 +73,32 @@ _EXPLICIT_NOTE_PATTERN_IDS = {
     "ostinato_pulse",
     "walking_bass_simple",
     "comping_stabs",
+    "comping_chords",
     "gate_mask",
     "step_arp_octave",
     "pad_drone",
     "pedal_tone",
     "root_pulse",
     "pulse",
+    "string_pulse",
     "strum_roll",
+    "anthem_strum",
+    "power_chords",
     "riff",
     "hook",
     "call_response",
     "chops",
+    "pizzicato_stabs",
+    "funk_clav",
+    "sidechain_pulse",
+    "stutter_chops",
+    "poly_bounce",
+    "cascara_ticks",
+    "bongo_rolls",
+    "tres_guajeo",
+    "boom_chuck",
+    "mandolin_chop",
+    "banjo_clawhammer",
     "light_fills",
     "fill_transition",
     "half_time",
@@ -265,6 +295,9 @@ def _compile_thought_bar(
     elif note_pattern_id == "comping_stabs":
         logger.info("pattern=comping_stabs: generator=_generate_comping_stabs")
         generated = _generate_comping_stabs(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "comping_chords":
+        logger.info("pattern=comping_chords: generator=_generate_comping_chords")
+        generated = _generate_comping_chords(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "gate_mask":
         logger.info("pattern=gate_mask: generator=_generate_gate_mask")
         generated = _generate_gate_mask(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
@@ -283,9 +316,18 @@ def _compile_thought_bar(
     elif note_pattern_id == "pulse":
         logger.info("pattern=pulse: generator=_generate_pulse")
         generated = _generate_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "string_pulse":
+        logger.info("pattern=string_pulse: generator=_generate_string_pulse")
+        generated = _generate_string_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "strum_roll":
         logger.info("pattern=strum_roll: generator=_generate_strum_roll")
         generated = _generate_strum_roll(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "anthem_strum":
+        logger.info("pattern=anthem_strum: generator=_generate_anthem_strum")
+        generated = _generate_anthem_strum(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "power_chords":
+        logger.info("pattern=power_chords: generator=_generate_power_chords")
+        generated = _generate_power_chords(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "riff":
         logger.info("pattern=riff: generator=_generate_riff")
         generated = _generate_riff(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
@@ -298,6 +340,39 @@ def _compile_thought_bar(
     elif note_pattern_id == "chops":
         logger.info("pattern=chops: generator=_generate_chops")
         generated = _generate_chops(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "pizzicato_stabs":
+        logger.info("pattern=pizzicato_stabs: generator=_generate_pizzicato_stabs")
+        generated = _generate_pizzicato_stabs(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "funk_clav":
+        logger.info("pattern=funk_clav: generator=_generate_funk_clav")
+        generated = _generate_funk_clav(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "sidechain_pulse":
+        logger.info("pattern=sidechain_pulse: generator=_generate_sidechain_pulse")
+        generated = _generate_sidechain_pulse(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "stutter_chops":
+        logger.info("pattern=stutter_chops: generator=_generate_stutter_chops")
+        generated = _generate_stutter_chops(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "poly_bounce":
+        logger.info("pattern=poly_bounce: generator=_generate_poly_bounce")
+        generated = _generate_poly_bounce(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "cascara_ticks":
+        logger.info("pattern=cascara_ticks: generator=_generate_cascara_ticks")
+        generated = _generate_cascara_ticks(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "bongo_rolls":
+        logger.info("pattern=bongo_rolls: generator=_generate_bongo_rolls")
+        generated = _generate_bongo_rolls(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "tres_guajeo":
+        logger.info("pattern=tres_guajeo: generator=_generate_tres_guajeo")
+        generated = _generate_tres_guajeo(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "boom_chuck":
+        logger.info("pattern=boom_chuck: generator=_generate_boom_chuck")
+        generated = _generate_boom_chuck(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "mandolin_chop":
+        logger.info("pattern=mandolin_chop: generator=_generate_mandolin_chop")
+        generated = _generate_mandolin_chop(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
+    elif note_pattern_id == "banjo_clawhammer":
+        logger.info("pattern=banjo_clawhammer: generator=_generate_banjo_clawhammer")
+        generated = _generate_banjo_clawhammer(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
     elif note_pattern_id == "light_fills":
         logger.info("pattern=light_fills: generator=_generate_light_fills")
         generated = _generate_light_fills(harmony, bars=duration_bars, grid=grid, seed=pattern_seed)
