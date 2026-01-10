@@ -5,6 +5,7 @@ import { MOTION_CATALOG } from '../../music/motionCatalog.js';
 import { normalizeMusicThoughtParams } from '../../music/normalizeThought.js';
 import { normalizeThoughtIntent } from '../../music/thoughtIntentNormalize.js';
 import { mulberry32 } from '../../music/styleResolver.js';
+import { createThoughtPreviewController } from '../../audio/thoughtPreview/index.js';
 import { LOCKS_KEY } from './wizardStepFactory.js';
 import { createCommitStep } from './steps/commitStep.js';
 import { createDensityStep } from './steps/densityStep.js';
@@ -39,7 +40,13 @@ const DENSITY_BUCKETS = [0.2, 0.35, 0.5, 0.65, 0.8];
 
 const toNumber = (value, fallback) => (Number.isFinite(value) ? value : fallback);
 
-export function createThoughtWizardModal({ store } = {}) {
+export function createThoughtWizardModal({
+  store,
+  audioEngineRef,
+  ensureAudioStarted,
+  bpmInput,
+  seedInput,
+} = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'thought-wizard-modal';
 
@@ -59,6 +66,31 @@ export function createThoughtWizardModal({ store } = {}) {
   closeButton.textContent = 'Close';
   header.appendChild(closeButton);
   card.appendChild(header);
+
+  const previewBar = document.createElement('div');
+  previewBar.className = 'thought-wizard-preview';
+  const previewLabel = document.createElement('div');
+  previewLabel.className = 'thought-wizard-preview-label';
+  previewLabel.textContent = 'Preview';
+  const previewMeta = document.createElement('div');
+  previewMeta.className = 'thought-wizard-preview-meta';
+  previewMeta.textContent = 'Stopped';
+  const previewControls = document.createElement('div');
+  previewControls.className = 'thought-wizard-preview-controls';
+  const previewPlayButton = document.createElement('button');
+  previewPlayButton.type = 'button';
+  previewPlayButton.className = 'thought-wizard-primary';
+  previewPlayButton.textContent = 'Play';
+  const previewStopButton = document.createElement('button');
+  previewStopButton.type = 'button';
+  previewStopButton.className = 'thought-wizard-secondary';
+  previewStopButton.textContent = 'Stop';
+  previewControls.appendChild(previewPlayButton);
+  previewControls.appendChild(previewStopButton);
+  previewBar.appendChild(previewLabel);
+  previewBar.appendChild(previewMeta);
+  previewBar.appendChild(previewControls);
+  card.appendChild(previewBar);
 
   const body = document.createElement('div');
   body.className = 'thought-wizard-body';
@@ -82,6 +114,7 @@ export function createThoughtWizardModal({ store } = {}) {
 
   const setIntentValue = (key, value) => {
     intentState = { ...intentState, [key]: value };
+    previewController.requestUpdate();
   };
 
   const setLockValue = (key, locked) => {
@@ -98,6 +131,7 @@ export function createThoughtWizardModal({ store } = {}) {
     if (discard && isNewNode && nodeId) {
       store.removeNode(nodeId);
     }
+    previewController.stop();
     isOpen = false;
     isNewNode = false;
     nodeId = null;
@@ -448,6 +482,47 @@ export function createThoughtWizardModal({ store } = {}) {
     });
   };
 
+  const buildPreviewParams = (node) => {
+    const baseParams = normalizeMusicThoughtParams(node?.params || {});
+    return {
+      ...baseParams,
+      intent: { ...intentState },
+    };
+  };
+
+  const getPreviewData = () => {
+    if (!nodeId) {
+      return null;
+    }
+    const state = store.getState();
+    const node = state.nodes.find(item => item.id === nodeId);
+    if (!node) {
+      return null;
+    }
+    return {
+      thoughtId: node.id,
+      params: buildPreviewParams(node),
+      ui: node.ui,
+    };
+  };
+
+  const updatePreviewControls = (isPlaying = previewController.isPlaying()) => {
+    const previewData = getPreviewData();
+    const durationBars = Number(previewData?.params?.durationBars) || 1;
+    previewMeta.textContent = isPlaying ? `Playing (${durationBars} bars)` : 'Stopped';
+    previewPlayButton.disabled = !previewData || isPlaying;
+    previewStopButton.disabled = !previewData || !isPlaying;
+  };
+
+  const previewController = createThoughtPreviewController({
+    audioEngineRef,
+    ensureAudioStarted,
+    bpmInput,
+    seedInput,
+    getPreviewData,
+    onStatusChange: (isPlaying) => updatePreviewControls(isPlaying),
+  });
+
   const open = ({ nodeId: nextNodeId, isNew } = {}) => {
     const state = store.getState();
     const node = state.nodes.find(item => item.id === nextNodeId);
@@ -468,6 +543,7 @@ export function createThoughtWizardModal({ store } = {}) {
     isNewNode = Boolean(isNew);
     isOpen = true;
     overlay.classList.add('is-open');
+    updatePreviewControls(previewController.isPlaying());
     render();
   };
 
@@ -476,6 +552,14 @@ export function createThoughtWizardModal({ store } = {}) {
     if (event.target === overlay) {
       close({ discard: true });
     }
+  });
+  previewPlayButton.addEventListener('click', () => {
+    previewController.start();
+    updatePreviewControls(true);
+  });
+  previewStopButton.addEventListener('click', () => {
+    previewController.stop();
+    updatePreviewControls(false);
   });
 
   return {

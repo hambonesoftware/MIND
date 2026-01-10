@@ -1226,7 +1226,13 @@ async function main() {
 
     const flowStore = createFlowGraphStore();
     flowStore.load();
-    const thoughtWizard = createThoughtWizardModal({ store: flowStore });
+    const thoughtWizard = createThoughtWizardModal({
+      store: flowStore,
+      audioEngineRef,
+      ensureAudioStarted,
+      bpmInput,
+      seedInput,
+    });
     document.body.appendChild(thoughtWizard.element);
     const openThoughtWizard = (nodeId, { isNew = false } = {}) => {
       if (!nodeId) {
