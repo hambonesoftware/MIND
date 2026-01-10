@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import List
 
 from .key import Key
@@ -12,6 +13,7 @@ _HARMONIC_MINOR = [0, 2, 3, 5, 7, 8, 11]
 
 def _degree_from_symbol(symbol: str) -> int:
     base = symbol.strip().lower().replace("7", "")
+    base = re.sub(r"[^iv]", "", base)
     romans = ["i", "ii", "iii", "iv", "v", "vi", "vii"]
     for idx, roman in enumerate(romans):
         if base == roman:
